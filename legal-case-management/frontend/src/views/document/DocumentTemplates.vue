@@ -175,6 +175,7 @@
               :key="caseItem.id"
               :label="getCaseLabel(caseItem)"
               :value="caseItem.id"
+              style="height: 84px"
             >
               <div
                 style="
@@ -303,8 +304,36 @@ const generateForm = reactive({
 });
 
 const templateFormRef = ref<FormInstance>();
+
+const validateTemplateName = (
+  _rule: any,
+  value: string,
+  callback: (error?: Error) => void
+) => {
+  if (!value || !value.trim()) {
+    callback(new Error("请输入模板名称"));
+    return;
+  }
+
+  const trimmedValue = value.trim();
+  const exists = templates.value.some(
+    (item) =>
+      item.name === trimmedValue &&
+      (!editingTemplate.value || item.id !== editingTemplate.value.id)
+  );
+
+  if (exists) {
+    callback(new Error("模板名称已存在，请使用其他名称"));
+  } else {
+    callback();
+  }
+};
+
 const templateRules: FormRules = {
-  name: [{ required: true, message: "请输入模板名称", trigger: "blur" }],
+  name: [
+    { required: true, message: "请输入模板名称", trigger: "blur" },
+    { validator: validateTemplateName, trigger: ["blur", "change"] },
+  ],
   documentType: [
     { required: true, message: "请选择文书类型", trigger: "change" },
   ],
@@ -644,6 +673,7 @@ onMounted(() => {
   margin-bottom: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-clamp: 2;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
