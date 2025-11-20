@@ -55,7 +55,9 @@ request.interceptors.response.use(
           ElMessage.error(data?.message || '服务器错误，请稍后重试')
           break
         default:
-          ElMessage.error(data?.message || data?.error || '请求失败')
+          // 处理错误格式：可能是 { error: { message: '...' } } 或 { error: '...' } 或 { message: '...' }
+          const errorMessage = data?.error?.message || data?.error || data?.message || '请求失败'
+          ElMessage.error(errorMessage)
       }
     } else if (error.request) {
       // Request was made but no response received

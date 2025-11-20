@@ -394,15 +394,36 @@ const getOCRResult = async (req, res) => {
  */
 const createTemplate = async (req, res) => {
   try {
-    const { template_name, document_type, content, variables, description } = req.body;
+    // 支持前端字段名（name, documentType）和后端字段名（template_name, document_type）
+    const { 
+      name, 
+      template_name, 
+      documentType, 
+      document_type, 
+      content, 
+      variables, 
+      description 
+    } = req.body;
 
-    if (!template_name || !document_type || !content) {
-      return res.status(400).json({ error: '模板名称、文书类型和内容不能为空' });
+    // 统一字段名处理
+    const finalName = name || template_name;
+    const finalDocumentType = documentType || document_type;
+
+    // 验证必填字段（检查空字符串和 null/undefined）
+    if (!finalName || (typeof finalName === 'string' && finalName.trim() === '') || 
+        !finalDocumentType || (typeof finalDocumentType === 'string' && finalDocumentType.trim() === '') || 
+        !content || (typeof content === 'string' && content.trim() === '')) {
+      return res.status(400).json({ 
+        error: {
+          message: '模板名称、文书类型和内容不能为空',
+          status: 400
+        }
+      });
     }
 
     const templateData = {
-      template_name,
-      document_type,
+      template_name: finalName,
+      document_type: finalDocumentType,
       content,
       variables: variables || [],
       description
@@ -411,13 +432,29 @@ const createTemplate = async (req, res) => {
     const templateId = await DocumentTemplate.create(templateData);
     const template = await DocumentTemplate.findById(templateId);
 
+    // 转换为前端期望的字段名
+    const responseTemplate = {
+      id: template.id,
+      name: template.template_name,
+      documentType: template.document_type,
+      content: template.content,
+      description: template.description,
+      variables: template.variables || [],
+      createdAt: template.created_at
+    };
+
     res.status(201).json({
       message: '模板创建成功',
-      template: template
+      data: responseTemplate
     });
   } catch (error) {
     console.error('创建模板失败:', error);
-    res.status(500).json({ error: '创建模板失败: ' + error.message });
+    res.status(500).json({ 
+      error: {
+        message: '创建模板失败: ' + error.message,
+        status: 500
+      }
+    });
   }
 };
 
@@ -428,16 +465,34 @@ const createTemplate = async (req, res) => {
  */
 const getTemplates = async (req, res) => {
   try {
-    const { document_type } = req.query;
-    const templates = await DocumentTemplate.findAll(document_type || null);
+    // 支持前端字段名（documentType）和后端字段名（document_type）
+    const { documentType, document_type } = req.query;
+    const filterType = documentType || document_type;
+    
+    const templates = await DocumentTemplate.findAll(filterType || null);
+
+    // 转换为前端期望的字段名和格式
+    const responseTemplates = templates.map(template => ({
+      id: template.id,
+      name: template.template_name,
+      documentType: template.document_type,
+      content: template.content,
+      description: template.description,
+      variables: template.variables || [],
+      createdAt: template.created_at
+    }));
 
     res.json({
-      count: templates.length,
-      templates: templates
+      data: responseTemplates
     });
   } catch (error) {
     console.error('获取模板列表失败:', error);
-    res.status(500).json({ error: '获取模板列表失败: ' + error.message });
+    res.status(500).json({ 
+      error: {
+        message: '获取模板列表失败: ' + error.message,
+        status: 500
+      }
+    });
   }
 };
 
@@ -452,13 +507,36 @@ const getTemplateById = async (req, res) => {
     const template = await DocumentTemplate.findById(parseInt(id));
 
     if (!template) {
-      return res.status(404).json({ error: '模板不存在' });
+      return res.status(404).json({ 
+        error: {
+          message: '模板不存在',
+          status: 404
+        }
+      });
     }
 
-    res.json({ template });
+    // 转换为前端期望的字段名
+    const responseTemplate = {
+      id: template.id,
+      name: template.template_name,
+      documentType: template.document_type,
+      content: template.content,
+      description: template.description,
+      variables: template.variables || [],
+      createdAt: template.created_at
+    };
+
+    res.json({ 
+      data: responseTemplate
+    });
   } catch (error) {
     console.error('获取模板详情失败:', error);
-    res.status(500).json({ error: '获取模板详情失败: ' + error.message });
+    res.status(500).json({ 
+      error: {
+        message: '获取模板详情失败: ' + error.message,
+        status: 500
+      }
+    });
   }
 };
 
@@ -470,34 +548,74 @@ const getTemplateById = async (req, res) => {
 const updateTemplate = async (req, res) => {
   try {
     const { id } = req.params;
-    const { template_name, document_type, content, variables, description } = req.body;
+    // 支持前端字段名（name, documentType）和后端字段名（template_name, document_type）
+    const { 
+      name, 
+      template_name, 
+      documentType, 
+      document_type, 
+      content, 
+      variables, 
+      description 
+    } = req.body;
 
     const template = await DocumentTemplate.findById(parseInt(id));
     if (!template) {
-      return res.status(404).json({ error: '模板不存在' });
+      return res.status(404).json({ 
+        error: {
+          message: '模板不存在',
+          status: 404
+        }
+      });
     }
 
     const updateData = {};
-    if (template_name !== undefined) updateData.template_name = template_name;
-    if (document_type !== undefined) updateData.document_type = document_type;
+    // 统一字段名处理
+    if (name !== undefined || template_name !== undefined) {
+      updateData.template_name = name || template_name;
+    }
+    if (documentType !== undefined || document_type !== undefined) {
+      updateData.document_type = documentType || document_type;
+    }
     if (content !== undefined) updateData.content = content;
     if (variables !== undefined) updateData.variables = variables;
     if (description !== undefined) updateData.description = description;
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ error: '没有提供要更新的字段' });
+      return res.status(400).json({ 
+        error: {
+          message: '没有提供要更新的字段',
+          status: 400
+        }
+      });
     }
 
     await DocumentTemplate.update(parseInt(id), updateData);
     const updatedTemplate = await DocumentTemplate.findById(parseInt(id));
 
+    // 转换为前端期望的字段名
+    const responseTemplate = {
+      id: updatedTemplate.id,
+      name: updatedTemplate.template_name,
+      documentType: updatedTemplate.document_type,
+      content: updatedTemplate.content,
+      description: updatedTemplate.description,
+      variables: updatedTemplate.variables || [],
+      createdAt: updatedTemplate.created_at
+    };
+
     res.json({
       message: '模板更新成功',
-      template: updatedTemplate
+      data: responseTemplate
     });
   } catch (error) {
     console.error('更新模板失败:', error);
-    res.status(500).json({ error: '更新模板失败: ' + error.message });
+    res.status(500).json({ 
+      error: {
+        message: '更新模板失败: ' + error.message,
+        status: 500
+      }
+    });
   }
 };
 
@@ -512,15 +630,27 @@ const deleteTemplate = async (req, res) => {
     const template = await DocumentTemplate.findById(parseInt(id));
 
     if (!template) {
-      return res.status(404).json({ error: '模板不存在' });
+      return res.status(404).json({ 
+        error: {
+          message: '模板不存在',
+          status: 404
+        }
+      });
     }
 
     await DocumentTemplate.delete(parseInt(id));
 
-    res.json({ message: '模板删除成功' });
+    res.json({ 
+      message: '模板删除成功'
+    });
   } catch (error) {
     console.error('删除模板失败:', error);
-    res.status(500).json({ error: '删除模板失败: ' + error.message });
+    res.status(500).json({ 
+      error: {
+        message: '删除模板失败: ' + error.message,
+        status: 500
+      }
+    });
   }
 };
 

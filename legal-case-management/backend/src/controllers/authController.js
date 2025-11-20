@@ -1,5 +1,5 @@
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+const User = require("../models/User");
+const jwt = require("jsonwebtoken");
 
 /**
  * 用户注册控制器
@@ -12,9 +12,9 @@ exports.register = async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({
         error: {
-          message: '用户名和密码为必填项',
-          status: 400
-        }
+          message: "用户名和密码为必填项",
+          status: 400,
+        },
       });
     }
 
@@ -22,9 +22,9 @@ exports.register = async (req, res) => {
     if (username.length < 3 || username.length > 50) {
       return res.status(400).json({
         error: {
-          message: '用户名长度必须在3-50个字符之间',
-          status: 400
-        }
+          message: "用户名长度必须在3-50个字符之间",
+          status: 400,
+        },
       });
     }
 
@@ -32,9 +32,9 @@ exports.register = async (req, res) => {
     if (password.length < 6) {
       return res.status(400).json({
         error: {
-          message: '密码长度至少为6个字符',
-          status: 400
-        }
+          message: "密码长度至少为6个字符",
+          status: 400,
+        },
       });
     }
 
@@ -43,9 +43,9 @@ exports.register = async (req, res) => {
     if (usernameExists) {
       return res.status(409).json({
         error: {
-          message: '用户名已存在',
-          status: 409
-        }
+          message: "用户名已存在",
+          status: 409,
+        },
       });
     }
 
@@ -55,9 +55,9 @@ exports.register = async (req, res) => {
       if (emailExists) {
         return res.status(409).json({
           error: {
-            message: '邮箱已被使用',
-            status: 409
-          }
+            message: "邮箱已被使用",
+            status: 409,
+          },
         });
       }
     }
@@ -68,25 +68,25 @@ exports.register = async (req, res) => {
       password,
       real_name,
       email,
-      role: role || 'user'
+      role: role || "user",
     });
 
     // 获取创建的用户信息（不包含密码）
     const user = await User.findById(userId);
 
     res.status(201).json({
-      message: '注册成功',
+      message: "注册成功",
       data: {
-        user
-      }
+        user,
+      },
     });
   } catch (error) {
-    console.error('注册错误:', error);
+    console.error("注册错误:", error);
     res.status(500).json({
       error: {
-        message: '注册失败，请稍后重试',
-        status: 500
-      }
+        message: "注册失败，请稍后重试",
+        status: 500,
+      },
     });
   }
 };
@@ -102,49 +102,54 @@ exports.login = async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({
         error: {
-          message: '用户名和密码为必填项',
-          status: 400
-        }
+          message: "用户名和密码为必填项",
+          status: 400,
+        },
       });
     }
 
     // 验证用户名和密码
+    console.log("登录请求 - 用户名:", username);
     const user = await User.authenticate(username, password);
+    console.log(
+      "认证结果:",
+      user ? `用户存在 - ${user.username}` : "用户不存在或密码错误"
+    );
 
     if (!user) {
       return res.status(401).json({
         error: {
-          message: '用户名或密码错误',
-          status: 401
-        }
+          message: "用户名或密码错误",
+          status: 401,
+        },
       });
     }
 
     // 生成 JWT token
     const token = jwt.sign(
-      { 
+      {
         userId: user.id,
         username: user.username,
-        role: user.role
+        role: user.role,
       },
-      process.env.JWT_SECRET || 'your_jwt_secret_key_change_in_production',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      process.env.JWT_SECRET || "your_jwt_secret_key_change_in_production",
+      { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
     );
 
     res.json({
-      message: '登录成功',
+      message: "登录成功",
       data: {
         token,
-        user
-      }
+        user,
+      },
     });
   } catch (error) {
-    console.error('登录错误:', error);
+    console.error("登录错误:", error);
     res.status(500).json({
       error: {
-        message: '登录失败，请稍后重试',
-        status: 500
-      }
+        message: "登录失败，请稍后重试",
+        status: 500,
+      },
     });
   }
 };
@@ -159,24 +164,24 @@ exports.getProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         error: {
-          message: '用户不存在',
-          status: 404
-        }
+          message: "用户不存在",
+          status: 404,
+        },
       });
     }
 
     res.json({
       data: {
-        user
-      }
+        user,
+      },
     });
   } catch (error) {
-    console.error('获取用户信息错误:', error);
+    console.error("获取用户信息错误:", error);
     res.status(500).json({
       error: {
-        message: '获取用户信息失败',
-        status: 500
-      }
+        message: "获取用户信息失败",
+        status: 500,
+      },
     });
   }
 };
@@ -191,36 +196,36 @@ exports.refreshToken = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         error: {
-          message: '用户不存在',
-          status: 404
-        }
+          message: "用户不存在",
+          status: 404,
+        },
       });
     }
 
     // 生成新的 JWT token
     const token = jwt.sign(
-      { 
+      {
         userId: user.id,
         username: user.username,
-        role: user.role
+        role: user.role,
       },
-      process.env.JWT_SECRET || 'your_jwt_secret_key_change_in_production',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      process.env.JWT_SECRET || "your_jwt_secret_key_change_in_production",
+      { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
     );
 
     res.json({
-      message: 'Token 刷新成功',
+      message: "Token 刷新成功",
       data: {
-        token
-      }
+        token,
+      },
     });
   } catch (error) {
-    console.error('刷新 token 错误:', error);
+    console.error("刷新 token 错误:", error);
     res.status(500).json({
       error: {
-        message: '刷新 token 失败',
-        status: 500
-      }
+        message: "刷新 token 失败",
+        status: 500,
+      },
     });
   }
 };
@@ -235,23 +240,23 @@ exports.getAllUsers = async (req, res) => {
     const users = await User.findAll({
       page: parseInt(page),
       limit: parseInt(limit),
-      role
+      role,
     });
 
     const total = await User.count({ role });
 
     res.json({
-      message: '获取用户列表成功',
+      message: "获取用户列表成功",
       data: users,
-      total
+      total,
     });
   } catch (error) {
-    console.error('获取用户列表错误:', error);
+    console.error("获取用户列表错误:", error);
     res.status(500).json({
       error: {
-        message: '获取用户列表失败',
-        status: 500
-      }
+        message: "获取用户列表失败",
+        status: 500,
+      },
     });
   }
 };

@@ -29,16 +29,17 @@ class Evidence {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
+    // 将 undefined 转换为 null，避免 SQL 绑定错误
     const result = await run(sql, [
-      case_id,
-      file_name,
-      file_type,
-      file_size,
-      storage_path,
-      category,
-      tags,
-      uploaded_by,
-      version
+      case_id ?? null,
+      file_name ?? null,
+      file_type ?? null,
+      file_size ?? null,
+      storage_path ?? null,
+      category ?? null,
+      tags ?? null,
+      uploaded_by ?? null,
+      version ?? 1
     ]);
 
     return result.lastID;

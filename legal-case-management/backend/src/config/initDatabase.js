@@ -1,7 +1,6 @@
-const sqlite3 = require('sqlite3').verbose();
+const { getDatabase, saveDatabase } = require('./database');
 const fs = require('fs');
 const path = require('path');
-const { DB_PATH } = require('./database');
 
 /**
  * 数据库初始化脚本
@@ -350,44 +349,33 @@ function initializeDatabase() {
       fs.mkdirSync(dbDir, { recursive: true });
     }
 
-    const db = new sqlite3.Database(DB_PATH, (err) => {
-      if (err) {
-        console.error('数据库连接失败:', err.message);
-        reject(err);
-        return;
-      }
+    getDatabase().then(db => {
       console.log('数据库连接成功');
-    });
-
-    // 启用外键约束
-    db.run('PRAGMA foreign_keys = ON', (err) => {
-      if (err) {
-        console.error('启用外键约束失败:', err.message);
-        reject(err);
-        return;
-      }
-    });
-
-    // 执行初始化 SQL
-    db.exec(initSQL, (err) => {
-      if (err) {
-        console.error('数据库初始化失败:', err.message);
-        db.close();
-        reject(err);
-        return;
-      }
       
-      console.log('数据库表创建成功');
-      
-      db.close((err) => {
-        if (err) {
-          console.error('关闭数据库连接失败:', err.message);
-          reject(err);
-        } else {
-          console.log('数据库初始化完成');
-          resolve();
+      try {
+        // 启用外键约束
+        db.run('PRAGMA foreign_keys = ON');
+        
+        // 执行初始化 SQL - 分割成单独的语句
+        const statements = initSQL.split(';').filter(stmt => stmt.trim());
+        
+        for (const statement of statements) {
+          if (statement.trim()) {
+            db.run(statement);
+          }
         }
-      });
+        
+        saveDatabase();
+        console.log('数据库表创建成功');
+        console.log('数据库初始化完成');
+        resolve();
+      } catch (err) {
+        console.error('数据库初始化失败:', err.message);
+        reject(err);
+      }
+    }).catch(err => {
+      console.error('数据库连接失败:', err.message);
+      reject(err);
     });
   });
 }

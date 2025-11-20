@@ -94,24 +94,5 @@ export const costApi = {
   // Get cost analytics
   getCostAnalytics: (caseId: number) => {
     return request.get(`/costs/analytics/${caseId}`)
-  },
-  
-  // Upload attachment
-  uploadAttachment: (formData: FormData) => {
-    return request.post('/costs/attachments', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-  },
-  
-  // Get attachments for a cost record
-  getCostAttachments: (costId: number) => {
-    return request.get(`/costs/${costId}/attachments`)
-  },
-  
-  // Delete attachment
-  deleteAttachment: (attachmentId: number) => {
-    return request.delete(`/costs/attachments/${attachmentId}`)
   }
 }

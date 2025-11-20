@@ -45,6 +45,16 @@
           </el-select>
         </el-form-item>
         
+        <el-form-item label="当事人">
+          <el-input
+            v-model="searchForm.partyName"
+            placeholder="当事人姓名/名称"
+            clearable
+            style="width: 180px"
+            @clear="handleSearch"
+          />
+        </el-form-item>
+        
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>
@@ -206,7 +216,8 @@ const caseList = ref<any[]>([])
 const searchForm = reactive({
   keyword: '',
   caseType: '',
-  status: ''
+  status: '',
+  partyName: ''
 })
 const pagination = reactive({
   page: 1,
@@ -233,6 +244,9 @@ const fetchCaseList = async () => {
     }
     if (searchForm.status) {
       params.status = searchForm.status
+    }
+    if (searchForm.partyName) {
+      params.party_name = searchForm.partyName
     }
     if (sortField.value) {
       params.sortField = sortField.value
@@ -279,6 +293,7 @@ const handleReset = () => {
   searchForm.keyword = ''
   searchForm.caseType = ''
   searchForm.status = ''
+  searchForm.partyName = ''
   sortField.value = ''
   sortOrder.value = ''
   pagination.page = 1

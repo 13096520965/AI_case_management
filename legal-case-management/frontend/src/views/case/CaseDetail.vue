@@ -1,13 +1,6 @@
 <template>
   <div class="case-detail-container">
-    <PageHeader title="案件详情">
-      <template #extra>
-        <el-button type="primary" @click="goToLogs">
-          <el-icon><Document /></el-icon>
-          查看日志
-        </el-button>
-      </template>
-    </PageHeader>
+    <PageHeader title="案件详情" />
     
     <div v-loading="loading">
       <!-- Basic Information -->
@@ -384,10 +377,6 @@ const goToEvidence = () => {
 
 const goToDocuments = () => {
   router.push(`/cases/${caseId}/documents`)
-}
-
-const goToLogs = () => {
-  router.push(`/cases/${caseId}/logs`)
 }
 
 const goToCosts = () => {

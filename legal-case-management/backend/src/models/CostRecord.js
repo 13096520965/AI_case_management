@@ -30,17 +30,18 @@ class CostRecord {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
+    // 将 undefined 转换为 null，避免 SQL 绑定错误
     const result = await run(sql, [
-      case_id,
-      cost_type,
-      amount,
-      payment_date,
-      payment_method,
-      voucher_number,
-      payer,
-      payee,
-      status,
-      due_date
+      case_id ?? null,
+      cost_type ?? null,
+      amount ?? null,
+      payment_date ?? null,
+      payment_method ?? null,
+      voucher_number ?? null,
+      payer ?? null,
+      payee ?? null,
+      status ?? 'unpaid',
+      due_date ?? null
     ]);
 
     return result.lastID;

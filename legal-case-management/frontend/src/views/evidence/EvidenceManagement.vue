@@ -65,7 +65,14 @@
                 :src="getFileUrl(row.storagePath)"
                 fit="cover"
                 style="width: 60px; height: 60px; cursor: pointer;"
-              />
+              >
+                <template #error>
+                  <div class="image-error">
+                    <el-icon :size="30"><Picture /></el-icon>
+                    <span style="font-size: 10px;">加载失败</span>
+                  </div>
+                </template>
+              </el-image>
               <el-icon v-else :size="40" class="file-icon">
                 <Document v-if="isPdf(row.fileType)" />
                 <Headset v-else-if="isAudio(row.fileType)" />
@@ -133,7 +140,14 @@
               :src="getFileUrl(item.storagePath)"
               fit="cover"
               style="width: 100%; height: 100%;"
-            />
+            >
+              <template #error>
+                <div class="image-error-large">
+                  <el-icon :size="50"><Picture /></el-icon>
+                  <span>加载失败</span>
+                </div>
+              </template>
+            </el-image>
             <div v-else class="file-icon-large">
               <el-icon :size="60">
                 <Document v-if="isPdf(item.fileType)" />
@@ -270,40 +284,107 @@
       width="80%"
       :fullscreen="previewFullscreen"
     >
-      <div class="preview-container">
+      <div class="preview-container" v-loading="previewLoading">
+        <!-- Error State -->
+        <el-alert
+          v-if="previewError"
+          :title="previewError"
+          type="error"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 20px;"
+        >
+          <template #default>
+            <p>{{ previewError }}</p>
+            <el-button type="primary" size="small" @click="handleDownload(previewFile!)">
+              尝试下载文件
+            </el-button>
+          </template>
+        </el-alert>
+
         <!-- Image Preview -->
         <el-image
-          v-if="previewFile && isImage(previewFile.fileType)"
+          v-if="previewFile && isImage(previewFile.fileType) && !previewError"
           :src="getFileUrl(previewFile.storagePath)"
           fit="contain"
           style="width: 100%; max-height: 70vh;"
-        />
+          @load="handlePreviewLoad"
+          @error="handlePreviewError"
+        >
+          <template #error>
+            <div class="preview-error">
+              <el-icon :size="80"><Picture /></el-icon>
+              <p>图片加载失败</p>
+              <el-button type="primary" @click="handleDownload(previewFile!)">
+                下载查看
+              </el-button>
+            </div>
+          </template>
+        </el-image>
         
         <!-- PDF Preview -->
-        <iframe
-          v-else-if="previewFile && isPdf(previewFile.fileType)"
-          :src="getFileUrl(previewFile.storagePath)"
-          style="width: 100%; height: 70vh; border: none;"
-        />
+        <div v-else-if="previewFile && isPdf(previewFile.fileType) && !previewError" class="pdf-preview-wrapper">
+          <iframe
+            :src="getFileUrl(previewFile.storagePath)"
+            style="width: 100%; height: 70vh; border: none;"
+            @load="handlePreviewLoad"
+            @error="handlePreviewError"
+          />
+          <div class="pdf-fallback">
+            <p>如果PDF未正确显示，请</p>
+            <el-button type="primary" @click="handleDownload(previewFile!)">
+              下载后查看
+            </el-button>
+          </div>
+        </div>
         
         <!-- Audio Preview -->
-        <div v-else-if="previewFile && isAudio(previewFile.fileType)" class="audio-preview">
-          <audio controls style="width: 100%;">
+        <div v-else-if="previewFile && isAudio(previewFile.fileType) && !previewError" class="audio-preview">
+          <audio 
+            controls 
+            style="width: 100%;"
+            @loadeddata="handlePreviewLoad"
+            @error="handleAudioVideoError"
+          >
             <source :src="getFileUrl(previewFile.storagePath)" />
             您的浏览器不支持音频播放
           </audio>
+          <div class="media-fallback">
+            <p>如果音频无法播放，请</p>
+            <el-button type="primary" @click="handleDownload(previewFile!)">
+              下载后播放
+            </el-button>
+          </div>
         </div>
         
         <!-- Video Preview -->
-        <div v-else-if="previewFile && isVideo(previewFile.fileType)" class="video-preview">
-          <video controls style="width: 100%; max-height: 70vh;">
+        <div v-else-if="previewFile && isVideo(previewFile.fileType) && !previewError" class="video-preview">
+          <video 
+            controls 
+            style="width: 100%; max-height: 70vh;"
+            @loadeddata="handlePreviewLoad"
+            @error="handleAudioVideoError"
+          >
             <source :src="getFileUrl(previewFile.storagePath)" />
             您的浏览器不支持视频播放
           </video>
+          <div class="media-fallback">
+            <p>如果视频无法播放，请</p>
+            <el-button type="primary" @click="handleDownload(previewFile!)">
+              下载后播放
+            </el-button>
+          </div>
         </div>
         
         <!-- Unsupported Format -->
-        <el-empty v-else description="该文件格式不支持预览，请下载后查看" />
+        <el-empty 
+          v-else-if="previewFile && !previewError" 
+          description="该文件格式不支持预览，请下载后查看"
+        >
+          <el-button type="primary" @click="handleDownload(previewFile!)">
+            立即下载
+          </el-button>
+        </el-empty>
       </div>
       <template #footer>
         <el-button @click="previewFullscreen = !previewFullscreen">
@@ -333,7 +414,8 @@ import {
   Headset,
   VideoCamera,
   Files,
-  UploadFilled
+  UploadFilled,
+  Picture
 } from '@element-plus/icons-vue'
 import { evidenceApi } from '@/api/evidence'
 import type { Evidence, EvidenceCategory, ViewMode } from '@/types'
@@ -392,6 +474,8 @@ const editForm = ref({
 const showPreviewDialog = ref(false)
 const previewFile = ref<Evidence | null>(null)
 const previewFullscreen = ref(false)
+const previewError = ref<string | null>(null)
+const previewLoading = ref(false)
 
 // Computed
 const filteredEvidence = computed(() => {
@@ -539,6 +623,23 @@ const handlePreview = (evidence: Evidence) => {
   previewFile.value = evidence
   showPreviewDialog.value = true
   previewFullscreen.value = false
+  previewError.value = null
+  previewLoading.value = true
+}
+
+const handlePreviewLoad = () => {
+  previewLoading.value = false
+  previewError.value = null
+}
+
+const handlePreviewError = () => {
+  previewLoading.value = false
+  previewError.value = '文件加载失败，可能文件不存在或已被删除'
+}
+
+const handleAudioVideoError = () => {
+  previewLoading.value = false
+  previewError.value = '媒体文件加载失败，可能格式不支持或文件损坏'
 }
 
 const handleDownload = async (evidence: Evidence) => {
@@ -554,7 +655,25 @@ const handleDownload = async (evidence: Evidence) => {
     window.URL.revokeObjectURL(url)
     ElMessage.success('下载成功')
   } catch (error: any) {
-    ElMessage.error(error.message || '下载失败')
+    console.error('下载失败:', error)
+    
+    // 根据错误状态码显示具体错误信息
+    if (error.response) {
+      const status = error.response.status
+      if (status === 404) {
+        ElMessage.error('文件不存在，可能已被删除')
+      } else if (status === 403) {
+        ElMessage.error('没有权限访问该文件')
+      } else if (status === 500) {
+        ElMessage.error('服务器错误，请稍后重试')
+      } else {
+        ElMessage.error(error.response.data?.error || error.message || '下载失败')
+      }
+    } else if (error.request) {
+      ElMessage.error('网络连接失败，请检查网络设置')
+    } else {
+      ElMessage.error(error.message || '下载失败，请重试')
+    }
   }
 }
 
@@ -656,8 +775,36 @@ const isVideo = (fileType: string): boolean => {
 }
 
 const getFileUrl = (storagePath: string): string => {
-  // Assuming the backend serves files from /uploads
-  return `http://localhost:3000${storagePath}`
+  if (!storagePath) return ''
+  
+  // Get base URL from environment variable
+  // In development: /api, In production: http://localhost:3000/api
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+  
+  // Remove /api suffix to get the server base URL
+  const serverBaseUrl = apiBaseUrl.replace(/\/api$/, '')
+  
+  // Backward compatibility: handle old format (full file system paths)
+  // If storagePath contains 'uploads', extract the relative path
+  if (storagePath.includes('uploads')) {
+    const uploadsIndex = storagePath.indexOf('/uploads')
+    if (uploadsIndex === -1) {
+      // Windows path format: C:\path\to\backend\uploads\evidence\file.pdf
+      const match = storagePath.match(/uploads[\\\/](.+)$/)
+      if (match) {
+        const relativePath = `/uploads/${match[1].replace(/\\/g, '/')}`
+        return `${serverBaseUrl}${relativePath}`
+      }
+    } else {
+      // Already has /uploads in the path
+      const relativePath = storagePath.substring(uploadsIndex)
+      return `${serverBaseUrl}${relativePath}`
+    }
+  }
+  
+  // New format: storagePath is already a relative path like /uploads/evidence/file.pdf
+  // Just concatenate with server base URL
+  return `${serverBaseUrl}${storagePath}`
 }
 
 // Lifecycle
@@ -804,6 +951,7 @@ onMounted(() => {
 /* Preview Styles */
 .preview-container {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   min-height: 400px;
@@ -813,8 +961,64 @@ onMounted(() => {
 .video-preview {
   width: 100%;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   padding: 40px;
+}
+
+.pdf-preview-wrapper {
+  width: 100%;
+  position: relative;
+}
+
+.pdf-fallback,
+.media-fallback {
+  text-align: center;
+  margin-top: 20px;
+  color: #909399;
+  font-size: 14px;
+}
+
+.preview-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: #909399;
+}
+
+.preview-error p {
+  margin: 20px 0;
+  font-size: 16px;
+}
+
+.image-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  background-color: #f5f7fa;
+  color: #909399;
+  border-radius: 4px;
+}
+
+.image-error-large {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: #f5f7fa;
+  color: #909399;
+}
+
+.image-error-large span {
+  margin-top: 10px;
+  font-size: 14px;
 }
 </style>

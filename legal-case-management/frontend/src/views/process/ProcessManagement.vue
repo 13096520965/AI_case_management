@@ -2,6 +2,30 @@
   <div class="process-management-container">
     <PageHeader title="流程管理" :show-back="true" />
     
+    <!-- Visual Process Steps -->
+    <el-card class="process-steps-card" v-if="nodes.length > 0">
+      <div class="steps-header">
+        <h3>案件流程概览</h3>
+      </div>
+      <el-steps :active="activeStepIndex" align-center finish-status="success">
+        <el-step
+          v-for="(node, index) in nodes"
+          :key="node.id"
+          :title="node.nodeName"
+          :description="node.handler || ''"
+          :status="getStepStatus(node)"
+          :icon="getStepIcon(node)"
+        >
+          <template #description>
+            <div class="step-desc">
+              <div>{{ node.handler || '未指定经办人' }}</div>
+              <div class="step-date">{{ formatStepDate(node) }}</div>
+            </div>
+          </template>
+        </el-step>
+      </el-steps>
+    </el-card>
+
     <el-card class="process-card">
       <template #header>
         <div class="card-header">
@@ -276,6 +300,43 @@ const isOverdue = (node: ProcessNode): boolean => {
   return new Date(node.deadline) < new Date()
 }
 
+// Get active step index (first non-completed node)
+const activeStepIndex = computed(() => {
+  const index = nodes.value.findIndex(node => node.status !== '已完成')
+  return index === -1 ? nodes.value.length : index
+})
+
+// Get step status for el-steps
+const getStepStatus = (node: ProcessNode): 'wait' | 'process' | 'finish' | 'error' => {
+  if (node.status === '已完成') return 'finish'
+  if (node.status === '超期') return 'error'
+  if (node.status === '进行中') return 'process'
+  return 'wait'
+}
+
+// Get step icon
+const getStepIcon = (node: ProcessNode): string | undefined => {
+  if (node.status === '已完成') return 'CircleCheck'
+  if (node.status === '超期') return 'CircleClose'
+  if (node.status === '进行中') return 'Loading'
+  return undefined
+}
+
+// Format step date
+const formatStepDate = (node: ProcessNode): string => {
+  if (node.completionTime) {
+    return `完成: ${formatDate(node.completionTime)}`
+  }
+  if (node.deadline) {
+    const isLate = isOverdue(node)
+    return `${isLate ? '超期' : '截止'}: ${formatDate(node.deadline)}`
+  }
+  if (node.startTime) {
+    return `开始: ${formatDate(node.startTime)}`
+  }
+  return ''
+}
+
 // Load nodes
 const loadNodes = async () => {
   loading.value = true
@@ -414,6 +475,79 @@ onMounted(() => {
 <style scoped>
 .process-management-container {
   padding: 20px;
+}
+
+.process-steps-card {
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.process-steps-card :deep(.el-card__body) {
+  padding: 30px 20px;
+}
+
+.steps-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.steps-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
+}
+
+.process-steps-card :deep(.el-steps) {
+  background: transparent;
+}
+
+.process-steps-card :deep(.el-step__title) {
+  color: white;
+  font-weight: 500;
+}
+
+.process-steps-card :deep(.el-step__description) {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.process-steps-card :deep(.el-step__head.is-finish .el-step__line) {
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.process-steps-card :deep(.el-step__head.is-process .el-step__icon) {
+  color: #409eff;
+  border-color: #409eff;
+  background: white;
+}
+
+.process-steps-card :deep(.el-step__head.is-finish .el-step__icon) {
+  color: #67c23a;
+  border-color: #67c23a;
+  background: white;
+}
+
+.process-steps-card :deep(.el-step__head.is-error .el-step__icon) {
+  color: #f56c6c;
+  border-color: #f56c6c;
+  background: white;
+}
+
+.process-steps-card :deep(.el-step__head.is-wait .el-step__icon) {
+  color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.step-desc {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.step-date {
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.9;
 }
 
 .process-card {

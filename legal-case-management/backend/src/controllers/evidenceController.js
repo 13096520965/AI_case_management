@@ -89,12 +89,15 @@ const uploadEvidence = async (req, res) => {
     }
 
     // 创建证据记录
+    // 转换为相对URL路径格式，便于HTTP访问
+    const relativePath = `/uploads/evidence/${req.file.filename}`;
+    
     const evidenceData = {
       case_id: parseInt(case_id),
       file_name: req.file.originalname,
       file_type: req.file.mimetype,
       file_size: req.file.size,
-      storage_path: req.file.path,
+      storage_path: relativePath,
       category: category || '未分类',
       tags: tags || '',
       uploaded_by: req.username,
@@ -184,8 +187,11 @@ const downloadEvidence = async (req, res) => {
       return res.status(404).json({ error: '证据不存在' });
     }
 
+    // 将相对路径转换为绝对路径用于文件系统操作
+    const absolutePath = path.join(__dirname, '../../', evidence.storage_path);
+
     // 检查文件是否存在
-    if (!fs.existsSync(evidence.storage_path)) {
+    if (!fs.existsSync(absolutePath)) {
       return res.status(404).json({ error: '证据文件不存在' });
     }
 
@@ -195,7 +201,7 @@ const downloadEvidence = async (req, res) => {
     res.setHeader('Content-Length', evidence.file_size);
 
     // 创建文件流并发送
-    const fileStream = fs.createReadStream(evidence.storage_path);
+    const fileStream = fs.createReadStream(absolutePath);
     fileStream.pipe(res);
   } catch (error) {
     console.error('下载证据失败:', error);
@@ -253,9 +259,12 @@ const deleteEvidence = async (req, res) => {
       return res.status(404).json({ error: '证据不存在' });
     }
 
+    // 将相对路径转换为绝对路径用于文件系统操作
+    const absolutePath = path.join(__dirname, '../../', evidence.storage_path);
+
     // 删除文件
-    if (fs.existsSync(evidence.storage_path)) {
-      fs.unlinkSync(evidence.storage_path);
+    if (fs.existsSync(absolutePath)) {
+      fs.unlinkSync(absolutePath);
     }
 
     // 删除数据库记录
@@ -311,13 +320,16 @@ const uploadNewVersion = async (req, res) => {
       uploaded_by: evidence.uploaded_by
     });
 
+    // 转换为相对URL路径格式，便于HTTP访问
+    const relativePath = `/uploads/evidence/${req.file.filename}`;
+
     // 更新主记录为新版本
     const newVersion = evidence.version + 1;
     await Evidence.update(parseInt(id), {
       file_name: req.file.originalname,
       file_type: req.file.mimetype,
       file_size: req.file.size,
-      storage_path: req.file.path,
+      storage_path: relativePath,
       version: newVersion,
       uploaded_by: req.username
     });
@@ -395,8 +407,11 @@ const downloadVersion = async (req, res) => {
       return res.status(404).json({ error: '指定版本不存在' });
     }
 
+    // 将相对路径转换为绝对路径用于文件系统操作
+    const absolutePath = path.join(__dirname, '../../', versionData.storage_path);
+
     // 检查文件是否存在
-    if (!fs.existsSync(versionData.storage_path)) {
+    if (!fs.existsSync(absolutePath)) {
       return res.status(404).json({ error: '版本文件不存在' });
     }
 
@@ -406,7 +421,7 @@ const downloadVersion = async (req, res) => {
     res.setHeader('Content-Length', versionData.file_size);
 
     // 创建文件流并发送
-    const fileStream = fs.createReadStream(versionData.storage_path);
+    const fileStream = fs.createReadStream(absolutePath);
     fileStream.pipe(res);
   } catch (error) {
     console.error('下载版本失败:', error);

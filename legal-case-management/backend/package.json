@@ -4,7 +4,7 @@
   "description": "Legal Case Management System Backend API",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js",
+    "sta rt": "node src/app.js",
     "dev": "node src/app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,6 +24,6 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
-    "sqlite3": "^5.1.7"
+    "sql.js": "^1.13.0"
   }
 }
