@@ -4,7 +4,7 @@
     <div class="party-list">
       <div class="list-header">
         <h3>诉讼主体列表</h3>
-        <el-button type="primary" @click="handleAdd">
+        <el-button v-if="!props.readonly" type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>
           添加主体
         </el-button>
@@ -33,7 +33,7 @@
         </el-table-column>
         <el-table-column prop="contact_phone" label="联系电话" width="130" />
         <el-table-column prop="address" label="地址" min-width="200" show-overflow-tooltip />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column v-if="!props.readonly" label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">
               编辑
@@ -202,6 +202,7 @@ import { partyApi } from '@/api/party'
 // Props
 const props = defineProps<{
   caseId: number
+  readonly?: boolean
 }>()
 
 // Emits

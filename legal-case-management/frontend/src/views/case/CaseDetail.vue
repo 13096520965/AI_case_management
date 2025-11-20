@@ -68,7 +68,7 @@
           </div>
         </template>
         
-        <PartyManagement :case-id="caseId" @refresh="fetchCaseData" />
+        <PartyManagement :case-id="caseId" :readonly="true" @refresh="fetchCaseData" />
       </el-card>
 
       <!-- Process Nodes Timeline -->
@@ -76,9 +76,6 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">流程节点</span>
-            <el-button type="primary" link @click="goToProcess">
-              查看详情
-            </el-button>
           </div>
         </template>
         
@@ -112,9 +109,6 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">证据材料</span>
-            <el-button type="primary" link @click="goToEvidence">
-              查看详情
-            </el-button>
           </div>
         </template>
         
@@ -137,9 +131,6 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">文书材料</span>
-            <el-button type="primary" link @click="goToDocuments">
-              查看详情
-            </el-button>
           </div>
         </template>
         
@@ -161,9 +152,6 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">成本记录</span>
-            <el-button type="primary" link @click="goToCosts">
-              查看详情
-            </el-button>
           </div>
         </template>
         
@@ -386,8 +374,6 @@ const goToDocuments = () => {
   router.push(`/cases/${caseId}/documents`)
 }
 
-<<<<<<< Updated upstream
-=======
 const goToLogs = () => {
   router.push(`/cases/${caseId}/logs`)
 }
@@ -396,7 +382,6 @@ const goBack = () => {
   router.push('/cases')
 }
 
->>>>>>> Stashed changes
 const goToCosts = () => {
   router.push(`/cases/${caseId}/costs`)
 }

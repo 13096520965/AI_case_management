@@ -602,15 +602,40 @@ const handleSelectTemplate = (row: any) => {
 // Handle apply template confirm
 const handleApplyTemplateConfirm = async (template: any) => {
   try {
-    await ElMessageBox.confirm(
-      `确定要应用模板"${template.template_name}"吗？这将根据模板创建流程节点。`,
-      '确认应用',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
+    // 检查是否已有流程节点
+    if (nodes.value.length > 0) {
+      // 如果已有节点，提示用户确认是否替换
+      await ElMessageBox.confirm(
+        `当前案件已存在 ${nodes.value.length} 个流程节点。应用模板"${template.template_name}"将删除所有现有节点并替换为模板节点。此操作不可恢复，是否继续？`,
+        '警告：将替换现有节点',
+        {
+          confirmButtonText: '确定替换',
+          cancelButtonText: '取消',
+          type: 'warning',
+          distinguishCancelAndClose: true
+        }
+      )
+      
+      // 用户确认后，先删除所有现有节点
+      for (const node of nodes.value) {
+        try {
+          await processNodeApi.deleteNode(node.id)
+        } catch (error) {
+          console.error('删除节点失败:', error)
+        }
       }
-    )
+    } else {
+      // 如果没有节点，只需要简单确认
+      await ElMessageBox.confirm(
+        `确定要应用模板"${template.template_name}"吗？这将根据模板创建流程节点。`,
+        '确认应用',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'info'
+        }
+      )
+    }
     
     // Apply template
     await processTemplateApi.applyTemplate(caseId.value, template.id)
