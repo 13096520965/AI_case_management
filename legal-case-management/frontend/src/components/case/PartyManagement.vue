@@ -11,7 +11,7 @@
       </div>
 
       <el-table :data="parties" stripe v-loading="loading">
-        <el-table-column prop="party_type" label="主体类型" width="100">
+        <el-table-column prop="party_type" label="主体身份" width="100">
           <template #default="{ row }">
             <el-tag :type="getPartyTypeTag(row.party_type)">
               {{ row.party_type }}
@@ -64,10 +64,10 @@
         :rules="formRules"
         label-width="120px"
       >
-        <el-form-item label="主体类型" prop="partyType">
+        <el-form-item label="主体身份" prop="partyType">
           <el-select
             v-model="formData.partyType"
-            placeholder="请选择主体类型"
+            placeholder="请选择主体身份"
             style="width: 100%"
           >
             <el-option label="原告" value="原告" />
@@ -239,7 +239,7 @@ const formData = reactive({
 // Validation rules
 const formRules: FormRules = {
   partyType: [
-    { required: true, message: '请选择主体类型', trigger: 'change' }
+    { required: true, message: '请选择主体身份', trigger: 'change' }
   ],
   entityType: [
     { required: true, message: '请选择实体类型', trigger: 'change' }
@@ -263,6 +263,7 @@ const formRules: FormRules = {
     }
   ],
   contactPhone: [
+    { required: true, message: '请输入联系电话', trigger: 'blur' },
     {
       pattern: /^1[3-9]\d{9}$/,
       message: '请输入有效的手机号码',

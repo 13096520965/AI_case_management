@@ -35,6 +35,14 @@
         <el-menu-item index="/documents/ocr">文书识别</el-menu-item>
       </el-sub-menu>
       
+      <el-sub-menu index="/tools">
+        <template #title>
+          <el-icon><Money /></el-icon>
+          <span>应用工具</span>
+        </template>
+        <el-menu-item index="/costs/calculator">费用计算器</el-menu-item>
+      </el-sub-menu>
+      
       <el-sub-menu index="/notifications">
         <template #title>
           <el-icon><Bell /></el-icon>
@@ -50,11 +58,14 @@
           <el-icon><TrendCharts /></el-icon>
           <span>数据分析</span>
         </template>
-        <el-menu-item index="/analytics">数据概览</el-menu-item>
-        <el-menu-item index="/analytics/cost">成本分析</el-menu-item>
-        <el-menu-item index="/analytics/lawyers">律师评估</el-menu-item>
-        <el-menu-item index="/analytics/similar-cases">类案检索</el-menu-item>
+        <el-menu-item index="/analytics">数据驾驶舱</el-menu-item>
+        <el-menu-item index="/costs/analytics">成本分析</el-menu-item>
       </el-sub-menu>
+      
+      <el-menu-item index="/knowledge">
+        <el-icon><Reading /></el-icon>
+        <template #title>案例知识库</template>
+      </el-menu-item>
       
       <el-sub-menu index="/archive">
         <template #title>
@@ -62,13 +73,7 @@
           <span>归档管理</span>
         </template>
         <el-menu-item index="/archive/search">归档检索</el-menu-item>
-        <el-menu-item index="/archive/knowledge">案例知识库</el-menu-item>
       </el-sub-menu>
-      
-      <el-menu-item index="/costs/calculator">
-        <el-icon><Money /></el-icon>
-        <template #title>费用计算器</template>
-      </el-menu-item>
     </el-menu>
   </el-aside>
 </template>
@@ -84,7 +89,8 @@ import {
   Money,
   Bell,
   TrendCharts,
-  FolderOpened
+  FolderOpened,
+  Reading
 } from '@element-plus/icons-vue'
 
 interface Props {
@@ -111,8 +117,8 @@ const defaultOpeneds = computed(() => {
   if (path.startsWith('/documents')) {
     openeds.push('/documents')
   }
-  if (path.startsWith('/costs')) {
-    openeds.push('/costs')
+  if (path.startsWith('/costs') || path.startsWith('/tools')) {
+    openeds.push('/tools')
   }
   if (path.startsWith('/notifications')) {
     openeds.push('/notifications')

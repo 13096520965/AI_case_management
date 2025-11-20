@@ -76,7 +76,8 @@ exports.getCases = async (req, res) => {
       limit = 10,
       status,
       case_type,
-      search
+      search,
+      party_name
     } = req.query;
 
     const options = {
@@ -84,11 +85,12 @@ exports.getCases = async (req, res) => {
       limit: parseInt(limit),
       status,
       case_type,
-      search
+      search,
+      party_name
     };
 
     const cases = await Case.findAll(options);
-    const total = await Case.count({ status, case_type, search });
+    const total = await Case.count({ status, case_type, search, party_name });
 
     res.json({
       data: {

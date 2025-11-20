@@ -24,12 +24,13 @@ class Document {
       ) VALUES (?, ?, ?, ?, ?)
     `;
 
+    // 将 undefined 转换为 null，避免 SQL 绑定错误
     const result = await run(sql, [
-      case_id,
-      document_type,
-      file_name,
-      storage_path,
-      extracted_content
+      case_id ?? null,
+      document_type ?? null,
+      file_name ?? null,
+      storage_path ?? null,
+      extracted_content ?? null
     ]);
 
     return result.lastID;

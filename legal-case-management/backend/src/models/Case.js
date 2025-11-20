@@ -29,16 +29,17 @@ class Case {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
+    // 将 undefined 转换为 null，避免 SQL 绑定错误
     const result = await run(sql, [
-      case_number,
-      internal_number,
-      case_type,
-      case_cause,
-      court,
-      target_amount,
-      filing_date,
-      status,
-      team_id
+      case_number ?? null,
+      internal_number ?? null,
+      case_type ?? null,
+      case_cause ?? null,
+      court ?? null,
+      target_amount ?? null,
+      filing_date ?? null,
+      status ?? 'active',
+      team_id ?? null
     ]);
 
     return result.lastID;
@@ -65,29 +66,43 @@ class Case {
       limit = 10,
       status,
       case_type,
-      search
+      search,
+      party_name
     } = options;
 
-    let sql = 'SELECT * FROM cases WHERE 1=1';
+    let sql = 'SELECT DISTINCT c.* FROM cases c';
     const params = [];
+    
+    // 如果搜索当事人，需要 JOIN litigation_parties 表
+    if (party_name) {
+      sql += ' LEFT JOIN litigation_parties lp ON c.id = lp.case_id';
+    }
+    
+    sql += ' WHERE 1=1';
 
     if (status) {
-      sql += ' AND status = ?';
+      sql += ' AND c.status = ?';
       params.push(status);
     }
 
     if (case_type) {
-      sql += ' AND case_type = ?';
+      sql += ' AND c.case_type = ?';
       params.push(case_type);
     }
 
     if (search) {
-      sql += ' AND (internal_number LIKE ? OR case_number LIKE ? OR case_cause LIKE ? OR court LIKE ?)';
+      sql += ' AND (c.internal_number LIKE ? OR c.case_number LIKE ? OR c.case_cause LIKE ? OR c.court LIKE ?)';
       const searchPattern = `%${search}%`;
       params.push(searchPattern, searchPattern, searchPattern, searchPattern);
     }
+    
+    // 按当事人姓名/名称搜索
+    if (party_name) {
+      sql += ' AND lp.name LIKE ?';
+      params.push(`%${party_name}%`);
+    }
 
-    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY c.created_at DESC LIMIT ? OFFSET ?';
     params.push(limit, (page - 1) * limit);
 
     return await query(sql, params);
@@ -135,23 +150,36 @@ class Case {
    * @returns {Promise<number>} 案件数量
    */
   static async count(filters = {}) {
-    let sql = 'SELECT COUNT(*) as count FROM cases WHERE 1=1';
+    let sql = 'SELECT COUNT(DISTINCT c.id) as count FROM cases c';
     const params = [];
+    
+    // 如果搜索当事人，需要 JOIN litigation_parties 表
+    if (filters.party_name) {
+      sql += ' LEFT JOIN litigation_parties lp ON c.id = lp.case_id';
+    }
+    
+    sql += ' WHERE 1=1';
 
     if (filters.status) {
-      sql += ' AND status = ?';
+      sql += ' AND c.status = ?';
       params.push(filters.status);
     }
 
     if (filters.case_type) {
-      sql += ' AND case_type = ?';
+      sql += ' AND c.case_type = ?';
       params.push(filters.case_type);
     }
 
     if (filters.search) {
-      sql += ' AND (internal_number LIKE ? OR case_number LIKE ? OR case_cause LIKE ? OR court LIKE ?)';
+      sql += ' AND (c.internal_number LIKE ? OR c.case_number LIKE ? OR c.case_cause LIKE ? OR c.court LIKE ?)';
       const searchPattern = `%${filters.search}%`;
       params.push(searchPattern, searchPattern, searchPattern, searchPattern);
+    }
+    
+    // 按当事人姓名/名称搜索
+    if (filters.party_name) {
+      sql += ' AND lp.name LIKE ?';
+      params.push(`%${filters.party_name}%`);
     }
 
     const result = await get(sql, params);

@@ -78,12 +78,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/process/ProcessManagement.vue'),
         meta: { requiresAuth: true }
       },
-      {
-        path: 'cases/:id/logs',
-        name: 'CaseLog',
-        component: () => import('@/views/case/CaseLog.vue'),
-        meta: { requiresAuth: true }
-      },
       // 案件详情（放在最后，因为它会匹配 cases/:id）
       {
         path: 'cases/:id',
@@ -113,6 +107,12 @@ const routes: RouteRecordRaw[] = [
         path: 'costs/calculator',
         name: 'CostCalculator',
         component: () => import('@/views/cost/CostCalculator.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'costs/analytics',
+        name: 'CostAnalytics',
+        component: () => import('@/views/cost/CostAnalytics.vue'),
         meta: { requiresAuth: true }
       },
       // 提醒中心路由
@@ -147,17 +147,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/collaboration/CollaborationTasks.vue'),
         meta: { requiresAuth: true }
       },
-      // 数据分析路由（合并成本分析和数据分析）
+      // 数据分析路由
       {
         path: 'analytics',
         name: 'Analytics',
         component: () => import('@/views/analytics/Analytics.vue'),
-        meta: { requiresAuth: true }
-      },
-      {
-        path: 'analytics/cost',
-        name: 'CostAnalytics',
-        component: () => import('@/views/cost/CostAnalytics.vue'),
         meta: { requiresAuth: true }
       },
       {
@@ -170,6 +164,13 @@ const routes: RouteRecordRaw[] = [
         path: 'analytics/similar-cases',
         name: 'SimilarCases',
         component: () => import('@/views/analytics/SimilarCases.vue'),
+        meta: { requiresAuth: true }
+      },
+      // 案例知识库路由（独立一级模块）
+      {
+        path: 'knowledge',
+        name: 'KnowledgeBase',
+        component: () => import('@/views/knowledge/KnowledgeBase.vue'),
         meta: { requiresAuth: true }
       },
       // 归档管理路由
@@ -185,11 +186,10 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/archive/ArchiveSearch.vue'),
         meta: { requiresAuth: true }
       },
+      // 向后兼容：旧的知识库路径重定向到新路径
       {
         path: 'archive/knowledge',
-        name: 'KnowledgeBase',
-        component: () => import('@/views/archive/KnowledgeBase.vue'),
-        meta: { requiresAuth: true }
+        redirect: '/knowledge'
       }
     ]
   },

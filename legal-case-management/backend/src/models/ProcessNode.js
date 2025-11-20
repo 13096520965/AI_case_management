@@ -30,17 +30,18 @@ class ProcessNode {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
+    // 将 undefined 转换为 null，避免 SQL 绑定错误
     const result = await run(sql, [
-      case_id,
-      node_type,
-      node_name,
-      handler,
-      start_time,
-      deadline,
-      completion_time,
-      status,
-      progress,
-      node_order
+      case_id ?? null,
+      node_type ?? null,
+      node_name ?? null,
+      handler ?? null,
+      start_time ?? null,
+      deadline ?? null,
+      completion_time ?? null,
+      status ?? 'pending',
+      progress ?? null,
+      node_order ?? null
     ]);
 
     return result.lastID;

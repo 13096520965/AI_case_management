@@ -30,17 +30,18 @@ class LitigationParty {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
+    // 将 undefined 转换为 null，避免 SQL 绑定错误
     const result = await run(sql, [
-      case_id,
-      party_type,
-      entity_type,
-      name,
-      unified_credit_code,
-      legal_representative,
-      id_number,
-      contact_phone,
-      contact_email,
-      address
+      case_id ?? null,
+      party_type ?? null,
+      entity_type ?? null,
+      name ?? null,
+      unified_credit_code ?? null,
+      legal_representative ?? null,
+      id_number ?? null,
+      contact_phone ?? null,
+      contact_email ?? null,
+      address ?? null
     ]);
 
     return result.lastID;

@@ -54,9 +54,8 @@
         <el-table-column prop="payer" label="支付方" width="150" />
         <el-table-column prop="payee" label="收款方" width="150" />
         <el-table-column prop="voucherNumber" label="凭证号" width="150" />
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleViewAttachments(row)">附件</el-button>
             <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
           </template>
@@ -137,65 +136,11 @@
             placeholder="请输入备注信息"
           />
         </el-form-item>
-        <el-form-item label="附件上传">
-          <el-upload
-            ref="uploadRef"
-            :auto-upload="false"
-            :on-change="handleFileChange"
-            :on-remove="handleFileRemove"
-            :file-list="fileList"
-            multiple
-            accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx"
-            list-type="picture-card"
-          >
-            <el-icon><Plus /></el-icon>
-            <template #tip>
-              <div class="el-upload__tip">
-                支持上传发票、图片、文档等文件，单个文件不超过 10MB
-              </div>
-            </template>
-          </el-upload>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">
-          {{ submitting ? '提交中...' : '确定' }}
-        </el-button>
+        <el-button type="primary" @click="handleSubmit">确定</el-button>
       </template>
-    </el-dialog>
-
-    <!-- Attachments Dialog -->
-    <el-dialog
-      v-model="showAttachmentsDialog"
-      title="附件列表"
-      width="700px"
-    >
-      <el-table :data="attachmentList" v-loading="loadingAttachments">
-        <el-table-column prop="file_name" label="文件名" min-width="200" show-overflow-tooltip />
-        <el-table-column label="文件大小" width="120">
-          <template #default="{ row }">
-            {{ formatFileSize(row.file_size) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="description" label="描述" width="150" show-overflow-tooltip />
-        <el-table-column label="上传时间" width="180">
-          <template #default="{ row }">
-            {{ formatDateTime(row.created_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleDownloadAttachment(row)">
-              下载
-            </el-button>
-            <el-button link type="danger" size="small" @click="handleDeleteAttachment(row)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-empty v-if="attachmentList.length === 0" description="暂无附件" />
     </el-dialog>
   </div>
 </template>
@@ -204,7 +149,6 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
 import { costApi, type CostRecordData } from '@/api/cost'
 import PageHeader from '@/components/common/PageHeader.vue'
 
@@ -218,18 +162,11 @@ const breadcrumb = [
 ]
 
 const loading = ref(false)
-const submitting = ref(false)
-const loadingAttachments = ref(false)
 const costList = ref<any[]>([])
 const dialogVisible = ref(false)
-const showAttachmentsDialog = ref(false)
 const dialogTitle = ref('添加成本记录')
 const costFormRef = ref<FormInstance>()
-const uploadRef = ref()
 const editingId = ref<number | null>(null)
-const fileList = ref<any[]>([])
-const attachmentList = ref<any[]>([])
-const currentCostId = ref<number | null>(null)
 
 const filterForm = reactive({
   costType: '',
@@ -358,51 +295,19 @@ const handleDelete = async (row: any) => {
   }
 }
 
-const handleFileChange = (file: any, files: any[]) => {
-  fileList.value = files
-}
-
-const handleFileRemove = (file: any, files: any[]) => {
-  fileList.value = files
-}
-
 const handleSubmit = async () => {
   if (!costFormRef.value) return
   
   await costFormRef.value.validate(async (valid) => {
     if (!valid) return
     
-    submitting.value = true
     try {
-      let costId: number
-      
       if (editingId.value) {
         await costApi.updateCost(editingId.value, costForm)
-        costId = editingId.value
         ElMessage.success('更新成功')
       } else {
-        const response = await costApi.createCost(costForm)
-        costId = response.data.cost.id
+        await costApi.createCost(costForm)
         ElMessage.success('添加成功')
-      }
-      
-      // 上传附件
-      if (fileList.value.length > 0) {
-        for (const file of fileList.value) {
-          if (file.raw) {
-            const formData = new FormData()
-            formData.append('file', file.raw)
-            formData.append('cost_id', costId.toString())
-            formData.append('description', `成本记录附件 - ${file.name}`)
-            
-            try {
-              await costApi.uploadAttachment(formData)
-            } catch (error) {
-              console.error('上传附件失败:', error)
-              ElMessage.warning(`附件 ${file.name} 上传失败`)
-            }
-          }
-        }
       }
       
       dialogVisible.value = false
@@ -410,8 +315,6 @@ const handleSubmit = async () => {
     } catch (error) {
       ElMessage.error(editingId.value ? '更新失败' : '添加失败')
       console.error(error)
-    } finally {
-      submitting.value = false
     }
   })
 }
@@ -430,74 +333,7 @@ const resetForm = () => {
     dueDate: '',
     description: ''
   })
-  fileList.value = []
   costFormRef.value?.clearValidate()
-}
-
-const handleViewAttachments = async (row: any) => {
-  currentCostId.value = row.id
-  showAttachmentsDialog.value = true
-  await loadAttachments(row.id)
-}
-
-const loadAttachments = async (costId: number) => {
-  loadingAttachments.value = true
-  try {
-    const response = await costApi.getCostAttachments(costId)
-    attachmentList.value = response.data.attachments || []
-  } catch (error: any) {
-    console.error('加载附件列表失败:', error)
-    ElMessage.error('加载附件列表失败')
-    attachmentList.value = []
-  } finally {
-    loadingAttachments.value = false
-  }
-}
-
-const handleDownloadAttachment = (attachment: any) => {
-  const url = `http://localhost:3000${attachment.file_path}`
-  const link = document.createElement('a')
-  link.href = url
-  link.download = attachment.file_name
-  link.target = '_blank'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-}
-
-const handleDeleteAttachment = async (attachment: any) => {
-  try {
-    await ElMessageBox.confirm('确定要删除这个附件吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    
-    await costApi.deleteAttachment(attachment.id)
-    ElMessage.success('删除成功')
-    if (currentCostId.value) {
-      loadAttachments(currentCostId.value)
-    }
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-      console.error(error)
-    }
-  }
-}
-
-const formatFileSize = (bytes: number): string => {
-  if (!bytes) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
-}
-
-const formatDateTime = (dateString: string): string => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return date.toLocaleString('zh-CN')
 }
 
 onMounted(() => {

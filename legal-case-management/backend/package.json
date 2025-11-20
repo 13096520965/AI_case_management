@@ -24,6 +24,6 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
-    "sqlite3": "^5.1.7"
+    "sql.js": "^1.13.0"
   }
 }

@@ -37,8 +37,8 @@ app.use('/api/costs', require('./routes/cost'));
 app.use('/api/notifications', require('./routes/notification'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/collaboration', require('./routes/collaboration'));
+app.use('/api/knowledge', require('./routes/knowledge'));
 app.use('/api/archive', require('./routes/archive'));
-app.use('/api', require('./routes/caseLog'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
