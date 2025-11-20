@@ -1,8 +1,13 @@
 <template>
   <div class="case-form-container">
-    <PageHeader :title="isEdit ? '编辑案件' : '新建案件'" />
+    <PageHeader :title="isEdit ? '编辑案件' : '新建案件'" :show-back="true" @back="goBack" />
     
-    <el-card shadow="never">
+    <el-card shadow="never" class="info-card">
+        <template #header>
+          <div class="card-header">
+            <span class="card-title">基本信息</span>
+          </div>
+        </template>
       <el-form
         ref="formRef"
         :model="formData"
@@ -10,7 +15,6 @@
         label-width="120px"
         class="case-form"
       >
-        <el-divider content-position="left">基本信息</el-divider>
         
         <el-row :gutter="20">
           <el-col :span="12">
@@ -117,16 +121,83 @@
 
         <el-divider />
 
-        <el-form-item>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">
-            {{ isEdit ? '保存' : '创建' }}
-          </el-button>
-          <el-button @click="handleCancel">
-            取消
-          </el-button>
-        </el-form-item>
       </el-form>
     </el-card>
+
+    <!-- 编辑模式下的额外模块 -->
+    <template v-if="isEdit && caseId">
+      <!-- 诉讼主体 -->
+      <el-card shadow="never" class="info-card">
+        <template #header>
+          <div class="card-header">
+            <span class="card-title">诉讼主体</span>
+          </div>
+        </template>
+        <PartyManagement :case-id="caseId" />
+      </el-card>
+
+      <!-- 流程节点 -->
+      <el-card shadow="never" class="info-card">
+        <template #header>
+          <div class="card-header">
+            <span class="card-title">流程节点</span>
+            <el-button type="primary" link @click="goToProcess">
+              查看详情
+            </el-button>
+          </div>
+        </template>
+        <ProcessNodeList :case-id="caseId" />
+      </el-card>
+
+      <!-- 证据材料 -->
+      <el-card shadow="never" class="info-card">
+        <template #header>
+          <div class="card-header">
+            <span class="card-title">证据材料</span>
+            <el-button type="primary" link @click="goToEvidence">
+              查看详情
+            </el-button>
+          </div>
+        </template>
+        <EvidenceList :case-id="caseId" />
+      </el-card>
+
+      <!-- 文书材料 -->
+      <el-card shadow="never" class="info-card">
+        <template #header>
+          <div class="card-header">
+            <span class="card-title">文书材料</span>
+            <el-button type="primary" link @click="goToDocuments">
+              查看详情
+            </el-button>
+          </div>
+        </template>
+        <DocumentList :case-id="caseId" />
+      </el-card>
+
+      <!-- 成本记录 -->
+      <el-card shadow="never" class="info-card">
+        <template #header>
+          <div class="card-header">
+            <span class="card-title">成本记录</span>
+            <el-button type="primary" link @click="goToCosts">
+              查看详情
+            </el-button>
+          </div>
+        </template>
+        <CostList :case-id="caseId" />
+      </el-card>
+    </template>
+
+    <!-- 固定底部按钮栏 -->
+    <div class="fixed-footer">
+      <div class="footer-content">
+        <el-button @click="handleCancel">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSubmit">
+          {{ isEdit ? '保存' : '创建' }}
+        </el-button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -137,6 +208,11 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { caseApi } from '@/api/case'
 import { useCaseStore } from '@/stores/case'
 import PageHeader from '@/components/common/PageHeader.vue'
+import PartyManagement from '@/components/case/PartyManagement.vue'
+import ProcessNodeList from '@/components/case/ProcessNodeList.vue'
+import EvidenceList from '@/components/case/EvidenceList.vue'
+import DocumentList from '@/components/case/DocumentList.vue'
+import CostList from '@/components/case/CostList.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -303,6 +379,27 @@ const handleCancel = () => {
   router.back()
 }
 
+// Navigation methods
+const goBack = () => {
+  router.push('/cases')
+}
+
+const goToProcess = () => {
+  router.push(`/cases/${caseId.value}/process`)
+}
+
+const goToEvidence = () => {
+  router.push(`/cases/${caseId.value}/evidence`)
+}
+
+const goToDocuments = () => {
+  router.push(`/cases/${caseId.value}/documents`)
+}
+
+const goToCosts = () => {
+  router.push(`/cases/${caseId.value}/costs`)
+}
+
 // Lifecycle
 onMounted(() => {
   if (isEdit.value) {
@@ -314,10 +411,47 @@ onMounted(() => {
 <style scoped>
 .case-form-container {
   padding: 20px;
+  min-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
 }
 
 .case-form {
   max-width: 1000px;
+}
+
+/* 与详情页面一致的卡片样式 */
+.info-card {
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* 固定底部按钮栏 */
+.fixed-footer {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  border-top: 1px solid #e8e8e8;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  margin: 20px -20px -20px -20px;
+  padding: 16px 20px;
+  z-index: 100;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 :deep(.el-divider__text) {

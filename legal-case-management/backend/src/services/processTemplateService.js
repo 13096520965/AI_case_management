@@ -144,7 +144,9 @@ class ProcessTemplateService {
       const createdNodes = [];
       const currentDate = new Date();
 
-      for (const templateNode of templateNodes) {
+      for (let i = 0; i < templateNodes.length; i++) {
+        const templateNode = templateNodes[i];
+        
         // 计算截止日期
         let deadline = null;
         if (templateNode.deadline_days > 0) {
@@ -152,12 +154,24 @@ class ProcessTemplateService {
           deadline.setDate(deadline.getDate() + templateNode.deadline_days);
         }
 
+        // 智能设置节点状态
+        // 第一个节点设为进行中，其他节点设为待处理
+        let status = 'pending';
+        let startTime = null;
+        
+        if (i === 0) {
+          // 第一个节点自动开始
+          status = 'in_progress';
+          startTime = currentDate.toISOString();
+        }
+
         const nodeData = {
           case_id: caseId,
           node_type: templateNode.node_type,
           node_name: templateNode.node_name,
+          start_time: startTime,
           deadline: deadline ? deadline.toISOString() : null,
-          status: 'pending',
+          status: status,
           node_order: templateNode.node_order,
           progress: templateNode.description
         };

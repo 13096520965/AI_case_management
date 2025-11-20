@@ -30,7 +30,10 @@
       <template #header>
         <div class="card-header">
           <span>流程时间轴</span>
-          <el-button type="primary" @click="handleAddNode">添加节点</el-button>
+          <div class="header-actions">
+            <el-button @click="handleApplyTemplate">引用模板</el-button>
+            <el-button type="primary" @click="handleAddNode">添加节点</el-button>
+          </div>
         </div>
       </template>
 
@@ -98,6 +101,65 @@
         </el-timeline-item>
       </el-timeline>
     </el-card>
+
+    <!-- Template Selection Dialog -->
+    <el-dialog
+      v-model="templateDialogVisible"
+      title="选择流程模板"
+      width="800px"
+    >
+      <!-- Search Bar -->
+      <div class="template-search">
+        <el-input
+          v-model="templateSearchKeyword"
+          placeholder="搜索模板名称或案件类型"
+          clearable
+          @input="handleTemplateSearch"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-select
+          v-model="templateCaseTypeFilter"
+          placeholder="案件类型"
+          clearable
+          @change="handleTemplateSearch"
+          style="width: 150px; margin-left: 10px"
+        >
+          <el-option label="全部" value="" />
+          <el-option label="民事" value="民事" />
+          <el-option label="刑事" value="刑事" />
+          <el-option label="行政" value="行政" />
+          <el-option label="劳动仲裁" value="劳动仲裁" />
+        </el-select>
+      </div>
+
+      <el-table
+        :data="filteredTemplates"
+        v-loading="loadingTemplates"
+        @row-click="handleSelectTemplate"
+        highlight-current-row
+        style="cursor: pointer; margin-top: 16px"
+      >
+        <el-table-column prop="template_name" label="模板名称" min-width="200" />
+        <el-table-column prop="case_type" label="案件类型" width="120" />
+        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+        <el-table-column label="节点数" width="100">
+          <template #default="{ row }">
+            {{ row.node_count || 0 }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100">
+          <template #default="{ row }">
+            <el-button type="primary" link @click.stop="handleApplyTemplateConfirm(row)">
+              应用
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-if="filteredTemplates.length === 0 && !loadingTemplates" description="暂无匹配的流程模板" />
+    </el-dialog>
 
     <!-- Node Edit Dialog -->
     <el-dialog
@@ -201,7 +263,9 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { processNodeApi } from '@/api/processNode'
+import { processTemplateApi } from '@/api/processTemplate'
 import PageHeader from '@/components/common/PageHeader.vue'
 import type { NodeStatus } from '@/types'
 
@@ -229,6 +293,37 @@ const dialogTitle = ref('添加节点')
 const submitting = ref(false)
 const nodeFormRef = ref<FormInstance>()
 const editingNodeId = ref<number | null>(null)
+
+// Template related
+const templateDialogVisible = ref(false)
+const loadingTemplates = ref(false)
+const templates = ref<any[]>([])
+const templateSearchKeyword = ref('')
+const templateCaseTypeFilter = ref('')
+
+// Filtered templates based on search
+const filteredTemplates = computed(() => {
+  let result = templates.value
+
+  // Filter by keyword
+  if (templateSearchKeyword.value) {
+    const keyword = templateSearchKeyword.value.toLowerCase()
+    result = result.filter(template => 
+      template.template_name?.toLowerCase().includes(keyword) ||
+      template.case_type?.toLowerCase().includes(keyword) ||
+      template.description?.toLowerCase().includes(keyword)
+    )
+  }
+
+  // Filter by case type
+  if (templateCaseTypeFilter.value) {
+    result = result.filter(template => 
+      template.case_type === templateCaseTypeFilter.value
+    )
+  }
+
+  return result
+})
 
 const nodeForm = ref({
   nodeName: '',
@@ -467,6 +562,68 @@ const resetForm = () => {
   nodeFormRef.value?.clearValidate()
 }
 
+// Handle apply template
+const handleApplyTemplate = async () => {
+  templateDialogVisible.value = true
+  templateSearchKeyword.value = ''
+  templateCaseTypeFilter.value = ''
+  await loadTemplates()
+}
+
+// Handle template search
+const handleTemplateSearch = () => {
+  // The filtering is handled by the computed property
+}
+
+// Load templates
+const loadTemplates = async () => {
+  loadingTemplates.value = true
+  try {
+    const response = await processTemplateApi.getTemplates()
+    // 后端返回 { data: { templates: [...] } }
+    if (response && response.data) {
+      templates.value = response.data.templates || []
+    } else {
+      templates.value = []
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载模板失败')
+    templates.value = []
+  } finally {
+    loadingTemplates.value = false
+  }
+}
+
+// Handle select template
+const handleSelectTemplate = (row: any) => {
+  // Optional: highlight selected row
+}
+
+// Handle apply template confirm
+const handleApplyTemplateConfirm = async (template: any) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要应用模板"${template.template_name}"吗？这将根据模板创建流程节点。`,
+      '确认应用',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    // Apply template
+    await processTemplateApi.applyTemplate(caseId.value, template.id)
+    ElMessage.success('模板应用成功')
+    templateDialogVisible.value = false
+    loadNodes()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '应用模板失败')
+    }
+  }
+}
+
 onMounted(() => {
   loadNodes()
 })
@@ -558,6 +715,17 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.template-search {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
 .node-card {

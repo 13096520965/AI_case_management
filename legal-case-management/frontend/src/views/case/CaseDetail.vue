@@ -1,6 +1,13 @@
 <template>
   <div class="case-detail-container">
-    <PageHeader title="案件详情" />
+    <PageHeader title="案件详情" :show-back="true" @back="goBack">
+      <template #extra>
+        <el-button type="primary" @click="goToLogs">
+          <el-icon><Document /></el-icon>
+          查看日志
+        </el-button>
+      </template>
+    </PageHeader>
     
     <div v-loading="loading">
       <!-- Basic Information -->
@@ -194,7 +201,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Edit } from '@element-plus/icons-vue'
+import { Edit, Document } from '@element-plus/icons-vue'
 import { caseApi } from '@/api/case'
 import { processNodeApi } from '@/api/processNode'
 import { evidenceApi } from '@/api/evidence'
@@ -379,6 +386,17 @@ const goToDocuments = () => {
   router.push(`/cases/${caseId}/documents`)
 }
 
+<<<<<<< Updated upstream
+=======
+const goToLogs = () => {
+  router.push(`/cases/${caseId}/logs`)
+}
+
+const goBack = () => {
+  router.push('/cases')
+}
+
+>>>>>>> Stashed changes
 const goToCosts = () => {
   router.push(`/cases/${caseId}/costs`)
 }
