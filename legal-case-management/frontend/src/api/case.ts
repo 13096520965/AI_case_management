@@ -61,5 +61,10 @@ export const caseApi = {
   // Delete case
   deleteCase: (id: number) => {
     return request.delete(`/cases/${id}`)
+  },
+
+  // Get case parties
+  getCaseParties: (caseId: number) => {
+    return request.get(`/cases/${caseId}/parties`)
   }
 }
