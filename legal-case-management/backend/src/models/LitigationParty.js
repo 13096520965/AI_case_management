@@ -20,14 +20,17 @@ class LitigationParty {
       id_number,
       contact_phone,
       contact_email,
-      address
+      address,
+      region_code,
+      detail_address
     } = partyData;
 
     const sql = `
       INSERT INTO litigation_parties (
         case_id, party_type, entity_type, name, unified_credit_code,
-        legal_representative, id_number, contact_phone, contact_email, address
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        legal_representative, id_number, contact_phone, contact_email, 
+        address, region_code, detail_address
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // 将 undefined 转换为 null，避免 SQL 绑定错误
@@ -41,7 +44,9 @@ class LitigationParty {
       id_number ?? null,
       contact_phone ?? null,
       contact_email ?? null,
-      address ?? null
+      address ?? null,
+      region_code ?? null,
+      detail_address ?? null
     ]);
 
     return result.lastID;

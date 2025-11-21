@@ -102,7 +102,7 @@
             </div>
           </template>
           <div class="todo-list">
-            <el-empty v-if="todoList.length === 0" description="暂无待办事项" />
+            <TableEmpty v-if="todoList.length === 0" description="暂无待办事项" />
             <div v-else>
               <div v-for="item in todoList" :key="item.id" class="todo-item" :class="item.priority">
                 <div class="todo-icon">
@@ -134,6 +134,7 @@ import { notificationApi } from '@/api/notification'
 import { processNodeApi } from '@/api/processNode'
 import { costApi } from '@/api/cost'
 import { ElMessage } from 'element-plus'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 
 interface DashboardData {
   totalCases: number

@@ -1,13 +1,6 @@
 <template>
   <div class="case-detail-container">
-    <PageHeader title="案件详情" :show-back="true" @back="goBack">
-      <template #extra>
-        <el-button type="primary" @click="goToLogs">
-          <el-icon><Document /></el-icon>
-          查看日志
-        </el-button>
-      </template>
-    </PageHeader>
+    <PageHeader title="案件详情" :show-back="true" @back="goBack" />
     
     <div v-loading="loading">
       <!-- Basic Information -->
@@ -45,6 +38,9 @@
           <el-descriptions-item label="受理法院">
             {{ caseData.court || '-' }}
           </el-descriptions-item>
+          <el-descriptions-item label="承办人员">
+            {{ caseData.handler || '-' }}
+          </el-descriptions-item>
           <el-descriptions-item label="标的额">
             {{ formatAmount(caseData.targetAmount) }}
           </el-descriptions-item>
@@ -79,6 +75,9 @@
           </el-descriptions-item>
         </el-descriptions>
       </el-card>
+
+      <!-- Target Amount Detail -->
+      <TargetAmountDetail :case-id="caseId" :show-detail-button="false" />
 
       <!-- Litigation Parties -->
       <el-card shadow="never" class="info-card">
@@ -121,7 +120,7 @@
           </el-timeline-item>
         </el-timeline>
         
-        <el-empty v-else description="暂无流程节点" />
+        <TableEmpty v-else description="暂无流程节点" />
       </el-card>
 
       <!-- Evidence List -->
@@ -141,9 +140,10 @@
               {{ formatDateTime(row.uploadedAt) }}
             </template>
           </el-table-column>
+          <template #empty>
+            <TableEmpty description="暂无证据材料" />
+          </template>
         </el-table>
-        
-        <el-empty v-if="evidenceList.length === 0" description="暂无证据材料" />
       </el-card>
 
       <!-- Documents List -->
@@ -162,9 +162,10 @@
               {{ formatDateTime(row.uploadedAt) }}
             </template>
           </el-table-column>
+          <template #empty>
+            <TableEmpty description="暂无文书材料" />
+          </template>
         </el-table>
-        
-        <el-empty v-if="documentList.length === 0" description="暂无文书材料" />
       </el-card>
 
       <!-- Cost Records -->
@@ -195,10 +196,14 @@
             </template>
           </el-table-column>
           <el-table-column prop="payer" label="支付方" min-width="120" />
+          <template #empty>
+            <TableEmpty description="暂无成本记录" />
+          </template>
         </el-table>
-        
-        <el-empty v-if="costRecords.length === 0" description="暂无成本记录" />
       </el-card>
+
+      <!-- Operation Logs -->
+      <CaseLogViewer :case-id="caseId" />
     </div>
 
 
@@ -218,6 +223,9 @@ import { costApi } from '@/api/cost'
 import { useCaseStore } from '@/stores/case'
 import PageHeader from '@/components/common/PageHeader.vue'
 import PartyManagement from '@/components/case/PartyManagement.vue'
+import TableEmpty from '@/components/common/TableEmpty.vue'
+import CaseLogViewer from '@/components/case/CaseLogViewer.vue'
+import TargetAmountDetail from '@/components/case/TargetAmountDetail.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -255,6 +263,7 @@ const fetchCaseData = async () => {
         caseType: data.case_type,
         caseCause: data.case_cause,
         court: data.court,
+        handler: data.handler,
         targetAmount: data.target_amount,
         filingDate: data.filing_date,
         status: data.status,
@@ -284,17 +293,16 @@ const fetchProcessNodes = async () => {
     const response = await processNodeApi.getNodesByCaseId(caseId)
     if (response && response.data) {
       const data = response.data.nodes || []
-      // 转换字段名从下划线到驼峰
+      // 转换字段名从下划线到驼峰，并转换状态为中文
       const nodes = Array.isArray(data) ? data.map((node: any) => ({
         id: node.id,
         caseId: node.case_id,
-        nodeType: node.node_type,
         nodeName: node.node_name,
         handler: node.handler,
         startTime: node.start_time,
         deadline: node.deadline,
         completionTime: node.completion_time,
-        status: node.status,
+        status: convertStatusToChinese(node.status),
         progress: node.progress,
         nodeOrder: node.node_order,
         createdAt: node.created_at,
@@ -383,6 +391,8 @@ const fetchCosts = async () => {
   }
 }
 
+
+
 // Action handlers
 const handleEdit = () => {
   router.push(`/cases/${caseId}/edit`)
@@ -398,10 +408,6 @@ const goToEvidence = () => {
 
 const goToDocuments = () => {
   router.push(`/cases/${caseId}/documents`)
-}
-
-const goToLogs = () => {
-  router.push(`/cases/${caseId}/logs`)
 }
 
 const goBack = () => {
@@ -433,24 +439,35 @@ const getStatusTag = (status: string) => {
   return tagMap[status] || ''
 }
 
+// Convert English status to Chinese
+const convertStatusToChinese = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    'pending': '待处理',
+    'in_progress': '进行中',
+    'completed': '已完成',
+    'overdue': '超期'
+  }
+  return statusMap[status] || status
+}
+
 const getNodeStatusTag = (status: string) => {
   const tagMap: Record<string, string> = {
     '待处理': 'info',
-    '进行中': '',
+    '进行中': 'warning',
     '已完成': 'success',
     '超期': 'danger'
   }
-  return tagMap[status] || ''
+  return tagMap[status] || 'info'
 }
 
 const getNodeColor = (status: string) => {
   const colorMap: Record<string, string> = {
     '待处理': '#909399',
-    '进行中': '#409EFF',
+    '进行中': '#E6A23C',
     '已完成': '#67C23A',
     '超期': '#F56C6C'
   }
-  return colorMap[status] || '#409EFF'
+  return colorMap[status] || '#909399'
 }
 
 const formatAmount = (amount: number) => {
@@ -539,6 +556,15 @@ onMounted(async () => {
   display: flex;
   gap: 20px;
   font-size: 13px;
+  color: #606266;
+}
+
+.log-content {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.log-text {
   color: #606266;
 }
 </style>

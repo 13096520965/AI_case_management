@@ -147,7 +147,7 @@
           </div>
         </div>
 
-        <el-empty v-if="!loading && knowledgeList.length === 0" description="暂无案例知识" />
+        <TableEmpty v-if="!loading && knowledgeList.length === 0" description="暂无案例知识" />
       </div>
 
       <!-- 分页 -->
@@ -378,6 +378,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { knowledgeApi } from '@/api/knowledge'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 
 const loading = ref(false)
 const statsLoading = ref(false)

@@ -8,20 +8,24 @@
       </el-main>
     </el-container>
     <AppFooter />
+
+    <!-- 法盾助手 -->
+    <LegalAssistant />
   </el-container>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import AppHeader from './AppHeader.vue'
-import AppSidebar from './AppSidebar.vue'
-import AppFooter from './AppFooter.vue'
+import { ref } from "vue";
+import AppHeader from "./AppHeader.vue";
+import AppSidebar from "./AppSidebar.vue";
+import AppFooter from "./AppFooter.vue";
+import LegalAssistant from "../assistant/LegalAssistant.vue";
 
-const collapsed = ref(false)
+const collapsed = ref(false);
 
 const toggleSidebar = () => {
-  collapsed.value = !collapsed.value
-}
+  collapsed.value = !collapsed.value;
+};
 </script>
 
 <style scoped>

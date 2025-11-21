@@ -204,7 +204,7 @@
     
     <!-- Empty State -->
     <el-card v-else-if="hasSearched" shadow="hover" class="empty-card">
-      <el-empty description="未找到相似案例，请调整检索条件后重试" />
+      <TableEmpty description="未找到相似案例，请调整检索条件后重试" />
     </el-card>
 
     <!-- Case Detail Dialog -->
@@ -258,6 +258,7 @@ import type { ECharts } from 'echarts'
 import { analyticsApi } from '@/api/analytics'
 import { ElMessage } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 
 interface SearchForm {
   caseType: string

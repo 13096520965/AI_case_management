@@ -65,7 +65,7 @@
       </el-table>
 
       <!-- 空状态 -->
-      <el-empty v-if="!loading && members.length === 0" description="暂无协作成员" />
+      <TableEmpty v-if="!loading && members.length === 0" description="暂无协作成员" />
     </el-card>
 
     <!-- 添加/编辑成员对话框 -->
@@ -134,6 +134,7 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { collaborationApi } from '@/api/collaboration'
 import request from '@/api/request'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 
 const route = useRoute()
 const caseId = ref(Number(route.params.id))

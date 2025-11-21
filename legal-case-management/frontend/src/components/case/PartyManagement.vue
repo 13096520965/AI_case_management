@@ -3,7 +3,6 @@
     <!-- Party List -->
     <div class="party-list">
       <div class="list-header">
-        <h3>诉讼主体列表</h3>
         <el-button v-if="!props.readonly" type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>
           添加主体
@@ -46,9 +45,10 @@
             </el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <TableEmpty description="暂无诉讼主体" />
+        </template>
       </el-table>
-
-      <el-empty v-if="parties.length === 0 && !loading" description="暂无诉讼主体" />
     </div>
 
     <!-- Party Form Dialog -->
@@ -62,7 +62,7 @@
         ref="formRef"
         :model="formData"
         :rules="formRules"
-        label-width="120px"
+        label-width="140px"
       >
         <el-form-item label="主体身份" prop="partyType">
           <el-select
@@ -95,8 +95,10 @@
           <el-form-item label="统一社会信用代码" prop="unifiedCreditCode">
             <el-input
               v-model="formData.unifiedCreditCode"
-              placeholder="请输入统一社会信用代码"
+              placeholder="请输入统一社会信用代码（18位）"
               maxlength="18"
+              style="width: 100%; font-family: monospace; letter-spacing: 1px;"
+              show-word-limit
             />
           </el-form-item>
 
@@ -120,8 +122,10 @@
           <el-form-item label="身份证号" prop="idNumber">
             <el-input
               v-model="formData.idNumber"
-              placeholder="请输入身份证号"
+              placeholder="请输入身份证号（18位）"
               maxlength="18"
+              style="width: 100%; font-family: monospace; letter-spacing: 1px;"
+              show-word-limit
             />
           </el-form-item>
         </template>
@@ -142,12 +146,25 @@
           />
         </el-form-item>
 
-        <el-form-item label="地址" prop="address">
+        <el-form-item label="所在地区" prop="region">
+          <el-cascader
+            v-model="formData.region"
+            :options="regionOptions"
+            placeholder="请选择省/市/区"
+            style="width: 100%"
+            :props="{ expandTrigger: 'hover' }"
+            :loading="regionLoading"
+            clearable
+            filterable
+          />
+        </el-form-item>
+
+        <el-form-item label="详细地址" prop="detailAddress">
           <el-input
-            v-model="formData.address"
+            v-model="formData.detailAddress"
             type="textarea"
             :rows="3"
-            placeholder="请输入地址"
+            placeholder="请输入详细地址（街道、门牌号等）"
           />
         </el-form-item>
       </el-form>
@@ -164,13 +181,18 @@
     <el-dialog
       v-model="historyDialogVisible"
       :title="`${currentParty?.name} 的历史案件`"
-      width="900px"
+      width="1000px"
     >
       <el-table :data="historyList" v-loading="historyLoading" stripe>
-        <el-table-column prop="caseNumber" label="案号" width="180" />
-        <el-table-column prop="caseType" label="案件类型" width="100" />
-        <el-table-column prop="caseCause" label="案由" min-width="150" />
-        <el-table-column prop="court" label="法院" min-width="150" />
+        <el-table-column prop="case_number" label="案号" width="180" show-overflow-tooltip />
+        <el-table-column prop="case_type" label="案件类型" width="120" />
+        <el-table-column prop="case_cause" label="案由" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="court" label="法院" min-width="150" show-overflow-tooltip />
+        <el-table-column label="立案日期" width="120">
+          <template #default="{ row }">
+            {{ row.filing_date || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusTag(row.status)" size="small">
@@ -178,7 +200,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="100">
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="viewCase(row.id)">
               查看
@@ -187,17 +209,19 @@
         </el-table-column>
       </el-table>
 
-      <el-empty v-if="historyList.length === 0 && !historyLoading" description="暂无历史案件" />
+      <TableEmpty v-if="historyList.length === 0 && !historyLoading" description="暂无历史案件" />
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { partyApi } from '@/api/party'
+import { regionApi, type RegionItem } from '@/api/region'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 
 // Props
 const props = defineProps<{
@@ -234,8 +258,14 @@ const formData = reactive({
   idNumber: '',
   contactPhone: '',
   contactEmail: '',
-  address: ''
+  region: [] as string[],
+  detailAddress: '',
+  address: '' // 保留用于兼容，实际由 region + detailAddress 组合
 })
+
+// Region options
+const regionOptions = ref<RegionItem[]>([])
+const regionLoading = ref(false)
 
 // Validation rules
 const formRules: FormRules = {
@@ -250,13 +280,19 @@ const formRules: FormRules = {
     { min: 2, max: 200, message: '名称长度在 2 到 200 个字符', trigger: 'blur' }
   ],
   unifiedCreditCode: [
+    { required: true, message: '请输入统一社会信用代码', trigger: 'blur' },
     { 
       pattern: /^[0-9A-HJ-NPQRTUWXY]{2}\d{6}[0-9A-HJ-NPQRTUWXY]{10}$/,
       message: '请输入有效的统一社会信用代码',
       trigger: 'blur'
     }
   ],
+  legalRepresentative: [
+    { required: true, message: '请输入法定代表人', trigger: 'blur' },
+    { min: 2, max: 50, message: '法定代表人长度在 2 到 50 个字符', trigger: 'blur' }
+  ],
   idNumber: [
+    { required: true, message: '请输入身份证号', trigger: 'blur' },
     {
       pattern: /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/,
       message: '请输入有效的身份证号',
@@ -272,12 +308,37 @@ const formRules: FormRules = {
     }
   ],
   contactEmail: [
+    { required: true, message: '请输入电子邮箱', trigger: 'blur' },
     {
       type: 'email',
       message: '请输入有效的电子邮箱',
       trigger: 'blur'
     }
+  ],
+  region: [
+    { required: true, message: '请选择所在地区', trigger: 'change' }
+  ],
+  detailAddress: [
+    { required: true, message: '请输入详细地址', trigger: 'blur' },
+    { min: 5, max: 200, message: '详细地址长度在 5 到 200 个字符', trigger: 'blur' }
   ]
+}
+
+// Fetch region data
+const fetchRegions = async () => {
+  regionLoading.value = true
+  try {
+    const response = await regionApi.getRegions()
+    if (response.data) {
+      regionOptions.value = response.data
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取地区数据失败')
+    // 如果获取失败，使用空数组
+    regionOptions.value = []
+  } finally {
+    regionLoading.value = false
+  }
 }
 
 // Fetch parties
@@ -344,6 +405,15 @@ const handleEdit = (party: any) => {
   formData.idNumber = party.id_number || ''
   formData.contactPhone = party.contact_phone || ''
   formData.contactEmail = party.contact_email || ''
+  
+  // 解析地址：尝试从 address 中分离省市区和详细地址
+  // 如果后端存储了 region_code 和 detail_address，优先使用
+  if (party.region_code) {
+    formData.region = party.region_code.split(',')
+  } else {
+    formData.region = []
+  }
+  formData.detailAddress = party.detail_address || party.address || ''
   formData.address = party.address || ''
   
   dialogVisible.value = true
@@ -387,6 +457,25 @@ const viewCase = (caseId: number) => {
   historyDialogVisible.value = false
 }
 
+// 计算完整地址
+const getFullAddress = () => {
+  if (formData.region.length === 0) return formData.detailAddress
+  
+  // 从 regionOptions 中获取选中的省市区名称
+  const labels: string[] = []
+  let currentLevel = regionOptions.value
+  
+  for (const code of formData.region) {
+    const found = currentLevel.find(item => item.value === code)
+    if (found) {
+      labels.push(found.label)
+      currentLevel = found.children || []
+    }
+  }
+  
+  return labels.join('') + formData.detailAddress
+}
+
 // Handle submit
 const handleSubmit = async () => {
   if (!formRef.value) return
@@ -397,13 +486,18 @@ const handleSubmit = async () => {
     submitting.value = true
     
     try {
+      // 组合完整地址
+      const fullAddress = getFullAddress()
+      
       const submitData: any = {
         partyType: formData.partyType,
         entityType: formData.entityType,
         name: formData.name,
         contactPhone: formData.contactPhone,
         contactEmail: formData.contactEmail,
-        address: formData.address
+        address: fullAddress,
+        regionCode: formData.region.join(','), // 保存地区编码
+        detailAddress: formData.detailAddress
       }
       
       if (formData.entityType === '企业') {
@@ -449,6 +543,8 @@ const resetForm = () => {
   formData.idNumber = ''
   formData.contactPhone = ''
   formData.contactEmail = ''
+  formData.region = []
+  formData.detailAddress = ''
   formData.address = ''
   
   formRef.value?.clearValidate()
@@ -483,6 +579,7 @@ watch(() => props.caseId, () => {
 
 // Lifecycle
 onMounted(() => {
+  fetchRegions()
   fetchParties()
 })
 </script>
@@ -498,14 +595,8 @@ onMounted(() => {
 
 .list-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: 16px;
-}
-
-.list-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
 }
 </style>

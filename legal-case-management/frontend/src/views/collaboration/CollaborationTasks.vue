@@ -101,7 +101,7 @@
       </el-table>
 
       <!-- 空状态 -->
-      <el-empty v-if="!loading && tasks.length === 0" description="暂无协作任务" />
+      <TableEmpty v-if="!loading && tasks.length === 0" description="暂无协作任务" />
     </el-card>
 
     <!-- 创建/编辑任务对话框 -->
@@ -237,6 +237,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { collaborationApi } from '@/api/collaboration'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 
 const route = useRoute()
 const caseId = ref(Number(route.params.id))

@@ -183,7 +183,9 @@
         </div>
       </div>
 
-      <el-empty v-if="filteredEvidence.length === 0" description="暂无证据" />
+      <template #empty>
+        <TableEmpty description="暂无证据" />
+      </template>
     </el-card>
 
     <!-- Upload Dialog -->
@@ -377,14 +379,14 @@
         </div>
         
         <!-- Unsupported Format -->
-        <el-empty 
+        <TableEmpty 
           v-else-if="previewFile && !previewError" 
           description="该文件格式不支持预览，请下载后查看"
         >
           <el-button type="primary" @click="handleDownload(previewFile!)">
             立即下载
           </el-button>
-        </el-empty>
+        </TableEmpty>
       </div>
       <template #footer>
         <el-button @click="previewFullscreen = !previewFullscreen">
@@ -418,6 +420,7 @@ import {
   Picture
 } from '@element-plus/icons-vue'
 import { evidenceApi } from '@/api/evidence'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 import type { Evidence, EvidenceCategory, ViewMode } from '@/types'
 
 const route = useRoute()

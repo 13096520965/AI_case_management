@@ -34,6 +34,14 @@ exports.createNode = async (req, res) => {
     const nodeId = await ProcessNode.create(nodeData);
     const newNode = await ProcessNode.findById(nodeId);
 
+    // 记录操作日志
+    const operator = req.user?.real_name || req.user?.username || '系统';
+    await Case.addLog(
+      caseId,
+      operator,
+      `进行了流程节点添加操作：${newNode.node_name}`
+    );
+
     res.status(201).json({
       message: '流程节点创建成功',
       data: {
@@ -126,6 +134,42 @@ exports.updateNode = async (req, res) => {
 
     const updatedNode = await ProcessNode.findById(id);
 
+    // 记录操作日志
+    const operator = req.user?.real_name || req.user?.username || '系统';
+    const logActions = [];
+    
+    // 检查状态变更
+    if (updateData.status && updateData.status !== existingNode.status) {
+      const statusMap = {
+        'pending': '待处理',
+        'in_progress': '进行中',
+        'completed': '已完成',
+        'overdue': '超期'
+      };
+      const oldStatus = statusMap[existingNode.status] || existingNode.status;
+      const newStatus = statusMap[updateData.status] || updateData.status;
+      logActions.push(`状态变更：${oldStatus} → ${newStatus}`);
+    }
+    
+    // 检查其他重要字段变更
+    if (updateData.node_name && updateData.node_name !== existingNode.node_name) {
+      logActions.push(`修改节点名称`);
+    }
+    if (updateData.handler && updateData.handler !== existingNode.handler) {
+      logActions.push(`修改经办人`);
+    }
+    if (updateData.deadline && updateData.deadline !== existingNode.deadline) {
+      logActions.push(`修改截止时间`);
+    }
+    
+    if (logActions.length > 0) {
+      await Case.addLog(
+        existingNode.case_id,
+        operator,
+        `进行了流程节点编辑操作："${existingNode.node_name}"，${logActions.join('、')}`
+      );
+    }
+
     res.json({
       message: '流程节点更新成功',
       data: {
@@ -160,6 +204,14 @@ exports.deleteNode = async (req, res) => {
         }
       });
     }
+
+    // 记录操作日志（在删除前记录）
+    const operator = req.user?.real_name || req.user?.username || '系统';
+    await Case.addLog(
+      existingNode.case_id,
+      operator,
+      `进行了流程节点删除操作：${existingNode.node_name}`
+    );
 
     const changes = await ProcessNode.delete(id);
 

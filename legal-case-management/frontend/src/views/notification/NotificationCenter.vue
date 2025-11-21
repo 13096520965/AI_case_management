@@ -64,7 +64,7 @@
       </div>
 
       <div v-if="displayedNotifications.length === 0" class="empty-state">
-        <el-empty description="暂无提醒" />
+        <TableEmpty description="暂无提醒" />
       </div>
 
       <div v-else class="notification-list">
@@ -154,6 +154,7 @@ import { Refresh, Bell, Warning, Clock, Money, Document, Search, RefreshLeft, Ch
 import { notificationApi } from '@/api/notification'
 import { useNotificationStore } from '@/stores/notification'
 import PageHeader from '@/components/common/PageHeader.vue'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 import { formatDistanceToNow } from '@/utils/format'
 
 const notificationStore = useNotificationStore()
