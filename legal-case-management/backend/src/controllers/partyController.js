@@ -33,6 +33,14 @@ exports.createParty = async (req, res) => {
     const partyId = await LitigationParty.create(partyData);
     const newParty = await LitigationParty.findById(partyId);
 
+    // 记录操作日志
+    const operator = req.user?.real_name || req.user?.username || '系统';
+    await Case.addLog(
+      caseId,
+      operator,
+      `进行了诉讼主体添加操作：${newParty.name}（${newParty.party_type}）`
+    );
+
     res.status(201).json({
       message: '诉讼主体添加成功',
       data: {
@@ -118,6 +126,14 @@ exports.updateParty = async (req, res) => {
 
     const updatedParty = await LitigationParty.findById(id);
 
+    // 记录操作日志
+    const operator = req.user?.real_name || req.user?.username || '系统';
+    await Case.addLog(
+      existingParty.case_id,
+      operator,
+      `进行了诉讼主体编辑操作：${existingParty.name}（${existingParty.party_type}）`
+    );
+
     res.json({
       message: '诉讼主体更新成功',
       data: {
@@ -152,6 +168,14 @@ exports.deleteParty = async (req, res) => {
         }
       });
     }
+
+    // 记录操作日志（在删除前记录）
+    const operator = req.user?.real_name || req.user?.username || '系统';
+    await Case.addLog(
+      existingParty.case_id,
+      operator,
+      `进行了诉讼主体删除操作：${existingParty.name}（${existingParty.party_type}）`
+    );
 
     const changes = await LitigationParty.delete(id);
 

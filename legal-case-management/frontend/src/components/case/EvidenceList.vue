@@ -13,8 +13,10 @@
         </template>
       </el-table-column>
       <el-table-column prop="uploaded_at" label="上传时间" width="180" />
+      <template #empty>
+        <TableEmpty description="暂无证据材料" />
+      </template>
     </el-table>
-    <el-empty v-if="evidenceList.length === 0 && !loading" description="暂无证据材料" />
   </div>
 </template>
 
@@ -22,6 +24,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { evidenceApi } from '@/api/evidence'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 
 interface Props {
   caseId: number

@@ -271,6 +271,9 @@
             </el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <TableEmpty description="暂无案件数据" />
+        </template>
       </el-table>
 
       <!-- Pagination -->
@@ -297,6 +300,7 @@ import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import { caseApi } from '@/api/case'
 import { useCaseStore } from '@/stores/case'
 import PageHeader from '@/components/common/PageHeader.vue'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 
 const router = useRouter()
 const caseStore = useCaseStore()

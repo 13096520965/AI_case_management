@@ -21,7 +21,7 @@
         </div>
       </el-timeline-item>
     </el-timeline>
-    <el-empty v-if="nodeList.length === 0 && !loading" description="暂无流程节点" />
+    <TableEmpty v-else-if="!loading" description="暂无流程节点" />
   </div>
 </template>
 
@@ -29,6 +29,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { processNodeApi } from '@/api/processNode'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 
 interface Props {
   caseId: number

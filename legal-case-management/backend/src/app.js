@@ -39,6 +39,7 @@ app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/collaboration', require('./routes/collaboration'));
 app.use('/api/knowledge', require('./routes/knowledge'));
 app.use('/api/archive', require('./routes/archive'));
+app.use('/api/regions', require('./routes/region'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

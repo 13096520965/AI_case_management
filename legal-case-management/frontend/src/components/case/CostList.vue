@@ -27,8 +27,10 @@
         </template>
       </el-table-column>
       <el-table-column prop="payer" label="支付方" min-width="120" />
+      <template #empty>
+        <TableEmpty description="暂无成本记录" />
+      </template>
     </el-table>
-    <el-empty v-if="costList.length === 0 && !loading" description="暂无成本记录" />
   </div>
 </template>
 
@@ -36,6 +38,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { costApi } from '@/api/cost'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 
 interface Props {
   caseId: number

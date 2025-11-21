@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS litigation_parties (
   contact_phone VARCHAR(50),
   contact_email VARCHAR(100),
   address TEXT,
+  region_code VARCHAR(100),
+  detail_address TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
 );
@@ -312,6 +314,23 @@ CREATE TABLE IF NOT EXISTS case_knowledge (
   FOREIGN KEY (archive_package_id) REFERENCES archive_packages(id) ON DELETE SET NULL
 );
 
+-- 案件操作日志表
+CREATE TABLE IF NOT EXISTS case_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  case_id INTEGER NOT NULL,
+  action_type VARCHAR(50),
+  action_description TEXT,
+  operator_id INTEGER,
+  operator_name VARCHAR(100),
+  operator VARCHAR(100),
+  action TEXT,
+  ip_address VARCHAR(50),
+  user_agent TEXT,
+  related_data TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
+);
+
 -- 创建索引以提高查询性能
 CREATE INDEX IF NOT EXISTS idx_cases_case_number ON cases(case_number);
 CREATE INDEX IF NOT EXISTS idx_cases_status ON cases(status);
@@ -345,6 +364,8 @@ CREATE INDEX IF NOT EXISTS idx_archive_packages_archive_number ON archive_packag
 CREATE INDEX IF NOT EXISTS idx_case_knowledge_case_cause ON case_knowledge(case_cause);
 CREATE INDEX IF NOT EXISTS idx_case_knowledge_case_id ON case_knowledge(case_id);
 CREATE INDEX IF NOT EXISTS idx_case_knowledge_archive_package_id ON case_knowledge(archive_package_id);
+CREATE INDEX IF NOT EXISTS idx_case_logs_case_id ON case_logs(case_id);
+CREATE INDEX IF NOT EXISTS idx_case_logs_action_type ON case_logs(action_type);
 `;
 
 /**

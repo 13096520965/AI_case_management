@@ -9,8 +9,10 @@
         </template>
       </el-table-column>
       <el-table-column prop="uploaded_at" label="上传时间" width="180" />
+      <template #empty>
+        <TableEmpty description="暂无文书材料" />
+      </template>
     </el-table>
-    <el-empty v-if="documentList.length === 0 && !loading" description="暂无文书材料" />
   </div>
 </template>
 
@@ -18,6 +20,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { documentApi } from '@/api/document'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 
 interface Props {
   caseId: number
