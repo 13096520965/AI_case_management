@@ -51,6 +51,26 @@
           <el-descriptions-item label="立案日期">
             {{ formatDate(caseData.filingDate) }}
           </el-descriptions-item>
+          <el-descriptions-item label="产业板块">
+            {{ caseData.industrySegment || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="案件承接人">
+            {{ caseData.handler || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="外部代理">
+            <el-tag :type="caseData.isExternalAgent ? 'success' : 'info'" size="small">
+              {{ caseData.isExternalAgent ? '是' : '否' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="caseData.isExternalAgent" label="律所名称">
+            {{ caseData.lawFirmName || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="caseData.isExternalAgent" label="代理律师">
+            {{ caseData.agentLawyer || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="caseData.isExternalAgent" label="联系方式">
+            {{ caseData.agentContact || '-' }}
+          </el-descriptions-item>
           <el-descriptions-item label="创建时间">
             {{ formatDateTime(caseData.createdAt) }}
           </el-descriptions-item>
@@ -239,6 +259,12 @@ const fetchCaseData = async () => {
         filingDate: data.filing_date,
         status: data.status,
         teamId: data.team_id,
+        industrySegment: data.industry_segment,
+        handler: data.handler,
+        isExternalAgent: data.is_external_agent,
+        lawFirmName: data.law_firm_name,
+        agentLawyer: data.agent_lawyer,
+        agentContact: data.agent_contact,
         createdAt: data.created_at,
         updatedAt: data.updated_at
       })
