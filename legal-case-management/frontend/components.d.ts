@@ -72,6 +72,7 @@ declare module 'vue' {
     FileUpload: typeof import('./src/components/common/FileUpload.vue')['default']
     FormDialog: typeof import('./src/components/common/FormDialog.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
+    LegalAssistant: typeof import('./src/components/assistant/LegalAssistant.vue')['default']
     PageHeader: typeof import('./src/components/common/PageHeader.vue')['default']
     PartyManagement: typeof import('./src/components/case/PartyManagement.vue')['default']
     ProcessNodeList: typeof import('./src/components/case/ProcessNodeList.vue')['default']
