@@ -38,6 +38,9 @@ router.delete('/rules/:id', notificationRuleController.deleteRule);
 // GET /api/notifications/unread-count - 获取未读数量
 router.get('/unread-count', notificationController.getUnreadCount);
 
+// PUT /api/notifications/read-all - 标记所有为已读
+router.put('/read-all', notificationController.markAllAsRead);
+
 // POST /api/notifications/mark-read - 批量标记为已读
 router.post('/mark-read', notificationController.markMultipleAsRead);
 

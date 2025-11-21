@@ -8,11 +8,7 @@
       <h1 class="app-title">智能案管系统</h1>
     </div>
     <div class="header-right">
-      <el-badge :value="notificationCount" :hidden="notificationCount === 0" class="notification-badge">
-        <el-icon class="header-icon" @click="goToNotifications">
-          <Bell />
-        </el-icon>
-      </el-badge>
+      <NotificationPopover />
       <el-dropdown @command="handleCommand">
         <span class="user-info">
           <el-avatar :size="32" :src="userAvatar">{{ userName }}</el-avatar>
@@ -34,8 +30,8 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { useNotificationStore } from '@/stores/notification'
-import { Expand, Fold, Bell } from '@element-plus/icons-vue'
+import { Expand, Fold } from '@element-plus/icons-vue'
+import NotificationPopover from '@/components/notification/NotificationPopover.vue'
 
 interface Props {
   collapsed?: boolean
@@ -52,18 +48,12 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 const router = useRouter()
 const userStore = useUserStore()
-const notificationStore = useNotificationStore()
 
 const userName = computed(() => userStore.user?.real_name || userStore.user?.username || '用户')
 const userAvatar = computed(() => userStore.user?.avatar || '')
-const notificationCount = computed(() => notificationStore.unreadCount)
 
 const toggleSidebar = () => {
   emit('toggle-sidebar')
-}
-
-const goToNotifications = () => {
-  router.push('/notifications')
 }
 
 const handleCommand = (command: string) => {
@@ -120,20 +110,6 @@ const handleCommand = (command: string) => {
   display: flex;
   align-items: center;
   gap: 20px;
-}
-
-.notification-badge {
-  cursor: pointer;
-}
-
-.header-icon {
-  font-size: 20px;
-  cursor: pointer;
-  transition: color 0.3s;
-}
-
-.header-icon:hover {
-  color: #409eff;
 }
 
 .user-info {

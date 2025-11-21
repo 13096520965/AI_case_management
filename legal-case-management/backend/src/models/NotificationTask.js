@@ -146,7 +146,7 @@ class NotificationTask {
    */
   static async getUnreadCount(filters = {}) {
     let sql = 'SELECT COUNT(*) as count FROM notification_tasks WHERE status = ?';
-    const params = ['pending'];
+    const params = ['unread'];
 
     if (filters.related_type) {
       sql += ' AND related_type = ?';
@@ -189,6 +189,16 @@ class NotificationTask {
       ORDER BY scheduled_time DESC
     `;
     return await query(sql, [relatedType, relatedId]);
+  }
+
+  /**
+   * 标记所有未读提醒为已读
+   * @returns {Promise<number>} 影响的行数
+   */
+  static async markAllAsRead() {
+    const sql = `UPDATE notification_tasks SET status = 'read' WHERE status = 'unread'`;
+    const result = await run(sql);
+    return result.changes;
   }
 }
 

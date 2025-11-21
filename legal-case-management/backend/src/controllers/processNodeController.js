@@ -237,7 +237,6 @@ exports.getOverdueStatistics = async (req, res) => {
  */
 exports.getOverdueNodes = async (req, res) => {
   try {
-    const ProcessNode = require('../models/ProcessNode');
     const nodes = await ProcessNode.findOverdueNodes();
 
     res.json({

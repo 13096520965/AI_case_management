@@ -109,10 +109,15 @@ class ProcessNode {
    */
   static async findOverdueNodes() {
     const sql = `
-      SELECT * FROM process_nodes 
-      WHERE status != 'completed' 
-      AND deadline < datetime('now')
-      ORDER BY deadline ASC
+      SELECT 
+        pn.*,
+        c.case_number,
+        c.case_cause as case_name
+      FROM process_nodes pn
+      LEFT JOIN cases c ON pn.case_id = c.id
+      WHERE pn.status != 'completed' 
+      AND pn.deadline < datetime('now')
+      ORDER BY pn.deadline ASC
     `;
     return await query(sql);
   }
@@ -124,10 +129,15 @@ class ProcessNode {
    */
   static async findUpcomingNodes(days = 3) {
     const sql = `
-      SELECT * FROM process_nodes 
-      WHERE status != 'completed' 
-      AND deadline BETWEEN datetime('now') AND datetime('now', '+${days} days')
-      ORDER BY deadline ASC
+      SELECT 
+        pn.*,
+        c.case_number,
+        c.case_cause as case_name
+      FROM process_nodes pn
+      LEFT JOIN cases c ON pn.case_id = c.id
+      WHERE pn.status != 'completed' 
+      AND pn.deadline BETWEEN datetime('now') AND datetime('now', '+${days} days')
+      ORDER BY pn.deadline ASC
     `;
     return await query(sql);
   }

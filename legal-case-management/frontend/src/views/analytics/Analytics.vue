@@ -1,6 +1,6 @@
 <template>
   <div class="analytics-container">
-    <PageHeader title="可视化驾驶舱" subtitle="全面的数据分析与可视化展示" />
+    <PageHeader title="数据驾驶舱" subtitle="全面的数据分析与可视化展示" />
     
     <!-- Filter Section -->
     <el-card shadow="never" class="filter-card">
@@ -36,28 +36,6 @@
             value-format="YYYY-MM-DD"
             @change="handleDateRangeChange"
           />
-        </el-form-item>
-        
-        <el-form-item label="产业板块">
-          <el-select v-model="filterForm.industrySegment" placeholder="全部板块" clearable @change="loadData">
-            <el-option label="全部" value="" />
-            <el-option label="新奥新智" value="新奥新智" />
-            <el-option label="新奥股份" value="新奥股份" />
-            <el-option label="新奥能源" value="新奥能源" />
-            <el-option label="新地环保" value="新地环保" />
-            <el-option label="新奥动力" value="新奥动力" />
-            <el-option label="能源研究院" value="能源研究院" />
-            <el-option label="新绎控股" value="新绎控股" />
-            <el-option label="数能科技" value="数能科技" />
-            <el-option label="新智认知" value="新智认知" />
-            <el-option label="质信智购" value="质信智购" />
-            <el-option label="新智感知" value="新智感知" />
-            <el-option label="新智通才" value="新智通才" />
-            <el-option label="财务公司" value="财务公司" />
-            <el-option label="新奥国际" value="新奥国际" />
-            <el-option label="河北金租" value="河北金租" />
-            <el-option label="新博卓畅" value="新博卓畅" />
-          </el-select>
         </el-form-item>
         
         <el-form-item>
@@ -452,9 +430,7 @@ const filterForm = ref<FilterForm>({
   partyName: '',
   startDate: '',
   endDate: '',
-  caseType: '',
-  industrySegment: '',
-  partyName: ''
+  caseType: ''
 })
 
 const metricsData = ref<MetricsData>({
@@ -729,7 +705,7 @@ const initCaseTrendChart = async () => {
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
-      interval: 'month'
+      interval: 'month',
       industrySegment: filterForm.value.industrySegment,
       partyName: filterForm.value.partyName
     }

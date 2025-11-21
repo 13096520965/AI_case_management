@@ -49,10 +49,11 @@ request.interceptors.response.use(
           ElMessage.error('没有权限访问该资源')
           break
         case 404:
-          ElMessage.error('请求的资源不存在')
+          // Don't show error message for 404 - let the component handle it
+          console.warn('Resource not found:', error.config?.url)
           break
         case 500:
-          ElMessage.error(data?.message || '服务器错误，请稍后重试')
+          ElMessage.error(data?.error?.message || data?.message || '服务器错误，请稍后重试')
           break
         default:
           // 处理错误格式：可能是 { error: { message: '...' } } 或 { error: '...' } 或 { message: '...' }

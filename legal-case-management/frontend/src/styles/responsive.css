@@ -1,0 +1,177 @@
+/* 响应式布局样式 */
+
+/* 全局容器最小宽度 */
+body {
+  min-width: 1200px;
+  overflow-x: auto;
+}
+
+#app {
+  min-width: 1200px;
+}
+
+/* 主容器 */
+.app-layout {
+  min-width: 1200px;
+}
+
+/* 内容区域 */
+.main-container {
+  min-width: 1200px;
+  overflow-x: auto;
+}
+
+/* 页面容器 */
+.notification-center-container,
+.notification-alerts-container,
+.analytics-container {
+  min-width: 1100px;
+  padding: 20px;
+}
+
+/* 卡片容器 */
+.el-card {
+  min-width: 0;
+}
+
+/* 表格容器 */
+.el-table {
+  min-width: 100%;
+}
+
+/* 确保表格在小屏幕上可以滚动 */
+.el-table__body-wrapper {
+  overflow-x: auto;
+}
+
+/* 统计卡片行 */
+.stats-row {
+  min-width: 1000px;
+}
+
+/* 筛选卡片 */
+.filter-card {
+  min-width: 1000px;
+}
+
+/* 工具栏 */
+.toolbar {
+  min-width: 800px;
+  flex-wrap: nowrap;
+}
+
+/* 卡片头部 */
+.card-header {
+  min-width: 800px;
+  flex-wrap: nowrap;
+}
+
+/* 响应式断点 */
+@media screen and (max-width: 1200px) {
+  /* 强制显示水平滚动条 */
+  body {
+    overflow-x: scroll;
+  }
+  
+  .app-layout,
+  .main-container {
+    overflow-x: scroll;
+  }
+}
+
+/* 防止内容溢出 */
+.el-row {
+  flex-wrap: nowrap;
+}
+
+/* 表格固定列样式优化 */
+.el-table__fixed,
+.el-table__fixed-right {
+  z-index: 3;
+}
+
+/* 分页组件 */
+.pagination {
+  min-width: 600px;
+  flex-wrap: wrap;
+}
+
+/* 确保按钮组不换行 */
+.el-button-group {
+  white-space: nowrap;
+}
+
+/* 表单行不换行 */
+.el-form-item {
+  margin-bottom: 18px;
+}
+
+.el-form--inline .el-form-item {
+  margin-right: 16px;
+}
+
+/* 统计卡片最小宽度 */
+.stat-card {
+  min-width: 280px;
+}
+
+/* 图表容器 */
+.chart-container {
+  min-width: 400px;
+  min-height: 300px;
+}
+
+/* 数据分析页面特定样式 */
+.analytics-container .el-row {
+  min-width: 1000px;
+}
+
+.analytics-container .el-col {
+  min-width: 0;
+}
+
+/* 提醒列表项 */
+.notification-item {
+  min-width: 800px;
+}
+
+/* 提醒操作按钮 */
+.notification-actions {
+  white-space: nowrap;
+}
+
+/* 表格操作列 */
+.el-table__fixed-right {
+  right: 0 !important;
+}
+
+/* 确保固定列正确显示 */
+.el-table .el-table__fixed-right-patch {
+  background-color: #fff;
+}
+
+/* 滚动条样式优化 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Firefox 滚动条 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
