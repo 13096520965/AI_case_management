@@ -1,23 +1,79 @@
+<<<<<<< HEAD
 # Dependencies
 node_modules/
 package-lock.json
+=======
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+>>>>>>> a13d898 (feat: 完整的法律案件管理系统 - 包含AI助手、文书管理、证据管理等完整功能)
 
 # Environment variables
 .env
 .env.local
 .env.*.local
 
+<<<<<<< HEAD
 # Database
 *.db
 *.sqlite
 *.sqlite3
+=======
+# Build output
+dist/
+build/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Database
+*.db
+*.sqlite
+database/*.db
+
+# Uploads and temporary files
+uploads/
+temp/
+tmp/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Lock files (optional, uncomment if needed)
+# package-lock.json
+# yarn.lock
+
+# Documentation build
+docs/.vitepress/dist
+docs/.vitepress/cache
+>>>>>>> a13d898 (feat: 完整的法律案件管理系统 - 包含AI助手、文书管理、证据管理等完整功能)
 
 # Logs
 logs/
 *.log
 npm-debug.log*
+<<<<<<< HEAD
 yarn-debug.log*
 yarn-error.log*
+=======
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+>>>>>>> a13d898 (feat: 完整的法律案件管理系统 - 包含AI助手、文书管理、证据管理等完整功能)
 
 # Editor directories and files
 .vscode/*
@@ -29,6 +85,7 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+<<<<<<< HEAD
 
 # Build outputs
 dist/
@@ -42,3 +99,5 @@ uploads/
 *.tmp
 *.temp
 .temp/
+=======
+>>>>>>> a13d898 (feat: 完整的法律案件管理系统 - 包含AI助手、文书管理、证据管理等完整功能)

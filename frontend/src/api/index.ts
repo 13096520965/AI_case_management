@@ -1,0 +1,32 @@
+// Export all API modules
+export { authApi } from './auth'
+export { caseApi } from './case'
+export { partyApi } from './party'
+export { processNodeApi } from './processNode'
+export { processTemplateApi } from './processTemplate'
+export { evidenceApi } from './evidence'
+export { documentApi } from './document'
+export { documentTemplateApi } from './documentTemplate'
+export { costApi } from './cost'
+export { notificationApi, notificationRuleApi } from './notification'
+export { collaborationApi } from './collaboration'
+export { analyticsApi } from './analytics'
+export { archiveApi } from './archive'
+
+// Export request instance for custom usage
+export { default as request } from './request'
+
+// Export types
+export type { LoginParams, RegisterParams } from './auth'
+export type { CaseParams, CreateCaseData } from './case'
+export type { PartyData } from './party'
+export type { ProcessNodeData } from './processNode'
+export type { ProcessTemplateData } from './processTemplate'
+export type { EvidenceData } from './evidence'
+export type { DocumentData } from './document'
+export type { DocumentTemplateData } from './documentTemplate'
+export type { CostRecordData, CostCalculateParams } from './cost'
+export type { NotificationRuleData } from './notification'
+export type { CollaborationMemberData, CollaborationTaskData } from './collaboration'
+export type { DashboardParams, LawyerEvaluationParams, SimilarCasesParams } from './analytics'
+export type { ClosureReportData, ArchivePackageData, CaseKnowledgeData } from './archive'
