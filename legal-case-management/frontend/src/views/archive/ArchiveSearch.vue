@@ -284,8 +284,7 @@ const createForm = reactive({
 
 const createRules: FormRules = {
   case_id: [
-    { required: true, message: '请输入案件ID', trigger: 'blur' },
-    { type: 'number', message: '案件ID必须是数字', trigger: 'blur' }
+    { required: true, message: '请选择案件', trigger: 'change' }
   ],
   archived_by: [
     { required: true, message: '请输入归档人', trigger: 'blur' }
