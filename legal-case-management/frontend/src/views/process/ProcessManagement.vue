@@ -299,6 +299,8 @@ const nodeForm = ref({
 
 const nodeFormRules: FormRules = {
   nodeName: [{ required: true, message: '请输入节点名称', trigger: 'blur' }],
+  nodeType: [{ required: true, message: '请选择节点类型', trigger: 'change' }],
+  handler: [{ required: true, message: '请输入经办人', trigger: 'blur' }],
   status: [{ required: true, message: '请选择节点状态', trigger: 'change' }]
 }
 

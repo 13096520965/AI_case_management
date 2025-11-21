@@ -144,10 +144,10 @@ exports.updateTemplate = async (req, res) => {
 
     // 更新模板基本信息
     const updateData = {};
-    if (template_name !== undefined) updateData.template_name = template_name;
-    if (case_type !== undefined) updateData.case_type = case_type;
-    if (description !== undefined) updateData.description = description;
-    if (is_default !== undefined) updateData.is_default = is_default;
+    if (template_name !== undefined && template_name !== null) updateData.template_name = template_name;
+    if (case_type !== undefined && case_type !== null) updateData.case_type = case_type;
+    if (description !== undefined) updateData.description = description || null;
+    if (is_default !== undefined && is_default !== null) updateData.is_default = is_default;
 
     if (Object.keys(updateData).length > 0) {
       await ProcessTemplate.update(id, updateData);
