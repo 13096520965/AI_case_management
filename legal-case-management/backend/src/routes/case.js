@@ -7,6 +7,7 @@ const { getEvidenceByCaseId, getCaseEvidenceLogs } = require('../controllers/evi
 const { getDocumentsByCaseId, getDocumentStatistics } = require('../controllers/documentController');
 const costController = require('../controllers/costController');
 const { authenticate } = require('../middleware/auth');
+const { logCaseAction } = require('../middleware/caseLogger');
 
 // 案件基础 CRUD 接口
 
@@ -15,7 +16,7 @@ const { authenticate } = require('../middleware/auth');
  * @desc    创建案件
  * @access  Private
  */
-router.post('/', authenticate, caseController.createCase);
+router.post('/', authenticate, logCaseAction('CREATE_CASE', '创建案件'), caseController.createCase);
 
 /**
  * @route   GET /api/cases
@@ -29,21 +30,21 @@ router.get('/', authenticate, caseController.getCases);
  * @desc    获取案件详情
  * @access  Private
  */
-router.get('/:id', authenticate, caseController.getCaseById);
+router.get('/:id', authenticate, logCaseAction('VIEW_CASE', '查看案件详情'), caseController.getCaseById);
 
 /**
  * @route   PUT /api/cases/:id
  * @desc    更新案件信息
  * @access  Private
  */
-router.put('/:id', authenticate, caseController.updateCase);
+router.put('/:id', authenticate, logCaseAction('UPDATE_CASE', '更新案件信息'), caseController.updateCase);
 
 /**
  * @route   DELETE /api/cases/:id
  * @desc    删除案件
  * @access  Private
  */
-router.delete('/:id', authenticate, caseController.deleteCase);
+router.delete('/:id', authenticate, logCaseAction('DELETE_CASE', '删除案件'), caseController.deleteCase);
 
 // 诉讼主体管理接口
 
@@ -117,6 +118,13 @@ router.get('/:caseId/documents', authenticate, getDocumentsByCaseId);
  * @access  Private
  */
 router.get('/:caseId/costs', authenticate, costController.getCostsByCaseId);
+
+/**
+ * @route   GET /api/cases/:id/logs
+ * @desc    获取案件操作日志
+ * @access  Private
+ */
+router.get('/:id/logs', authenticate, caseController.getCaseLogs);
 
 module.exports = router;
 

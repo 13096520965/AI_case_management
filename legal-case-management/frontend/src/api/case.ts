@@ -61,5 +61,10 @@ export const caseApi = {
   // Delete case
   deleteCase: (id: number) => {
     return request.delete(`/cases/${id}`)
+  },
+
+  // Get case operation logs
+  getCaseLogs: (id: number, params?: { page?: number; limit?: number }) => {
+    return request.get(`/cases/${id}/logs`, { params })
   }
 }

@@ -49,6 +49,14 @@ exports.createCase = async (req, res) => {
     const caseId = await Case.create(caseData);
     const newCase = await Case.findById(caseId);
 
+    // 记录操作日志
+    const operator = req.user?.real_name || req.user?.username || '系统';
+    await Case.addLog(
+      caseId,
+      operator,
+      `进行了案件创建操作：${newCase.internal_number || newCase.case_number || '新案件'}`
+    );
+
     res.status(201).json({
       message: '案件创建成功',
       data: {
@@ -205,6 +213,38 @@ exports.updateCase = async (req, res) => {
 
     const updatedCase = await Case.findById(id);
 
+    // 记录操作日志
+    const operator = req.user?.real_name || req.user?.username || '系统';
+    const logActions = [];
+    
+    // 检查状态变更
+    if (updateData.status && updateData.status !== existingCase.status) {
+      logActions.push(`状态变更：${existingCase.status} → ${updateData.status}`);
+    }
+    
+    // 检查其他重要字段变更
+    const importantFields = {
+      case_number: '案号',
+      case_type: '案件类型',
+      case_cause: '案由',
+      court: '法院',
+      target_amount: '标的额'
+    };
+    
+    for (const [field, label] of Object.entries(importantFields)) {
+      if (updateData[field] !== undefined && updateData[field] !== existingCase[field]) {
+        logActions.push(`修改${label}`);
+      }
+    }
+    
+    if (logActions.length > 0) {
+      await Case.addLog(
+        id,
+        operator,
+        `进行了案件编辑操作：${logActions.join('、')}`
+      );
+    }
+
     res.json({
       message: '案件更新成功',
       data: {
@@ -239,6 +279,14 @@ exports.deleteCase = async (req, res) => {
         }
       });
     }
+
+    // 记录操作日志（在删除前记录）
+    const operator = req.user?.real_name || req.user?.username || '系统';
+    await Case.addLog(
+      id,
+      operator,
+      `进行了案件删除操作：${existingCase.internal_number || existingCase.case_number || '案件'}`
+    );
 
     const changes = await Case.delete(id);
 
@@ -289,3 +337,52 @@ async function generateInternalNumber() {
   return `${prefix}${sequenceStr}`;
 }
 
+
+
+/**
+ * 获取案件操作日志
+ */
+exports.getCaseLogs = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    // 检查案件是否存在
+    const existingCase = await Case.findById(id);
+    if (!existingCase) {
+      return res.status(404).json({
+        error: {
+          message: '案件不存在',
+          status: 404
+        }
+      });
+    }
+
+    const logs = await Case.getLogs(id, {
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+
+    const total = await Case.countLogs(id);
+
+    res.json({
+      data: {
+        logs,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit))
+        }
+      }
+    });
+  } catch (error) {
+    console.error('获取案件日志错误:', error);
+    res.status(500).json({
+      error: {
+        message: '获取案件日志失败',
+        status: 500
+      }
+    });
+  }
+};

@@ -220,6 +220,63 @@ class Case {
     `;
     return await get(sql, [`${prefix}%`]);
   }
+
+  /**
+   * 添加操作日志
+   * @param {number} caseId - 案件 ID
+   * @param {string} operator - 操作人
+   * @param {string} action - 操作内容
+   * @returns {Promise<number>} 日志 ID
+   */
+  static async addLog(caseId, operator, action) {
+    // 获取北京时间 (UTC+8)
+    const now = new Date();
+    const beijingTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    const timestamp = beijingTime.toISOString().replace('T', ' ').substring(0, 19);
+    
+    const sql = `
+      INSERT INTO case_logs (case_id, operator, action, created_at)
+      VALUES (?, ?, ?, ?)
+    `;
+    const result = await run(sql, [caseId, operator, action, timestamp]);
+    return result.lastID;
+  }
+
+  /**
+   * 获取案件操作日志
+   * @param {number} caseId - 案件 ID
+   * @param {Object} options - 查询选项
+   * @returns {Promise<Array>} 日志列表
+   */
+  static async getLogs(caseId, options = {}) {
+    const { page = 1, limit = 20 } = options;
+    const offset = (page - 1) * limit;
+
+    const sql = `
+      SELECT 
+        id,
+        operator,
+        action,
+        created_at
+      FROM case_logs
+      WHERE case_id = ?
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    return await query(sql, [caseId, limit, offset]);
+  }
+
+  /**
+   * 统计案件日志数量
+   * @param {number} caseId - 案件 ID
+   * @returns {Promise<number>} 日志数量
+   */
+  static async countLogs(caseId) {
+    const sql = 'SELECT COUNT(*) as count FROM case_logs WHERE case_id = ?';
+    const result = await get(sql, [caseId]);
+    return result ? result.count : 0;
+  }
 }
 
 module.exports = Case;

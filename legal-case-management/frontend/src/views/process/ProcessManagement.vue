@@ -37,7 +37,7 @@
         </div>
       </template>
 
-      <el-empty v-if="!loading && nodes.length === 0" description="暂无流程节点" />
+      <TableEmpty v-if="!loading && nodes.length === 0" description="暂无流程节点" />
 
       <el-timeline v-else>
         <el-timeline-item
@@ -68,10 +68,6 @@
 
             <div class="node-content">
               <div class="node-info">
-                <div class="info-item">
-                  <span class="label">节点类型：</span>
-                  <span>{{ node.nodeType }}</span>
-                </div>
                 <div class="info-item" v-if="node.handler">
                   <span class="label">经办人：</span>
                   <span>{{ node.handler }}</span>
@@ -158,7 +154,9 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="filteredTemplates.length === 0 && !loadingTemplates" description="暂无匹配的流程模板" />
+      <template #empty>
+        <TableEmpty description="暂无匹配的流程模板" />
+      </template>
     </el-dialog>
 
     <!-- Node Edit Dialog -->
@@ -176,19 +174,6 @@
       >
         <el-form-item label="节点名称" prop="nodeName">
           <el-input v-model="nodeForm.nodeName" placeholder="请输入节点名称" />
-        </el-form-item>
-
-        <el-form-item label="节点类型" prop="nodeType">
-          <el-select v-model="nodeForm.nodeType" placeholder="请选择节点类型">
-            <el-option label="立案" value="立案" />
-            <el-option label="送达" value="送达" />
-            <el-option label="举证" value="举证" />
-            <el-option label="开庭" value="开庭" />
-            <el-option label="调解" value="调解" />
-            <el-option label="判决" value="判决" />
-            <el-option label="执行" value="执行" />
-            <el-option label="其他" value="其他" />
-          </el-select>
         </el-form-item>
 
         <el-form-item label="经办人" prop="handler">
@@ -267,6 +252,7 @@ import { Search } from '@element-plus/icons-vue'
 import { processNodeApi } from '@/api/processNode'
 import { processTemplateApi } from '@/api/processTemplate'
 import PageHeader from '@/components/common/PageHeader.vue'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 import type { NodeStatus } from '@/types'
 
 const route = useRoute()
@@ -275,7 +261,6 @@ const caseId = computed(() => Number(route.params.id))
 interface ProcessNode {
   id: number
   caseId: number
-  nodeType: string
   nodeName: string
   handler?: string
   startTime?: string
@@ -327,7 +312,6 @@ const filteredTemplates = computed(() => {
 
 const nodeForm = ref({
   nodeName: '',
-  nodeType: '',
   handler: '',
   startTime: '',
   deadline: '',
@@ -339,8 +323,29 @@ const nodeForm = ref({
 
 const nodeFormRules: FormRules = {
   nodeName: [{ required: true, message: '请输入节点名称', trigger: 'blur' }],
-  nodeType: [{ required: true, message: '请选择节点类型', trigger: 'change' }],
   status: [{ required: true, message: '请选择节点状态', trigger: 'change' }]
+}
+
+// Convert English status to Chinese
+const convertStatusToChinese = (status: string): NodeStatus => {
+  const statusMap: Record<string, NodeStatus> = {
+    'pending': '待处理',
+    'in_progress': '进行中',
+    'completed': '已完成',
+    'overdue': '超期'
+  }
+  return statusMap[status] || status as NodeStatus
+}
+
+// Convert Chinese status to English
+const convertStatusToEnglish = (status: NodeStatus): string => {
+  const statusMap: Record<NodeStatus, string> = {
+    '待处理': 'pending',
+    '进行中': 'in_progress',
+    '已完成': 'completed',
+    '超期': 'overdue'
+  }
+  return statusMap[status] || status
 }
 
 // Get node color based on status
@@ -443,13 +448,12 @@ const loadNodes = async () => {
     nodes.value = rawNodes.map((node: any) => ({
       id: node.id,
       caseId: node.case_id,
-      nodeType: node.node_type,
       nodeName: node.node_name,
       handler: node.handler,
       startTime: node.start_time,
       deadline: node.deadline,
       completionTime: node.completion_time,
-      status: node.status,
+      status: convertStatusToChinese(node.status),
       progress: node.progress,
       nodeOrder: node.node_order
     })).sort((a: ProcessNode, b: ProcessNode) => 
@@ -476,7 +480,6 @@ const handleEditNode = (node: ProcessNode) => {
   editingNodeId.value = node.id
   nodeForm.value = {
     nodeName: node.nodeName,
-    nodeType: node.nodeType,
     handler: node.handler || '',
     startTime: node.startTime || '',
     deadline: node.deadline || '',
@@ -518,6 +521,7 @@ const handleSubmitNode = async () => {
     try {
       const formData = {
         ...nodeForm.value,
+        status: convertStatusToEnglish(nodeForm.value.status),
         startTime: nodeForm.value.startTime || undefined,
         deadline: nodeForm.value.deadline || undefined,
         completionTime: nodeForm.value.completionTime || undefined
@@ -550,7 +554,6 @@ const handleDialogClose = () => {
 const resetForm = () => {
   nodeForm.value = {
     nodeName: '',
-    nodeType: '',
     handler: '',
     startTime: '',
     deadline: '',

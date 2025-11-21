@@ -135,5 +135,6 @@ module.exports = {
   query,
   run,
   get,
+  saveDatabase,
   DB_PATH
 };

@@ -2,6 +2,19 @@
   <div class="case-form-container">
     <PageHeader :title="isEdit ? '编辑案件' : '新建案件'" :show-back="true" @back="goBack" />
     
+    <!-- 新建案件提示 -->
+    <el-alert
+      v-if="!isEdit"
+      title="新建案件流程"
+      type="info"
+      :closable="false"
+      style="margin-bottom: 20px"
+    >
+      <template #default>
+        <div>请先填写案件基本信息并保存，保存后可继续添加诉讼主体、流程节点、证据材料等详细信息。</div>
+      </template>
+    </el-alert>
+    
     <el-card shadow="never" class="info-card">
         <template #header>
           <div class="card-header">
@@ -13,7 +26,6 @@
         :model="formData"
         :rules="formRules"
         label-width="120px"
-        class="case-form"
       >
         
         <el-row :gutter="20">
@@ -107,6 +119,17 @@
           </el-col>
           
           <el-col :span="12">
+            <el-form-item label="承办人员" prop="handler">
+              <el-input
+                v-model="formData.handler"
+                placeholder="请输入承办人员姓名"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
             <el-form-item label="团队ID" prop="teamId">
               <el-input-number
                 v-model="formData.teamId"
@@ -126,6 +149,9 @@
 
     <!-- 编辑模式下的额外模块 -->
     <template v-if="isEdit && caseId">
+      <!-- 标的处理详情 -->
+      <TargetAmountDetail :case-id="caseId" />
+
       <!-- 诉讼主体 -->
       <el-card shadow="never" class="info-card">
         <template #header>
@@ -208,6 +234,7 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { caseApi } from '@/api/case'
 import { useCaseStore } from '@/stores/case'
 import PageHeader from '@/components/common/PageHeader.vue'
+import TargetAmountDetail from '@/components/case/TargetAmountDetail.vue'
 import PartyManagement from '@/components/case/PartyManagement.vue'
 import ProcessNodeList from '@/components/case/ProcessNodeList.vue'
 import EvidenceList from '@/components/case/EvidenceList.vue'
@@ -233,6 +260,7 @@ const formData = reactive({
   targetAmount: undefined as number | undefined,
   filingDate: '',
   status: '立案',
+  handler: '',
   teamId: undefined as number | undefined
 })
 
@@ -254,6 +282,9 @@ const formRules: FormRules = {
   ],
   status: [
     { required: true, message: '请选择案件状态', trigger: 'change' }
+  ],
+  handler: [
+    { min: 2, max: 50, message: '承办人员姓名长度在 2 到 50 个字符', trigger: 'blur' }
   ]
 }
 
@@ -280,6 +311,7 @@ const fetchCaseData = async () => {
       formData.targetAmount = caseData.target_amount ?? undefined
       formData.filingDate = caseData.filing_date ? caseData.filing_date.split('T')[0] : ''
       formData.status = caseData.status ?? '立案'
+      formData.handler = caseData.handler ?? ''
       formData.teamId = caseData.team_id ?? undefined
       
       console.log('Form data after mapping:', {
@@ -339,6 +371,9 @@ const handleSubmit = async () => {
       if (formData.filingDate) {
         submitData.filingDate = formData.filingDate
       }
+      if (formData.handler) {
+        submitData.handler = formData.handler
+      }
       if (formData.teamId !== undefined) {
         submitData.teamId = formData.teamId
       }
@@ -356,15 +391,23 @@ const handleSubmit = async () => {
       } else {
         // Create case
         const response = await caseApi.createCase(submitData)
-        ElMessage.success('案件创建成功')
+        ElMessage.success('案件基本信息创建成功，请继续添加其他信息')
         
         // Update store
         if (response.data) {
           caseStore.addCase(response.data)
         }
         
-        // Navigate to list page
-        router.push('/cases')
+        // Get the new case ID from response
+        const newCaseId = response.data?.case?.id || response.data?.id
+        
+        if (newCaseId) {
+          // Navigate to edit page to continue adding other information
+          router.push(`/cases/${newCaseId}/edit`)
+        } else {
+          // Fallback to list page if no ID returned
+          router.push('/cases')
+        }
       }
     } catch (error: any) {
       ElMessage.error(error.message || (isEdit.value ? '更新失败' : '创建失败'))
@@ -414,10 +457,6 @@ onMounted(() => {
   min-height: calc(100vh - 120px);
   display: flex;
   flex-direction: column;
-}
-
-.case-form {
-  max-width: 1000px;
 }
 
 /* 与详情页面一致的卡片样式 */

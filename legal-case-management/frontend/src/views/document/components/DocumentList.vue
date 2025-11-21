@@ -1,6 +1,6 @@
 <template>
   <div class="document-list">
-    <el-empty v-if="documents.length === 0" description="暂无文书" />
+    <TableEmpty v-if="documents.length === 0" description="暂无文书" />
     <el-table v-else :data="documents" stripe>
       <el-table-column prop="fileName" label="文件名" min-width="200" />
       <el-table-column prop="documentType" label="文书类型" width="120" />
@@ -22,6 +22,8 @@
 </template>
 
 <script setup lang="ts">
+import TableEmpty from '@/components/common/TableEmpty.vue'
+
 defineProps<{
   documents: any[]
 }>()

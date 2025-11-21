@@ -56,6 +56,9 @@
             </el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <TableEmpty description="暂无流程模板" />
+        </template>
       </el-table>
     </el-card>
 
@@ -270,6 +273,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { processTemplateApi, type ProcessTemplateData } from '@/api/processTemplate'
 import PageHeader from '@/components/common/PageHeader.vue'
+import TableEmpty from '@/components/common/TableEmpty.vue'
 import type { CaseType } from '@/types'
 
 interface ProcessTemplate extends ProcessTemplateData {

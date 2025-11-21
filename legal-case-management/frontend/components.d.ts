@@ -11,6 +11,7 @@ declare module 'vue' {
     AppHeader: typeof import('./src/components/layout/AppHeader.vue')['default']
     AppLayout: typeof import('./src/components/layout/AppLayout.vue')['default']
     AppSidebar: typeof import('./src/components/layout/AppSidebar.vue')['default']
+    CaseLogViewer: typeof import('./src/components/case/CaseLogViewer.vue')['default']
     CostList: typeof import('./src/components/case/CostList.vue')['default']
     DataTable: typeof import('./src/components/common/DataTable.vue')['default']
     DocumentList: typeof import('./src/components/case/DocumentList.vue')['default']
@@ -21,6 +22,7 @@ declare module 'vue' {
     ElButton: typeof import('element-plus/es')['ElButton']
     ElButtonGroup: typeof import('element-plus/es')['ElButtonGroup']
     ElCard: typeof import('element-plus/es')['ElCard']
+    ElCascader: typeof import('element-plus/es')['ElCascader']
     ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
     ElCol: typeof import('element-plus/es')['ElCol']
     ElContainer: typeof import('element-plus/es')['ElContainer']
@@ -75,6 +77,8 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SearchForm: typeof import('./src/components/common/SearchForm.vue')['default']
+    TableEmpty: typeof import('./src/components/common/TableEmpty.vue')['default']
+    TargetAmountDetail: typeof import('./src/components/case/TargetAmountDetail.vue')['default']
   }
   export interface ComponentCustomProperties {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

@@ -67,7 +67,7 @@
           </el-card>
         </el-col>
       </el-row>
-      <el-empty v-if="templates.length === 0" description="暂无模板" />
+      <TableEmpty v-if="templates.length === 0" description="暂无模板" />
     </el-card>
 
     <!-- Create/Edit Template Dialog -->
@@ -260,6 +260,7 @@ import { Plus } from "@element-plus/icons-vue";
 import { documentTemplateApi } from "@/api/documentTemplate";
 import { caseApi } from "@/api/case";
 import PageHeader from "@/components/common/PageHeader.vue";
+import TableEmpty from "@/components/common/TableEmpty.vue";
 
 // Document types
 const documentTypes = [
