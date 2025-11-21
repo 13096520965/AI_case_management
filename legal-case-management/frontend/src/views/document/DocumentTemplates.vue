@@ -235,6 +235,50 @@
             placeholder="文书内容预览"
           />
         </div>
+
+        <el-divider>诉讼主体信息</el-divider>
+        <el-skeleton v-if="loadingParties" animated :rows="3" />
+        <el-empty
+          v-else-if="selectedCaseParties.length === 0"
+          description="暂无诉讼主体"
+        />
+        <div v-else class="party-list">
+          <div
+            v-for="party in selectedCaseParties"
+            :key="party.id"
+            class="party-item"
+          >
+            <div class="party-name">名称：{{ party.name }}</div>
+            <div class="party-meta">
+              <span>主体身份：{{ party.partyType }}</span>
+              <span>实体类型：{{ party.entityType }}</span>
+            </div>
+            <div v-if="party.legalRepresentative" class="party-field">
+              法定代表人：{{ party.legalRepresentative }}
+            </div>
+            <div v-if="party.identifier" class="party-field">
+              标识信息：{{ party.identifier }}
+            </div>
+            <div
+              v-if="party.contactPhone || party.contactEmail"
+              class="party-field"
+            >
+              联系方式：
+              <template v-if="party.contactPhone">
+                电话 {{ party.contactPhone }}
+              </template>
+              <template v-if="party.contactPhone && party.contactEmail"
+                >，</template
+              >
+              <template v-if="party.contactEmail">
+                邮箱 {{ party.contactEmail }}
+              </template>
+            </div>
+            <div v-if="party.address" class="party-field">
+              地址：{{ party.address }}
+            </div>
+          </div>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="showGenerateDialog = false">取消</el-button>
@@ -279,6 +323,7 @@ const documentTypes = [
 const loading = ref(false);
 const saving = ref(false);
 const loadingCases = ref(false);
+const loadingParties = ref(false);
 const templates = ref<any[]>([]);
 const cases = ref<any[]>([]);
 const filteredCases = ref<any[]>([]);
@@ -289,6 +334,7 @@ const showGenerateDialog = ref(false);
 const editingTemplate = ref<any>(null);
 const previewTemplate = ref<any>(null);
 const currentTemplate = ref<any>(null);
+const selectedCaseParties = ref<any[]>([]);
 
 // Forms
 const templateForm = reactive({
@@ -482,6 +528,7 @@ const handleGenerate = async (template: any) => {
   currentTemplate.value = template;
   generateForm.caseId = null;
   generateForm.variables = {};
+  selectedCaseParties.value = [];
   showGenerateDialog.value = true;
   showPreviewDialog.value = false;
 
@@ -521,6 +568,38 @@ const handleCaseChange = async (caseId: number) => {
       立案日期: normalizedCase.filingDate || "",
       ...generateForm.variables,
     };
+
+    // 获取诉讼主体列表
+    loadingParties.value = true;
+    try {
+      const partiesResponse = await caseApi.getCaseParties(caseId);
+      const rawParties =
+        partiesResponse.data?.parties ||
+        partiesResponse.data?.data?.parties ||
+        [];
+      selectedCaseParties.value = rawParties.map((party: any) => ({
+        id: party.id,
+        name: party.name || party.organization_name || "未命名主体",
+        partyType: party.party_type || party.partyType || "未知",
+        entityType: party.entity_type || party.entityType || "未知",
+        identifier:
+          party.unified_credit_code ||
+          party.id_number ||
+          party.identifier ||
+          "",
+        contactPhone: party.contact_phone || party.contactPhone || "",
+        contactEmail: party.contact_email || party.contactEmail || "",
+        address: party.address || "",
+        legalRepresentative:
+          party.legal_representative || party.legalRepresentative || "",
+      }));
+    } catch (error) {
+      console.error("加载诉讼主体失败", error);
+      selectedCaseParties.value = [];
+      ElMessage.error("加载诉讼主体失败");
+    } finally {
+      loadingParties.value = false;
+    }
   } catch (error) {
     console.error("加载案件详情失败", error);
     ElMessage.error("加载案件详情失败");
@@ -710,5 +789,37 @@ onMounted(() => {
 
 .text-muted {
   color: #999;
+}
+
+.party-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.party-item {
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fafafa;
+}
+
+.party-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.party-meta {
+  font-size: 13px;
+  color: #666;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.party-field {
+  font-size: 13px;
+  color: #555;
+  line-height: 20px;
 }
 </style>

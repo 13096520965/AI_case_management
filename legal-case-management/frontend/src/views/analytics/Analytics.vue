@@ -38,6 +38,28 @@
           />
         </el-form-item>
         
+        <el-form-item label="产业板块">
+          <el-select v-model="filterForm.industrySegment" placeholder="全部板块" clearable @change="loadData">
+            <el-option label="全部" value="" />
+            <el-option label="新奥新智" value="新奥新智" />
+            <el-option label="新奥股份" value="新奥股份" />
+            <el-option label="新奥能源" value="新奥能源" />
+            <el-option label="新地环保" value="新地环保" />
+            <el-option label="新奥动力" value="新奥动力" />
+            <el-option label="能源研究院" value="能源研究院" />
+            <el-option label="新绎控股" value="新绎控股" />
+            <el-option label="数能科技" value="数能科技" />
+            <el-option label="新智认知" value="新智认知" />
+            <el-option label="质信智购" value="质信智购" />
+            <el-option label="新智感知" value="新智感知" />
+            <el-option label="新智通才" value="新智通才" />
+            <el-option label="财务公司" value="财务公司" />
+            <el-option label="新奥国际" value="新奥国际" />
+            <el-option label="河北金租" value="河北金租" />
+            <el-option label="新博卓畅" value="新博卓畅" />
+          </el-select>
+        </el-form-item>
+        
         <el-form-item>
           <el-button type="primary" @click="loadData">
             <el-icon><Search /></el-icon>
@@ -410,6 +432,8 @@ interface FilterForm {
   startDate: string
   endDate: string
   caseType: string
+  industrySegment: string
+  partyName: string
 }
 
 interface MetricsData {
@@ -428,7 +452,9 @@ const filterForm = ref<FilterForm>({
   partyName: '',
   startDate: '',
   endDate: '',
-  caseType: ''
+  caseType: '',
+  industrySegment: '',
+  partyName: ''
 })
 
 const metricsData = ref<MetricsData>({
@@ -534,7 +560,9 @@ const loadMetrics = async () => {
       partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
-      caseType: filterForm.value.caseType
+      caseType: filterForm.value.caseType,
+      industrySegment: filterForm.value.industrySegment,
+      partyName: filterForm.value.partyName
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -564,7 +592,8 @@ const initCaseTypeChart = async () => {
       partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
-      caseType: filterForm.value.caseType
+      caseType: filterForm.value.caseType,
+      industrySegment: filterForm.value.industrySegment
     }
     
     const response = await analyticsApi.getCaseTypeDistribution(params)
@@ -631,7 +660,9 @@ const initCaseStatusChart = async () => {
       partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
-      caseType: filterForm.value.caseType
+      caseType: filterForm.value.caseType,
+      industrySegment: filterForm.value.industrySegment,
+      partyName: filterForm.value.partyName
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -699,6 +730,8 @@ const initCaseTrendChart = async () => {
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
       interval: 'month'
+      industrySegment: filterForm.value.industrySegment,
+      partyName: filterForm.value.partyName
     }
     
     const response = await analyticsApi.getCaseTrend(params)
@@ -776,7 +809,9 @@ const initAmountDistChart = async () => {
       partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
-      caseType: filterForm.value.caseType
+      caseType: filterForm.value.caseType,
+      industrySegment: filterForm.value.industrySegment,
+      partyName: filterForm.value.partyName
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -842,7 +877,9 @@ const initCaseCauseChart = async () => {
       partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
-      caseType: filterForm.value.caseType
+      caseType: filterForm.value.caseType,
+      industrySegment: filterForm.value.industrySegment,
+      partyName: filterForm.value.partyName
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -906,7 +943,8 @@ const initMonthlyCompareChart = async () => {
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
-      interval: 'month'
+      interval: 'month',
+      industrySegment: filterForm.value.industrySegment
     }
     
     const response = await analyticsApi.getCaseTrend(params)

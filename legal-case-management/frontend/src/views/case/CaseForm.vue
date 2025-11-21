@@ -119,6 +119,88 @@
           </el-col>
         </el-row>
 
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="案件承接人" prop="handler">
+              <el-input
+                v-model="formData.handler"
+                placeholder="请输入案件承接人"
+              />
+            </el-form-item>
+          </el-col>
+          
+          <el-col :span="12">
+            <el-form-item label="产业板块" prop="industrySegment">
+              <el-select
+                v-model="formData.industrySegment"
+                placeholder="请选择产业板块"
+                style="width: 100%"
+              >
+                <el-option label="新奥新智" value="新奥新智" />
+                <el-option label="新奥股份" value="新奥股份" />
+                <el-option label="新奥能源" value="新奥能源" />
+                <el-option label="新地环保" value="新地环保" />
+                <el-option label="新奥动力" value="新奥动力" />
+                <el-option label="能源研究院" value="能源研究院" />
+                <el-option label="新绎控股" value="新绎控股" />
+                <el-option label="数能科技" value="数能科技" />
+                <el-option label="新智认知" value="新智认知" />
+                <el-option label="质信智购" value="质信智购" />
+                <el-option label="新智感知" value="新智感知" />
+                <el-option label="新智通才" value="新智通才" />
+                <el-option label="财务公司" value="财务公司" />
+                <el-option label="新奥国际" value="新奥国际" />
+                <el-option label="河北金租" value="河北金租" />
+                <el-option label="新博卓畅" value="新博卓畅" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="是否外部代理" prop="isExternalAgent">
+              <el-radio-group v-model="formData.isExternalAgent">
+                <el-radio :label="false">否</el-radio>
+                <el-radio :label="true">是</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <template v-if="formData.isExternalAgent">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="律所名称" prop="lawFirmName">
+                <el-input
+                  v-model="formData.lawFirmName"
+                  placeholder="请输入律所名称"
+                />
+              </el-form-item>
+            </el-col>
+            
+            <el-col :span="12">
+              <el-form-item label="代理律师" prop="agentLawyer">
+                <el-input
+                  v-model="formData.agentLawyer"
+                  placeholder="请输入代理律师姓名"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="联系方式" prop="agentContact">
+                <el-input
+                  v-model="formData.agentContact"
+                  placeholder="请输入联系方式"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </template>
+
         <el-divider />
 
       </el-form>
@@ -233,7 +315,13 @@ const formData = reactive({
   targetAmount: undefined as number | undefined,
   filingDate: '',
   status: '立案',
-  teamId: undefined as number | undefined
+  teamId: undefined as number | undefined,
+  handler: '',
+  industrySegment: '',
+  isExternalAgent: false,
+  lawFirmName: '',
+  agentLawyer: '',
+  agentContact: ''
 })
 
 // Form validation rules
@@ -254,6 +342,9 @@ const formRules: FormRules = {
   ],
   status: [
     { required: true, message: '请选择案件状态', trigger: 'change' }
+  ],
+  industrySegment: [
+    { required: true, message: '请选择产业板块', trigger: 'change' }
   ]
 }
 
@@ -281,6 +372,12 @@ const fetchCaseData = async () => {
       formData.filingDate = caseData.filing_date ? caseData.filing_date.split('T')[0] : ''
       formData.status = caseData.status ?? '立案'
       formData.teamId = caseData.team_id ?? undefined
+      formData.handler = caseData.handler ?? ''
+      formData.industrySegment = caseData.industry_segment ?? ''
+      formData.isExternalAgent = caseData.is_external_agent ?? false
+      formData.lawFirmName = caseData.law_firm_name ?? ''
+      formData.agentLawyer = caseData.agent_lawyer ?? ''
+      formData.agentContact = caseData.agent_contact ?? ''
       
       console.log('Form data after mapping:', {
         caseNumber: formData.caseNumber,
@@ -327,7 +424,9 @@ const handleSubmit = async () => {
         caseType: formData.caseType,
         caseCause: formData.caseCause,
         court: formData.court,
-        status: formData.status
+        status: formData.status,
+        industrySegment: formData.industrySegment,
+        isExternalAgent: formData.isExternalAgent
       }
       
       if (formData.caseNumber) {
@@ -341,6 +440,14 @@ const handleSubmit = async () => {
       }
       if (formData.teamId !== undefined) {
         submitData.teamId = formData.teamId
+      }
+      if (formData.handler) {
+        submitData.handler = formData.handler
+      }
+      if (formData.isExternalAgent) {
+        submitData.lawFirmName = formData.lawFirmName
+        submitData.agentLawyer = formData.agentLawyer
+        submitData.agentContact = formData.agentContact
       }
       
       if (isEdit.value) {

@@ -19,11 +19,17 @@ export interface CreateCaseData {
   filingDate?: string
   status?: string
   teamId?: number
+  handler?: string
+  industrySegment?: string
+  isExternalAgent?: boolean
+  lawFirmName?: string
+  agentLawyer?: string
+  agentContact?: string
 }
 
 // 转换驼峰命名到下划线命名
 const toSnakeCase = (data: any) => {
-  return {
+  const result: any = {
     case_number: data.caseNumber,
     case_type: data.caseType,
     case_cause: data.caseCause,
@@ -33,6 +39,15 @@ const toSnakeCase = (data: any) => {
     status: data.status,
     team_id: data.teamId
   }
+  
+  if (data.handler !== undefined) result.handler = data.handler
+  if (data.industrySegment !== undefined) result.industry_segment = data.industrySegment
+  if (data.isExternalAgent !== undefined) result.is_external_agent = data.isExternalAgent
+  if (data.lawFirmName !== undefined) result.law_firm_name = data.lawFirmName
+  if (data.agentLawyer !== undefined) result.agent_lawyer = data.agentLawyer
+  if (data.agentContact !== undefined) result.agent_contact = data.agentContact
+  
+  return result
 }
 
 export const caseApi = {
@@ -61,5 +76,10 @@ export const caseApi = {
   // Delete case
   deleteCase: (id: number) => {
     return request.delete(`/cases/${id}`)
+  },
+
+  // Get case parties
+  getCaseParties: (caseId: number) => {
+    return request.get(`/cases/${caseId}/parties`)
   }
 }

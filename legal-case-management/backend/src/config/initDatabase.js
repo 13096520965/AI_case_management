@@ -18,6 +18,12 @@ CREATE TABLE IF NOT EXISTS cases (
   filing_date DATE,
   status VARCHAR(50) DEFAULT 'active',
   team_id INTEGER,
+  industry_segment VARCHAR(50),
+  handler VARCHAR(100),
+  is_external_agent BOOLEAN DEFAULT 0,
+  law_firm_name VARCHAR(200),
+  agent_lawyer VARCHAR(100),
+  agent_contact VARCHAR(100),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -308,6 +314,9 @@ CREATE TABLE IF NOT EXISTS case_knowledge (
 -- 创建索引以提高查询性能
 CREATE INDEX IF NOT EXISTS idx_cases_case_number ON cases(case_number);
 CREATE INDEX IF NOT EXISTS idx_cases_status ON cases(status);
+CREATE INDEX IF NOT EXISTS idx_cases_industry_segment ON cases(industry_segment);
+CREATE INDEX IF NOT EXISTS idx_cases_handler ON cases(handler);
+CREATE INDEX IF NOT EXISTS idx_cases_is_external_agent ON cases(is_external_agent);
 CREATE INDEX IF NOT EXISTS idx_litigation_parties_case_id ON litigation_parties(case_id);
 CREATE INDEX IF NOT EXISTS idx_process_nodes_case_id ON process_nodes(case_id);
 CREATE INDEX IF NOT EXISTS idx_process_templates_case_type ON process_templates(case_type);
