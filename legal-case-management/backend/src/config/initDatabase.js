@@ -1,4 +1,5 @@
-const { getDatabase, saveDatabase } = require('./database');
+const { DB_PATH } = require('./database');
+const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
 
@@ -358,33 +359,65 @@ function initializeDatabase() {
       fs.mkdirSync(dbDir, { recursive: true });
     }
 
-    getDatabase().then(db => {
+    const db = new sqlite3.Database(DB_PATH, (err) => {
+      if (err) {
+        console.error('数据库连接失败:', err.message);
+        reject(err);
+        return;
+      }
+      
       console.log('数据库连接成功');
       
-      try {
-        // 启用外键约束
-        db.run('PRAGMA foreign_keys = ON');
-        
-        // 执行初始化 SQL - 分割成单独的语句
-        const statements = initSQL.split(';').filter(stmt => stmt.trim());
-        
-        for (const statement of statements) {
-          if (statement.trim()) {
-            db.run(statement);
-          }
+      // 启用外键约束
+      db.run('PRAGMA foreign_keys = ON', (err) => {
+        if (err) {
+          console.error('启用外键约束失败:', err.message);
         }
-        
-        saveDatabase();
+      });
+      
+      // 执行初始化 SQL - 分割成单独的语句
+      const statements = initSQL.split(';').filter(stmt => stmt.trim());
+      let completed = 0;
+      let hasError = false;
+      
+      if (statements.length === 0) {
+        db.close();
         console.log('数据库表创建成功');
         console.log('数据库初始化完成');
         resolve();
-      } catch (err) {
-        console.error('数据库初始化失败:', err.message);
-        reject(err);
+        return;
       }
-    }).catch(err => {
-      console.error('数据库连接失败:', err.message);
-      reject(err);
+      
+      statements.forEach((statement, index) => {
+        if (statement.trim() && !hasError) {
+          db.run(statement.trim(), (err) => {
+            if (err && !err.message.includes('already exists')) {
+              console.error(`执行 SQL 语句失败 (${index + 1}/${statements.length}):`, err.message);
+              console.error('SQL:', statement.substring(0, 100));
+              hasError = true;
+              db.close();
+              reject(err);
+              return;
+            }
+            
+            completed++;
+            if (completed === statements.length) {
+              db.close();
+              console.log('数据库表创建成功');
+              console.log('数据库初始化完成');
+              resolve();
+            }
+          });
+        } else {
+          completed++;
+          if (completed === statements.length && !hasError) {
+            db.close();
+            console.log('数据库表创建成功');
+            console.log('数据库初始化完成');
+            resolve();
+          }
+        }
+      });
     });
   });
 }
