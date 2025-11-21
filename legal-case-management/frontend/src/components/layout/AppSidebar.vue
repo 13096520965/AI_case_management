@@ -51,7 +51,6 @@
           <span>数据分析</span>
         </template>
         <el-menu-item index="/analytics">数据驾驶舱</el-menu-item>
-        <el-menu-item index="/costs/analytics">成本分析</el-menu-item>
       </el-sub-menu>
 
       <el-menu-item index="/knowledge">

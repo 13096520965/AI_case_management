@@ -6,38 +6,46 @@ const { query, get } = require('../config/database');
  */
 exports.getDashboardData = async (req, res) => {
   try {
-    const { startDate, endDate, caseType } = req.query;
+    const { startDate, endDate, caseType, partyName, caseId, costType, paymentStatus } = req.query;
     
     // 构建基础查询条件
     let whereClause = 'WHERE 1=1';
     const params = [];
+    let joinClause = '';
+    
+    // 如果有主体名称搜索，需要关联诉讼主体表
+    if (partyName) {
+      joinClause = ' INNER JOIN litigation_parties lp ON cases.id = lp.case_id';
+      whereClause += ' AND lp.name LIKE ?';
+      params.push(`%${partyName}%`);
+    }
     
     if (startDate) {
-      whereClause += ' AND created_at >= ?';
+      whereClause += ' AND cases.created_at >= ?';
       params.push(startDate);
     }
     
     if (endDate) {
-      whereClause += ' AND created_at <= ?';
+      whereClause += ' AND cases.created_at <= ?';
       params.push(endDate);
     }
     
     if (caseType) {
-      whereClause += ' AND case_type = ?';
+      whereClause += ' AND cases.case_type = ?';
       params.push(caseType);
     }
 
     // 1. 统计案件总量
-    const totalCasesResult = await get(`SELECT COUNT(*) as total FROM cases ${whereClause}`, params);
+    const totalCasesResult = await get(`SELECT COUNT(DISTINCT cases.id) as total FROM cases ${joinClause} ${whereClause}`, params);
     const totalCases = totalCasesResult.total;
 
     // 2. 统计标的额总计
-    const targetAmountResult = await get(`SELECT SUM(target_amount) as total FROM cases ${whereClause} AND target_amount IS NOT NULL`, params);
+    const targetAmountResult = await get(`SELECT SUM(DISTINCT cases.target_amount) as total FROM cases ${joinClause} ${whereClause} AND cases.target_amount IS NOT NULL`, params);
     const totalTargetAmount = targetAmountResult.total || 0;
 
     // 3. 计算平均胜诉率
-    const wonCasesResult = await get(`SELECT COUNT(*) as count FROM cases ${whereClause} AND status = 'won'`, params);
-    const closedCasesResult = await get(`SELECT COUNT(*) as count FROM cases ${whereClause} AND status IN ('won', 'lost', 'closed')`, params);
+    const wonCasesResult = await get(`SELECT COUNT(DISTINCT cases.id) as count FROM cases ${joinClause} ${whereClause} AND cases.status = 'won'`, params);
+    const closedCasesResult = await get(`SELECT COUNT(DISTINCT cases.id) as count FROM cases ${joinClause} ${whereClause} AND cases.status IN ('won', 'lost', 'closed')`, params);
     const wonCases = wonCasesResult.count;
     const closedCases = closedCasesResult.count;
     const averageWinRate = closedCases > 0 ? parseFloat(((wonCases / closedCases) * 100).toFixed(2)) : 0;
@@ -45,30 +53,33 @@ exports.getDashboardData = async (req, res) => {
     // 4. 计算平均办案周期
     const avgDurationResult = await get(`
       SELECT AVG(
-        CAST((julianday(updated_at) - julianday(filing_date)) AS INTEGER)
+        CAST((julianday(cases.updated_at) - julianday(cases.filing_date)) AS INTEGER)
       ) as avgDays
       FROM cases
+      ${joinClause}
       ${whereClause}
-      AND status IN ('won', 'lost', 'closed')
-      AND filing_date IS NOT NULL
+      AND cases.status IN ('won', 'lost', 'closed')
+      AND cases.filing_date IS NOT NULL
     `, params);
     const avgDuration = avgDurationResult.avgDays ? Math.round(avgDurationResult.avgDays) : 0;
 
     // 5. 统计案件类型分布
     const caseTypeDistribution = await query(`
-      SELECT case_type, COUNT(*) as count 
+      SELECT cases.case_type, COUNT(DISTINCT cases.id) as count 
       FROM cases 
-      ${whereClause} AND case_type IS NOT NULL
-      GROUP BY case_type
+      ${joinClause}
+      ${whereClause} AND cases.case_type IS NOT NULL
+      GROUP BY cases.case_type
       ORDER BY count DESC
     `, params);
 
     // 6. 统计案件状态分布
     const caseStatusDistribution = await query(`
-      SELECT status, COUNT(*) as count
+      SELECT cases.status, COUNT(DISTINCT cases.id) as count
       FROM cases
+      ${joinClause}
       ${whereClause}
-      GROUP BY status
+      GROUP BY cases.status
       ORDER BY count DESC
     `, params);
 
@@ -93,9 +104,10 @@ exports.getDashboardData = async (req, res) => {
     ];
     
     const amountData = await query(`
-      SELECT target_amount
+      SELECT DISTINCT cases.target_amount
       FROM cases
-      ${whereClause} AND target_amount IS NOT NULL
+      ${joinClause}
+      ${whereClause} AND cases.target_amount IS NOT NULL
     `, params);
     
     amountData.forEach(item => {
@@ -109,10 +121,11 @@ exports.getDashboardData = async (req, res) => {
 
     // 9. 案由分布 TOP10
     const caseCauseDistribution = await query(`
-      SELECT case_cause, COUNT(*) as count
+      SELECT cases.case_cause, COUNT(DISTINCT cases.id) as count
       FROM cases
-      ${whereClause} AND case_cause IS NOT NULL
-      GROUP BY case_cause
+      ${joinClause}
+      ${whereClause} AND cases.case_cause IS NOT NULL
+      GROUP BY cases.case_cause
       ORDER BY count DESC
       LIMIT 10
     `, params);
@@ -141,6 +154,99 @@ exports.getDashboardData = async (req, res) => {
     const winRateTrend = Math.round((Math.random() - 0.5) * 10);
     const durationTrend = Math.round((Math.random() - 0.5) * 15);
 
+    // 14. 成本统计 - 构建成本查询条件
+    let costWhereClause = whereClause.replace(/cases\./g, 'c.');
+    const costParams = [...params];
+    
+    if (caseId) {
+      costWhereClause += ' AND c.id = ?';
+      costParams.push(caseId);
+    }
+    
+    if (costType) {
+      costWhereClause += ' AND cr.cost_type = ?';
+      costParams.push(costType);
+    }
+    
+    if (paymentStatus) {
+      costWhereClause += ' AND cr.status = ?';
+      costParams.push(paymentStatus);
+    }
+
+    const totalCostResult = await get(`
+      SELECT SUM(amount) as total FROM cost_records cr
+      INNER JOIN cases c ON cr.case_id = c.id
+      ${joinClause.replace('cases', 'c')}
+      ${costWhereClause}
+    `, costParams);
+    const totalCost = totalCostResult.total || 0;
+
+    const paidCostResult = await get(`
+      SELECT SUM(amount) as total FROM cost_records cr
+      INNER JOIN cases c ON cr.case_id = c.id
+      ${joinClause.replace('cases', 'c')}
+      ${costWhereClause} AND cr.status = 'paid'
+    `, costParams);
+    const paidCost = paidCostResult.total || 0;
+
+    const unpaidCostResult = await get(`
+      SELECT SUM(amount) as total FROM cost_records cr
+      INNER JOIN cases c ON cr.case_id = c.id
+      ${joinClause.replace('cases', 'c')}
+      ${costWhereClause} AND cr.status = 'unpaid'
+    `, costParams);
+    const unpaidCost = unpaidCostResult.total || 0;
+
+    const costCountResult = await get(`
+      SELECT COUNT(*) as count FROM cost_records cr
+      INNER JOIN cases c ON cr.case_id = c.id
+      ${joinClause.replace('cases', 'c')}
+      ${costWhereClause}
+    `, costParams);
+    const costCount = costCountResult.count || 0;
+
+    // 15. 成本类型分布
+    const costTypeDistribution = await query(`
+      SELECT cr.cost_type, SUM(cr.amount) as amount
+      FROM cost_records cr
+      INNER JOIN cases c ON cr.case_id = c.id
+      ${joinClause.replace('cases', 'c')}
+      ${costWhereClause}
+      GROUP BY cr.cost_type
+      ORDER BY amount DESC
+    `, costParams);
+
+    // 16. 成本支付状态分布
+    const costStatusDistribution = await query(`
+      SELECT cr.status, SUM(cr.amount) as amount
+      FROM cost_records cr
+      INNER JOIN cases c ON cr.case_id = c.id
+      ${joinClause.replace('cases', 'c')}
+      ${costWhereClause}
+      GROUP BY cr.status
+    `, costParams);
+
+    // 17. 成本明细（按类型统计）
+    const costBreakdown = await query(`
+      SELECT 
+        cr.cost_type,
+        SUM(cr.amount) as total_amount,
+        COUNT(*) as count,
+        SUM(CASE WHEN cr.status = 'paid' THEN cr.amount ELSE 0 END) as paid_amount,
+        SUM(CASE WHEN cr.status = 'unpaid' THEN cr.amount ELSE 0 END) as unpaid_amount
+      FROM cost_records cr
+      INNER JOIN cases c ON cr.case_id = c.id
+      ${joinClause.replace('cases', 'c')}
+      ${costWhereClause}
+      GROUP BY cr.cost_type
+      ORDER BY total_amount DESC
+    `, costParams);
+
+    // 计算百分比
+    costBreakdown.forEach(item => {
+      item.percentage = totalCost > 0 ? (item.total_amount / totalCost * 100) : 0;
+    });
+
     res.json({
       data: {
         summary: {
@@ -156,11 +262,20 @@ exports.getDashboardData = async (req, res) => {
           winRateTrend,
           durationTrend
         },
+        costSummary: {
+          totalCost: parseFloat(totalCost.toFixed(2)),
+          paidCost: parseFloat(paidCost.toFixed(2)),
+          unpaidCost: parseFloat(unpaidCost.toFixed(2)),
+          costCount
+        },
+        costBreakdown,
         caseTypeDistribution,
         caseStatusDistribution,
         caseTrend,
         amountDistribution,
         caseCauseDistribution,
+        costTypeDistribution,
+        costStatusDistribution,
         alerts: {
           pendingNodes,
           overdueNodes

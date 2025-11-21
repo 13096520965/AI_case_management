@@ -109,12 +109,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/cost/CostCalculator.vue'),
         meta: { requiresAuth: true }
       },
-      {
-        path: 'costs/analytics',
-        name: 'CostAnalytics',
-        component: () => import('@/views/cost/CostAnalytics.vue'),
-        meta: { requiresAuth: true }
-      },
+      // 成本分析已集成到数据驾驶舱
+      // {
+      //   path: 'costs/analytics',
+      //   name: 'CostAnalytics',
+      //   component: () => import('@/views/cost/CostAnalytics.vue'),
+      //   meta: { requiresAuth: true }
+      // },
       // 提醒中心路由
       {
         path: 'notifications',

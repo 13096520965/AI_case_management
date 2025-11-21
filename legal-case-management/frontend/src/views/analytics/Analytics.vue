@@ -5,6 +5,26 @@
     <!-- Filter Section -->
     <el-card shadow="never" class="filter-card">
       <el-form :inline="true" :model="filterForm" class="filter-form">
+        <el-form-item label="主体">
+          <el-input
+            v-model="filterForm.partyName"
+            placeholder="请输入主体名称"
+            clearable
+            style="width: 200px"
+            @keyup.enter="loadData"
+          />
+        </el-form-item>
+        
+        <el-form-item label="案件类型">
+          <el-select v-model="filterForm.caseType" placeholder="全部类型" clearable style="width: 150px">
+            <el-option label="全部" value="" />
+            <el-option label="民事" value="民事" />
+            <el-option label="刑事" value="刑事" />
+            <el-option label="行政" value="行政" />
+            <el-option label="劳动仲裁" value="劳动仲裁" />
+          </el-select>
+        </el-form-item>
+        
         <el-form-item label="时间范围">
           <el-date-picker
             v-model="dateRange"
@@ -16,16 +36,6 @@
             value-format="YYYY-MM-DD"
             @change="handleDateRangeChange"
           />
-        </el-form-item>
-        
-        <el-form-item label="案件类型">
-          <el-select v-model="filterForm.caseType" placeholder="全部类型" clearable @change="loadData">
-            <el-option label="全部" value="" />
-            <el-option label="民事案件" value="民事案件" />
-            <el-option label="刑事案件" value="刑事案件" />
-            <el-option label="行政案件" value="行政案件" />
-            <el-option label="劳动仲裁" value="劳动仲裁" />
-          </el-select>
         </el-form-item>
         
         <el-form-item>
@@ -203,6 +213,182 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- Cost Analytics Section -->
+    <el-row :gutter="20" class="charts-row">
+      <el-col :xs="24">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <span>成本分析</span>
+              <el-tag size="small" type="warning">统计</el-tag>
+            </div>
+          </template>
+          
+          <!-- Cost Filter -->
+          <el-form :inline="true" class="cost-filter-form">
+            <el-form-item label="案件">
+              <el-select 
+                v-model="costFilterForm.caseId" 
+                placeholder="输入案号搜索" 
+                clearable
+                filterable
+                remote
+                :remote-method="searchCases"
+                :loading="caseSearchLoading"
+                style="width: 250px"
+                @visible-change="handleCaseSelectVisible"
+              >
+                <el-option 
+                  v-for="caseItem in caseList" 
+                  :key="caseItem.id" 
+                  :label="caseItem.case_number" 
+                  :value="caseItem.id" 
+                />
+                <template #footer>
+                  <div v-if="hasMoreCases" style="text-align: center; padding: 8px;">
+                    <el-button text @click="loadMoreCases">加载更多</el-button>
+                  </div>
+                </template>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="时间范围">
+              <el-date-picker
+                v-model="costDateRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="loadCostAnalytics">
+                <el-icon><Search /></el-icon>
+                查询
+              </el-button>
+              <el-button @click="resetCostFilter">
+                <el-icon><Refresh /></el-icon>
+                重置
+              </el-button>
+            </el-form-item>
+          </el-form>
+          
+          <!-- Cost Summary Cards -->
+          <el-row :gutter="16" class="cost-summary">
+            <el-col :xs="24" :sm="12" :md="6">
+              <div class="cost-stat-card">
+                <div class="cost-stat-icon total">
+                  <el-icon :size="24"><Money /></el-icon>
+                </div>
+                <div class="cost-stat-info">
+                  <div class="cost-stat-value">{{ formatAmount(costAnalytics.totalCost) }}</div>
+                  <div class="cost-stat-label">总成本</div>
+                </div>
+              </div>
+            </el-col>
+            
+            <el-col :xs="24" :sm="12" :md="6">
+              <div class="cost-stat-card">
+                <div class="cost-stat-icon paid">
+                  <el-icon :size="24"><CircleCheck /></el-icon>
+                </div>
+                <div class="cost-stat-info">
+                  <div class="cost-stat-value">{{ formatAmount(costAnalytics.paidCost) }}</div>
+                  <div class="cost-stat-label">已支付</div>
+                </div>
+              </div>
+            </el-col>
+            
+            <el-col :xs="24" :sm="12" :md="6">
+              <div class="cost-stat-card">
+                <div class="cost-stat-icon unpaid">
+                  <el-icon :size="24"><Clock /></el-icon>
+                </div>
+                <div class="cost-stat-info">
+                  <div class="cost-stat-value">{{ formatAmount(costAnalytics.unpaidCost) }}</div>
+                  <div class="cost-stat-label">待支付</div>
+                </div>
+              </div>
+            </el-col>
+            
+            <el-col :xs="24" :sm="12" :md="6">
+              <div class="cost-stat-card">
+                <div class="cost-stat-icon count">
+                  <el-icon :size="24"><Document /></el-icon>
+                </div>
+                <div class="cost-stat-info">
+                  <div class="cost-stat-value">{{ costAnalytics.costCount }}</div>
+                  <div class="cost-stat-label">成本项数</div>
+                </div>
+              </div>
+            </el-col>
+          </el-row>
+
+          <!-- Cost Charts Row 1 -->
+          <el-row :gutter="16" style="margin-top: 20px;">
+            <el-col :xs="24" :md="12">
+              <div class="cost-chart-title">成本占比分析</div>
+              <div ref="costPieChartRef" class="chart-container"></div>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <div class="cost-chart-title">成本趋势分析</div>
+              <div ref="costTrendChartRef" class="chart-container"></div>
+            </el-col>
+          </el-row>
+
+          <!-- Cost Charts Row 2 -->
+          <el-row :gutter="16" style="margin-top: 20px;">
+            <el-col :xs="24">
+              <div class="cost-chart-title">各类费用对比</div>
+              <div ref="costBarChartRef" class="chart-container"></div>
+            </el-col>
+          </el-row>
+
+          <!-- Cost Breakdown Table -->
+          <div style="margin-top: 20px;">
+            <div class="cost-chart-title">成本明细</div>
+            <el-table :data="costBreakdown" style="width: 100%" stripe>
+              <el-table-column prop="cost_type" label="费用类型" width="150">
+                <template #default="{ row }">
+                  {{ getCostTypeName(row.cost_type) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="total_amount" label="总金额" width="150">
+                <template #default="{ row }">
+                  {{ formatAmount(row.total_amount) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="percentage" label="占比" width="100">
+                <template #default="{ row }">
+                  {{ row.percentage?.toFixed(2) }}%
+                </template>
+              </el-table-column>
+              <el-table-column prop="count" label="项数" width="100" />
+              <el-table-column prop="paid_amount" label="已支付" width="150">
+                <template #default="{ row }">
+                  {{ formatAmount(row.paid_amount) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="unpaid_amount" label="待支付" width="150">
+                <template #default="{ row }">
+                  {{ formatAmount(row.unpaid_amount) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="支付进度">
+                <template #default="{ row }">
+                  <el-progress 
+                    :percentage="row.total_amount > 0 ? (row.paid_amount / row.total_amount * 100) : 0" 
+                    :color="row.paid_amount >= row.total_amount ? '#67C23A' : '#E6A23C'"
+                  />
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -210,15 +396,17 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { 
   Folder, Money, TrendCharts, Timer, Search, Refresh,
-  CaretTop, CaretBottom
+  CaretTop, CaretBottom, CircleCheck, Clock, Document
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import { analyticsApi } from '@/api/analytics'
+import { caseApi } from '@/api/case'
 import { ElMessage } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
 
 interface FilterForm {
+  partyName: string
   startDate: string
   endDate: string
   caseType: string
@@ -237,6 +425,7 @@ interface MetricsData {
 
 const dateRange = ref<[string, string]>()
 const filterForm = ref<FilterForm>({
+  partyName: '',
   startDate: '',
   endDate: '',
   caseType: ''
@@ -253,12 +442,37 @@ const metricsData = ref<MetricsData>({
   durationTrend: 0
 })
 
+const costAnalytics = ref({
+  totalCost: 0,
+  paidCost: 0,
+  unpaidCost: 0,
+  costCount: 0
+})
+
+const costDateRange = ref<[string, string]>()
+const costFilterForm = ref({
+  caseId: null as number | null,
+  startDate: '',
+  endDate: ''
+})
+
+const caseList = ref<any[]>([])
+const costBreakdown = ref<any[]>([])
+const caseSearchLoading = ref(false)
+const hasMoreCases = ref(true)
+const casePage = ref(1)
+const casePageSize = ref(20)
+const caseSearchKeyword = ref('')
+
 const caseTypeChartRef = ref<HTMLElement>()
 const caseStatusChartRef = ref<HTMLElement>()
 const caseTrendChartRef = ref<HTMLElement>()
 const amountDistChartRef = ref<HTMLElement>()
 const caseCauseChartRef = ref<HTMLElement>()
 const monthlyCompareChartRef = ref<HTMLElement>()
+const costPieChartRef = ref<HTMLElement>()
+const costTrendChartRef = ref<HTMLElement>()
+const costBarChartRef = ref<HTMLElement>()
 
 let caseTypeChart: ECharts | null = null
 let caseStatusChart: ECharts | null = null
@@ -266,6 +480,9 @@ let caseTrendChart: ECharts | null = null
 let amountDistChart: ECharts | null = null
 let caseCauseChart: ECharts | null = null
 let monthlyCompareChart: ECharts | null = null
+let costPieChart: ECharts | null = null
+let costTrendChart: ECharts | null = null
+let costBarChart: ECharts | null = null
 
 const formatAmount = (amount: number = 0): string => {
   if (amount >= 100000000) {
@@ -290,6 +507,7 @@ const handleDateRangeChange = (value: [string, string] | null) => {
 const resetFilter = () => {
   dateRange.value = undefined
   filterForm.value = {
+    partyName: '',
     startDate: '',
     endDate: '',
     caseType: ''
@@ -300,6 +518,7 @@ const resetFilter = () => {
 const loadData = async () => {
   await Promise.all([
     loadMetrics(),
+    loadCostAnalytics(),
     initCaseTypeChart(),
     initCaseStatusChart(),
     initCaseTrendChart(),
@@ -312,6 +531,7 @@ const loadData = async () => {
 const loadMetrics = async () => {
   try {
     const params = {
+      partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType
@@ -341,8 +561,10 @@ const initCaseTypeChart = async () => {
   
   try {
     const params = {
+      partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
-      endDate: filterForm.value.endDate
+      endDate: filterForm.value.endDate,
+      caseType: filterForm.value.caseType
     }
     
     const response = await analyticsApi.getCaseTypeDistribution(params)
@@ -406,6 +628,7 @@ const initCaseStatusChart = async () => {
   
   try {
     const params = {
+      partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType
@@ -471,8 +694,10 @@ const initCaseTrendChart = async () => {
   
   try {
     const params = {
+      partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
+      caseType: filterForm.value.caseType,
       interval: 'month'
     }
     
@@ -487,7 +712,10 @@ const initCaseTrendChart = async () => {
       tooltip: {
         trigger: 'axis',
         axisPointer: {
-          type: 'cross'
+          type: 'cross',
+          crossStyle: {
+            color: '#999'
+          }
         }
       },
       grid: {
@@ -498,7 +726,7 @@ const initCaseTrendChart = async () => {
       },
       xAxis: {
         type: 'category',
-        boundaryGap: false,
+        boundaryGap: true,
         data: data.map((item: any) => item.period)
       },
       yAxis: {
@@ -507,21 +735,29 @@ const initCaseTrendChart = async () => {
       series: [
         {
           name: '案件数量',
+          type: 'bar',
+          data: data.map((item: any) => item.count),
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#409eff' },
+              { offset: 1, color: '#66b1ff' }
+            ])
+          },
+          barWidth: '60%'
+        },
+        {
+          name: '趋势线',
           type: 'line',
           smooth: true,
           data: data.map((item: any) => item.count),
-          areaStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(64, 158, 255, 0.5)' },
-              { offset: 1, color: 'rgba(64, 158, 255, 0.1)' }
-            ])
-          },
           itemStyle: {
-            color: '#409eff'
+            color: '#F56C6C'
           },
           lineStyle: {
             width: 3
-          }
+          },
+          symbol: 'circle',
+          symbolSize: 8
         }
       ]
     }
@@ -537,6 +773,7 @@ const initAmountDistChart = async () => {
   
   try {
     const params = {
+      partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType
@@ -602,6 +839,7 @@ const initCaseCauseChart = async () => {
   
   try {
     const params = {
+      partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType
@@ -664,8 +902,10 @@ const initMonthlyCompareChart = async () => {
   
   try {
     const params = {
+      partyName: filterForm.value.partyName,
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
+      caseType: filterForm.value.caseType,
       interval: 'month'
     }
     
@@ -756,12 +996,417 @@ const handleResize = () => {
   amountDistChart?.resize()
   caseCauseChart?.resize()
   monthlyCompareChart?.resize()
+  costPieChart?.resize()
+  costTrendChart?.resize()
+  costBarChart?.resize()
 }
 
 onMounted(async () => {
-  await loadData()
+  await Promise.all([
+    loadData(),
+    loadCaseList()
+  ])
   window.addEventListener('resize', handleResize)
 })
+
+// 处理成本日期范围变化
+const handleCostDateRangeChange = (value: [string, string] | null) => {
+  if (value) {
+    costFilterForm.value.startDate = value[0]
+    costFilterForm.value.endDate = value[1]
+  } else {
+    costFilterForm.value.startDate = ''
+    costFilterForm.value.endDate = ''
+  }
+}
+
+// 重置成本筛选
+const resetCostFilter = () => {
+  costDateRange.value = undefined
+  costFilterForm.value = {
+    caseId: null,
+    startDate: '',
+    endDate: ''
+  }
+  loadCostAnalytics()
+}
+
+// 获取费用类型名称
+const getCostTypeName = (type: string) => {
+  const typeMap: Record<string, string> = {
+    'court_fee': '诉讼费',
+    'attorney_fee': '律师费',
+    'appraisal_fee': '鉴定费',
+    'notary_fee': '公证费',
+    'other': '其他费用'
+  }
+  return typeMap[type] || type
+}
+
+// 加载案件列表
+const loadCaseList = async (reset = false) => {
+  try {
+    if (reset) {
+      casePage.value = 1
+      caseList.value = []
+    }
+    
+    caseSearchLoading.value = true
+    
+    // 调用案件列表API
+    const response = await caseApi.getCases({
+      page: casePage.value,
+      pageSize: casePageSize.value,
+      keyword: caseSearchKeyword.value
+    })
+    
+    const cases = response.data?.cases || []
+    
+    if (reset) {
+      caseList.value = cases
+    } else {
+      caseList.value = [...caseList.value, ...cases]
+    }
+    
+    hasMoreCases.value = cases.length >= casePageSize.value
+  } catch (error) {
+    console.error('Failed to load case list:', error)
+  } finally {
+    caseSearchLoading.value = false
+  }
+}
+
+// 搜索案件
+const searchCases = async (keyword: string) => {
+  caseSearchKeyword.value = keyword
+  await loadCaseList(true)
+}
+
+// 加载更多案件
+const loadMoreCases = async () => {
+  casePage.value++
+  await loadCaseList(false)
+}
+
+// 处理下拉框显示/隐藏
+const handleCaseSelectVisible = (visible: boolean) => {
+  if (visible && caseList.value.length === 0) {
+    loadCaseList(true)
+  }
+}
+
+// 加载成本分析数据
+const loadCostAnalytics = async () => {
+  try {
+    const params: any = {
+      partyName: filterForm.value.partyName,
+      startDate: costFilterForm.value.startDate || filterForm.value.startDate,
+      endDate: costFilterForm.value.endDate || filterForm.value.endDate,
+      caseType: filterForm.value.caseType
+    }
+    
+    if (costFilterForm.value.caseId) {
+      params.caseId = costFilterForm.value.caseId
+    }
+    
+    const response = await analyticsApi.getDashboard(params)
+    if (response.data?.costSummary) {
+      const summary = response.data.costSummary
+      costAnalytics.value = {
+        totalCost: summary.totalCost || 0,
+        paidCost: summary.paidCost || 0,
+        unpaidCost: summary.unpaidCost || 0,
+        costCount: summary.costCount || 0
+      }
+    }
+    
+    // 加载成本明细
+    if (response.data?.costBreakdown) {
+      costBreakdown.value = response.data.costBreakdown
+    }
+    
+    // 重新初始化成本图表
+    await Promise.all([
+      initCostPieChart(),
+      initCostTrendChart(),
+      initCostBarChart()
+    ])
+  } catch (error) {
+    console.error('Failed to load cost analytics:', error)
+  }
+}
+
+// 初始化成本类型分布图表
+const initCostTypeChart = async () => {
+  if (!costTypeChartRef.value) return
+  
+  try {
+    const params = {
+      partyName: filterForm.value.partyName,
+      startDate: filterForm.value.startDate,
+      endDate: filterForm.value.endDate,
+      caseType: filterForm.value.caseType
+    }
+    
+    const response = await analyticsApi.getDashboard(params)
+    const costTypeData = response.data?.costTypeDistribution || []
+    
+    if (!costTypeChart) {
+      costTypeChart = echarts.init(costTypeChartRef.value)
+    }
+    
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: ¥{c} ({d}%)'
+      },
+      legend: {
+        orient: 'vertical',
+        right: 10,
+        top: 'center'
+      },
+      series: [
+        {
+          name: '成本类型',
+          type: 'pie',
+          radius: '60%',
+          data: costTypeData.map((item: any) => ({
+            value: item.amount || 0,
+            name: item.cost_type || '其他'
+          })),
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }
+      ]
+    }
+    
+    costTypeChart.setOption(option)
+  } catch (error) {
+    console.error('Failed to init cost type chart:', error)
+  }
+}
+
+// 初始化成本支付状态图表
+const initCostStatusChart = async () => {
+  if (!costStatusChartRef.value) return
+  
+  try {
+    const params = {
+      partyName: filterForm.value.partyName,
+      startDate: filterForm.value.startDate,
+      endDate: filterForm.value.endDate,
+      caseType: filterForm.value.caseType
+    }
+    
+    const response = await analyticsApi.getDashboard(params)
+    const costStatusData = response.data?.costStatusDistribution || []
+    
+    if (!costStatusChart) {
+      costStatusChart = echarts.init(costStatusChartRef.value)
+    }
+    
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: ¥{c} ({d}%)'
+      },
+      legend: {
+        orient: 'vertical',
+        right: 10,
+        top: 'center'
+      },
+      series: [
+        {
+          name: '支付状态',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          avoidLabelOverlap: false,
+          itemStyle: {
+            borderRadius: 10,
+            borderColor: '#fff',
+            borderWidth: 2
+          },
+          label: {
+            show: true,
+            formatter: '{b}: {d}%'
+          },
+          data: costStatusData.map((item: any) => ({
+            value: item.amount || 0,
+            name: item.status === 'paid' ? '已支付' : item.status === 'unpaid' ? '待支付' : '其他'
+          })),
+          color: ['#67C23A', '#E6A23C', '#909399']
+        }
+      ]
+    }
+    
+    costStatusChart.setOption(option)
+  } catch (error) {
+    console.error('Failed to init cost status chart:', error)
+  }
+}
+
+// 初始化成本占比分析图表
+const initCostPieChart = async () => {
+  if (!costPieChartRef.value) return
+  
+  try {
+    if (!costPieChart) {
+      costPieChart = echarts.init(costPieChartRef.value)
+    }
+    
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: ¥{c} ({d}%)'
+      },
+      legend: {
+        orient: 'vertical',
+        left: 'left'
+      },
+      series: [
+        {
+          name: '成本占比',
+          type: 'pie',
+          radius: '60%',
+          data: costBreakdown.value.map((item: any) => ({
+            value: item.total_amount || 0,
+            name: getCostTypeName(item.cost_type)
+          })),
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }
+      ]
+    }
+    
+    costPieChart.setOption(option)
+  } catch (error) {
+    console.error('Failed to init cost pie chart:', error)
+  }
+}
+
+// 初始化成本趋势分析图表
+const initCostTrendChart = async () => {
+  if (!costTrendChartRef.value) return
+  
+  try {
+    if (!costTrendChart) {
+      costTrendChart = echarts.init(costTrendChartRef.value)
+    }
+    
+    // 模拟趋势数据（实际应从后端获取）
+    const months = ['1月', '2月', '3月', '4月', '5月', '6月']
+    const data = [50000, 65000, 45000, 80000, 70000, 90000]
+    
+    const option = {
+      tooltip: {
+        trigger: 'axis'
+      },
+      xAxis: {
+        type: 'category',
+        data: months
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: '¥{value}'
+        }
+      },
+      series: [
+        {
+          name: '成本',
+          type: 'line',
+          data: data,
+          smooth: true,
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
+                { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
+              ]
+            }
+          },
+          itemStyle: {
+            color: '#409EFF'
+          }
+        }
+      ]
+    }
+    
+    costTrendChart.setOption(option)
+  } catch (error) {
+    console.error('Failed to init cost trend chart:', error)
+  }
+}
+
+// 初始化各类费用对比图表
+const initCostBarChart = async () => {
+  if (!costBarChartRef.value) return
+  
+  try {
+    if (!costBarChart) {
+      costBarChart = echarts.init(costBarChartRef.value)
+    }
+    
+    const option = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
+        }
+      },
+      legend: {
+        data: ['已支付', '待支付']
+      },
+      xAxis: {
+        type: 'category',
+        data: costBreakdown.value.map((item: any) => getCostTypeName(item.cost_type))
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: '¥{value}'
+        }
+      },
+      series: [
+        {
+          name: '已支付',
+          type: 'bar',
+          data: costBreakdown.value.map((item: any) => item.paid_amount || 0),
+          itemStyle: {
+            color: '#67C23A'
+          }
+        },
+        {
+          name: '待支付',
+          type: 'bar',
+          data: costBreakdown.value.map((item: any) => item.unpaid_amount || 0),
+          itemStyle: {
+            color: '#E6A23C'
+          }
+        }
+      ]
+    }
+    
+    costBarChart.setOption(option)
+  } catch (error) {
+    console.error('Failed to init cost bar chart:', error)
+  }
+}
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
@@ -771,6 +1416,9 @@ onUnmounted(() => {
   amountDistChart?.dispose()
   caseCauseChart?.dispose()
   monthlyCompareChart?.dispose()
+  costPieChart?.dispose()
+  costTrendChart?.dispose()
+  costBarChart?.dispose()
 })
 </script>
 
@@ -881,6 +1529,84 @@ onUnmounted(() => {
   height: 400px;
 }
 
+/* Cost Analytics Styles */
+.cost-filter-form {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #EBEEF5;
+}
+
+.cost-summary {
+  margin-bottom: 20px;
+}
+
+.cost-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.cost-stat-card:hover {
+  background: #ecf5ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.cost-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.cost-stat-icon.total {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.cost-stat-icon.paid {
+  background: linear-gradient(135deg, #67C23A 0%, #85CE61 100%);
+}
+
+.cost-stat-icon.unpaid {
+  background: linear-gradient(135deg, #E6A23C 0%, #F56C6C 100%);
+}
+
+.cost-stat-icon.count {
+  background: linear-gradient(135deg, #409EFF 0%, #66B1FF 100%);
+}
+
+.cost-stat-info {
+  flex: 1;
+}
+
+.cost-stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.cost-stat-label {
+  font-size: 14px;
+  color: #909399;
+}
+
+.cost-chart-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #606266;
+  margin-bottom: 12px;
+  padding-left: 8px;
+  border-left: 3px solid #409EFF;
+}
+
 @media (max-width: 768px) {
   .metric-value {
     font-size: 24px;
@@ -892,6 +1618,14 @@ onUnmounted(() => {
   
   .chart-container-large {
     height: 350px;
+  }
+  
+  .cost-stat-value {
+    font-size: 20px;
+  }
+  
+  .cost-stat-card {
+    margin-bottom: 12px;
   }
 }
 </style>
