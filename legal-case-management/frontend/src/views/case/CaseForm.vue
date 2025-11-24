@@ -150,7 +150,7 @@
     <!-- 编辑模式下的额外模块 -->
     <template v-if="isEdit && caseId">
       <!-- 标的处理详情 -->
-      <TargetAmountDetail :case-id="caseId" />
+      <TargetAmountDetail :case-id="caseId" :show-detail-button="true" />
 
       <!-- 诉讼主体 -->
       <el-card shadow="never" class="info-card">
