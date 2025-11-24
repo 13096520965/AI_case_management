@@ -116,6 +116,22 @@ class DocumentTemplate {
     const result = await run(sql, [id]);
     return result.changes;
   }
+
+  /**
+   * 根据模板名称获取模板
+   * @param {string} templateName - 模板名称
+   * @returns {Promise<Object|null>} 模板对象
+   */
+  static async findByName(templateName) {
+    const sql = 'SELECT * FROM document_templates WHERE template_name = ?';
+    const template = await get(sql, [templateName]);
+
+    if (template && template.variables) {
+      template.variables = JSON.parse(template.variables);
+    }
+
+    return template;
+  }
 }
 
 module.exports = DocumentTemplate;

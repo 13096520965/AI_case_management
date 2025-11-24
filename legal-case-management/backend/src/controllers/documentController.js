@@ -406,8 +406,12 @@ const createTemplate = async (req, res) => {
     } = req.body;
 
     // 统一字段名处理
-    const finalName = name || template_name;
-    const finalDocumentType = documentType || document_type;
+    const finalName = typeof (name || template_name) === 'string'
+      ? (name || template_name).trim()
+      : (name || template_name);
+    const finalDocumentType = typeof (documentType || document_type) === 'string'
+      ? (documentType || document_type).trim()
+      : (documentType || document_type);
 
     // 验证必填字段（检查空字符串和 null/undefined）
     if (!finalName || (typeof finalName === 'string' && finalName.trim() === '') || 
@@ -417,6 +421,18 @@ const createTemplate = async (req, res) => {
         error: {
           message: '模板名称、文书类型和内容不能为空',
           status: 400
+        }
+      });
+    }
+
+    // 检查模板名称是否重复
+    const existingTemplate = await DocumentTemplate.findByName(finalName);
+    if (existingTemplate) {
+      return res.status(409).json({
+        error: {
+          message: '模板名称已存在，请使用其他名称',
+          status: 409,
+          code: 'TEMPLATE_NAME_EXISTS'
         }
       });
     }
@@ -570,9 +586,19 @@ const updateTemplate = async (req, res) => {
     }
 
     const updateData = {};
+    let newTemplateName = undefined;
     // 统一字段名处理
     if (name !== undefined || template_name !== undefined) {
-      updateData.template_name = name || template_name;
+      newTemplateName = (name || template_name || '').trim();
+      if (!newTemplateName) {
+        return res.status(400).json({
+          error: {
+            message: '模板名称不能为空',
+            status: 400
+          }
+        });
+      }
+      updateData.template_name = newTemplateName;
     }
     if (documentType !== undefined || document_type !== undefined) {
       updateData.document_type = documentType || document_type;
@@ -588,6 +614,20 @@ const updateTemplate = async (req, res) => {
           status: 400
         }
       });
+    }
+
+    // 如果模板名称被修改，需要检查是否重复
+    if (newTemplateName && newTemplateName !== template.template_name) {
+      const existingTemplate = await DocumentTemplate.findByName(newTemplateName);
+      if (existingTemplate && existingTemplate.id !== template.id) {
+        return res.status(409).json({
+          error: {
+            message: '模板名称已存在，请使用其他名称',
+            status: 409,
+            code: 'TEMPLATE_NAME_EXISTS'
+          }
+        });
+      }
     }
 
     await DocumentTemplate.update(parseInt(id), updateData);

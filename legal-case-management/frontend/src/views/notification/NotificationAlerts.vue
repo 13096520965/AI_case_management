@@ -58,13 +58,18 @@
         </el-button>
       </div>
 
-      <el-table
-        :data="displayedAlerts"
-        v-loading="loading"
-        stripe
-        style="width: 100%; margin-top: 20px"
-        :row-class-name="getRowClassName"
+      <div 
+        class="table-container" 
+        ref="tableContainerRef"
+        @scroll="handleScroll"
       >
+        <el-table
+          :data="displayedAlerts"
+          v-loading="loading"
+          stripe
+          style="width: 100%"
+          :row-class-name="getRowClassName"
+        >
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="getStatusTagType(row)" size="small">
@@ -121,19 +126,21 @@
             </el-button>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
 
-      <el-pagination
-        v-if="total > pageSize"
-        class="pagination"
-        v-model:current-page="currentPage"
-        v-model:page-size="pageSize"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-      />
+        <div v-if="hasMore && !loading" class="load-more-hint">
+          <span>下滑加载更多...</span>
+        </div>
+
+        <div v-if="loadingMore" class="loading-more">
+          <el-icon class="is-loading"><Loading /></el-icon>
+          <span>加载中...</span>
+        </div>
+
+        <div v-if="!hasMore && displayedAlerts.length > 0" class="no-more-hint">
+          已加载全部数据
+        </div>
+      </div>
     </el-card>
 
     <!-- Process Dialog -->
@@ -181,9 +188,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Warning, Clock, Document, Refresh, InfoFilled } from '@element-plus/icons-vue'
+import { Warning, Clock, Document, Refresh, InfoFilled, Loading } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { formatDateTime } from '@/utils/format'
@@ -205,14 +212,16 @@ const router = useRouter()
 
 // State
 const loading = ref(false)
+const loadingMore = ref(false)
 const submitting = ref(false)
 const alertType = ref('all')
-const currentPage = ref(1)
 const pageSize = ref(20)
-const total = ref(0)
+const currentLoadedCount = ref(0)
 const alerts = ref<ProcessNode[]>([])
+const allFilteredAlerts = ref<ProcessNode[]>([])
 const processDialogVisible = ref(false)
 const selectedNode = ref<ProcessNode | null>(null)
+const tableContainerRef = ref<HTMLElement | null>(null)
 
 const processForm = reactive({
   status: '进行中',
@@ -243,6 +252,14 @@ const upcomingCount = computed(() => upcomingAlerts.value.length)
 const totalAlertsCount = computed(() => overdueCount.value + upcomingCount.value)
 
 const displayedAlerts = computed(() => {
+  return allFilteredAlerts.value.slice(0, currentLoadedCount.value)
+})
+
+const hasMore = computed(() => {
+  return currentLoadedCount.value < allFilteredAlerts.value.length
+})
+
+const updateFilteredAlerts = () => {
   let filtered = alerts.value
 
   if (alertType.value === 'overdue') {
@@ -253,85 +270,95 @@ const displayedAlerts = computed(() => {
     filtered = [...overdueAlerts.value, ...upcomingAlerts.value]
   }
 
-  total.value = filtered.length
-
-  // Pagination
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filtered.slice(start, end)
-})
+  allFilteredAlerts.value = filtered
+  currentLoadedCount.value = Math.min(pageSize.value, filtered.length)
+}
 
 // Methods
 const fetchAlerts = async () => {
   loading.value = true
   try {
-    // Fetch overdue nodes
-    const overdueResponse = await request.get('/nodes/overdue')
-    const overdueNodes = overdueResponse.data.data || []
+    // Fetch overdue nodes - request interceptor already returns response.data
+    const overdueResponse: any = await request.get('/nodes/overdue')
+    const overdueNodes = overdueResponse?.data || []
 
     // Fetch upcoming nodes
-    const upcomingResponse = await request.get('/nodes/upcoming')
-    const upcomingNodes = upcomingResponse.data.data?.nodes || upcomingResponse.data.data || []
+    const upcomingResponse: any = await request.get('/nodes/upcoming')
+    const upcomingNodes = upcomingResponse?.data?.nodes || upcomingResponse?.data || []
 
-    // Combine and fetch case names
+    // Combine nodes
     const allNodes = [...overdueNodes, ...upcomingNodes]
     
-    // Fetch case details for each node
-    const nodesWithCaseNames = await Promise.all(
-      allNodes.map(async (node: any) => {
-        try {
-          const caseResponse = await request.get(`/cases/${node.case_id}`)
-          return {
-            ...node,
-            id: node.id,
-            caseId: node.case_id,
-            caseName: caseResponse.data.data?.case_cause || `案件 #${node.case_id}`,
-            nodeName: node.node_name,
-            handler: node.handler,
-            deadline: node.deadline,
-            completionTime: node.completion_time,
-            status: node.status,
-            progress: node.progress
-          }
-        } catch (error) {
-          return {
-            ...node,
-            id: node.id,
-            caseId: node.case_id,
-            caseName: `案件 #${node.case_id}`,
-            nodeName: node.node_name,
-            handler: node.handler,
-            deadline: node.deadline,
-            completionTime: node.completion_time,
-            status: node.status,
-            progress: node.progress
-          }
-        }
-      })
-    )
+    // Transform nodes with case names
+    const nodesWithCaseNames = allNodes.map((node: any) => ({
+      id: node.id,
+      caseId: node.case_id,
+      caseName: node.case_name || node.caseName || `案件 #${node.case_id}`,
+      nodeName: node.node_name || node.nodeName,
+      handler: node.handler,
+      deadline: node.deadline,
+      completionTime: node.completion_time || node.completionTime,
+      status: node.status,
+      progress: node.progress
+    }))
 
     alerts.value = nodesWithCaseNames
+    updateFilteredAlerts()
+    
+    // 滚动到顶部
+    await nextTick()
+    if (tableContainerRef.value) {
+      tableContainerRef.value.scrollTop = 0
+    }
   } catch (error: any) {
-    ElMessage.error(error.message || '获取预警列表失败')
+    console.error('Error fetching alerts:', error)
+    // Don't show error message here as the interceptor already handles it
   } finally {
     loading.value = false
   }
 }
 
 const handleAlertTypeChange = () => {
-  currentPage.value = 1
+  updateFilteredAlerts()
+  // 滚动到顶部
+  nextTick(() => {
+    if (tableContainerRef.value) {
+      tableContainerRef.value.scrollTop = 0
+    }
+  })
 }
 
 const handleRefresh = () => {
   fetchAlerts()
 }
 
-const handlePageChange = () => {
-  // Handled by computed property
+const loadMore = async () => {
+  if (loadingMore.value || !hasMore.value) return
+
+  loadingMore.value = true
+  
+  // 模拟加载延迟，提供更好的用户体验
+  await new Promise(resolve => setTimeout(resolve, 300))
+  
+  const nextCount = Math.min(
+    currentLoadedCount.value + pageSize.value,
+    allFilteredAlerts.value.length
+  )
+  
+  currentLoadedCount.value = nextCount
+  loadingMore.value = false
 }
 
-const handleSizeChange = () => {
-  currentPage.value = 1
+const handleScroll = (event: Event) => {
+  const target = event.target as HTMLElement
+  const scrollTop = target.scrollTop
+  const scrollHeight = target.scrollHeight
+  const clientHeight = target.clientHeight
+  
+  // 当滚动到距离底部100px时触发加载
+  if (scrollHeight - scrollTop - clientHeight < 100) {
+    loadMore()
+  }
 }
 
 const handleViewCase = (caseId: number) => {
@@ -498,15 +525,18 @@ onMounted(() => {
 <style scoped>
 .notification-alerts-container {
   padding: 20px;
+  min-width: 1100px;
 }
 
 .stats-row {
   margin-bottom: 20px;
+  min-width: 1000px;
 }
 
 .stat-card {
   cursor: pointer;
   transition: transform 0.3s;
+  min-width: 280px;
 }
 
 .stat-card:hover {
@@ -612,9 +642,57 @@ onMounted(() => {
   background-color: #fdf6ec;
 }
 
-.pagination {
+.table-container {
+  max-height: 600px;
+  overflow-y: auto;
   margin-top: 20px;
+}
+
+.load-more-hint {
+  text-align: center;
+  padding: 16px;
+  color: #909399;
+  font-size: 14px;
+}
+
+.loading-more {
+  text-align: center;
+  padding: 16px;
+  color: #409eff;
+  font-size: 14px;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.loading-more .el-icon {
+  font-size: 16px;
+}
+
+.no-more-hint {
+  text-align: center;
+  padding: 16px;
+  color: #c0c4cc;
+  font-size: 14px;
+}
+
+/* 自定义滚动条样式 */
+.table-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 </style>

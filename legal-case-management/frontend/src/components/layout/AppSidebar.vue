@@ -12,12 +12,12 @@
         <el-icon><DataAnalysis /></el-icon>
         <template #title>首页</template>
       </el-menu-item>
-      
+
       <el-menu-item index="/cases">
         <el-icon><Document /></el-icon>
         <template #title>案件管理</template>
       </el-menu-item>
-      
+
       <el-sub-menu index="/process">
         <template #title>
           <el-icon><Operation /></el-icon>
@@ -25,7 +25,7 @@
         </template>
         <el-menu-item index="/process/templates">流程模板</el-menu-item>
       </el-sub-menu>
-      
+
       <el-sub-menu index="/documents">
         <template #title>
           <el-icon><Tickets /></el-icon>
@@ -34,15 +34,7 @@
         <el-menu-item index="/documents/templates">模板管理</el-menu-item>
         <el-menu-item index="/documents/ocr">文书识别</el-menu-item>
       </el-sub-menu>
-      
-      <el-sub-menu index="/tools">
-        <template #title>
-          <el-icon><Money /></el-icon>
-          <span>应用工具</span>
-        </template>
-        <el-menu-item index="/costs/calculator">费用计算器</el-menu-item>
-      </el-sub-menu>
-      
+
       <el-sub-menu index="/notifications">
         <template #title>
           <el-icon><Bell /></el-icon>
@@ -52,21 +44,20 @@
         <el-menu-item index="/notifications/rules">提醒规则</el-menu-item>
         <el-menu-item index="/notifications/alerts">超期预警</el-menu-item>
       </el-sub-menu>
-      
+
       <el-sub-menu index="/analytics">
         <template #title>
           <el-icon><TrendCharts /></el-icon>
           <span>数据分析</span>
         </template>
         <el-menu-item index="/analytics">数据驾驶舱</el-menu-item>
-        <el-menu-item index="/costs/analytics">成本分析</el-menu-item>
       </el-sub-menu>
-      
+
       <el-menu-item index="/knowledge">
         <el-icon><Reading /></el-icon>
         <template #title>案例知识库</template>
       </el-menu-item>
-      
+
       <el-sub-menu index="/archive">
         <template #title>
           <el-icon><FolderOpened /></el-icon>
@@ -74,13 +65,20 @@
         </template>
         <el-menu-item index="/archive/search">归档检索</el-menu-item>
       </el-sub-menu>
+      <el-sub-menu index="/tools">
+        <template #title>
+          <el-icon><Money /></el-icon>
+          <span>应用工具</span>
+        </template>
+        <el-menu-item index="/costs/calculator">费用计算器</el-menu-item>
+      </el-sub-menu>
     </el-menu>
   </el-aside>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed } from "vue";
+import { useRoute } from "vue-router";
 import {
   DataAnalysis,
   Document,
@@ -90,48 +88,48 @@ import {
   Bell,
   TrendCharts,
   FolderOpened,
-  Reading
-} from '@element-plus/icons-vue'
+  Reading,
+} from "@element-plus/icons-vue";
 
 interface Props {
-  collapsed?: boolean
+  collapsed?: boolean;
 }
 
-defineProps<Props>()
+defineProps<Props>();
 
-const route = useRoute()
+const route = useRoute();
 
 // 计算当前激活的菜单项
 const activeMenu = computed(() => {
-  return route.path
-})
+  return route.path;
+});
 
 // 默认展开的子菜单
 const defaultOpeneds = computed(() => {
-  const path = route.path
-  const openeds: string[] = []
-  
-  if (path.startsWith('/process')) {
-    openeds.push('/process')
+  const path = route.path;
+  const openeds: string[] = [];
+
+  if (path.startsWith("/process")) {
+    openeds.push("/process");
   }
-  if (path.startsWith('/documents')) {
-    openeds.push('/documents')
+  if (path.startsWith("/documents")) {
+    openeds.push("/documents");
   }
-  if (path.startsWith('/costs') || path.startsWith('/tools')) {
-    openeds.push('/tools')
+  if (path.startsWith("/costs") || path.startsWith("/tools")) {
+    openeds.push("/tools");
   }
-  if (path.startsWith('/notifications')) {
-    openeds.push('/notifications')
+  if (path.startsWith("/notifications")) {
+    openeds.push("/notifications");
   }
-  if (path.startsWith('/analytics')) {
-    openeds.push('/analytics')
+  if (path.startsWith("/analytics")) {
+    openeds.push("/analytics");
   }
-  if (path.startsWith('/archive')) {
-    openeds.push('/archive')
+  if (path.startsWith("/archive")) {
+    openeds.push("/archive");
   }
-  
-  return openeds
-})
+
+  return openeds;
+});
 </script>
 
 <style scoped>

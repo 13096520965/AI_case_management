@@ -19,14 +19,21 @@ class Case {
       target_amount,
       filing_date,
       status = 'active',
-      team_id
+      team_id,
+      industry_segment,
+      handler,
+      is_external_agent,
+      law_firm_name,
+      agent_lawyer,
+      agent_contact
     } = caseData;
 
     const sql = `
       INSERT INTO cases (
         case_number, internal_number, case_type, case_cause, 
-        court, target_amount, filing_date, status, team_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        court, target_amount, filing_date, status, team_id, industry_segment,
+        handler, is_external_agent, law_firm_name, agent_lawyer, agent_contact
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // 将 undefined 转换为 null，避免 SQL 绑定错误
@@ -39,7 +46,13 @@ class Case {
       target_amount ?? null,
       filing_date ?? null,
       status ?? 'active',
-      team_id ?? null
+      team_id ?? null,
+      industry_segment ?? null,
+      handler ?? null,
+      is_external_agent ?? 0,
+      law_firm_name ?? null,
+      agent_lawyer ?? null,
+      agent_contact ?? null
     ]);
 
     return result.lastID;
@@ -67,7 +80,9 @@ class Case {
       status,
       case_type,
       search,
-      party_name
+      party_name,
+      handler,
+      industry_segment
     } = options;
 
     let sql = 'SELECT DISTINCT c.* FROM cases c';
@@ -76,6 +91,11 @@ class Case {
     // 如果搜索当事人，需要 JOIN litigation_parties 表
     if (party_name) {
       sql += ' LEFT JOIN litigation_parties lp ON c.id = lp.case_id';
+    }
+    
+    // 如果搜索承接人，需要 JOIN users 表
+    if (handler) {
+      sql += ' LEFT JOIN users u ON c.team_id = u.id';
     }
     
     sql += ' WHERE 1=1';
@@ -90,6 +110,11 @@ class Case {
       params.push(case_type);
     }
 
+    if (industry_segment) {
+      sql += ' AND c.industry_segment = ?';
+      params.push(industry_segment);
+    }
+
     if (search) {
       sql += ' AND (c.internal_number LIKE ? OR c.case_number LIKE ? OR c.case_cause LIKE ? OR c.court LIKE ?)';
       const searchPattern = `%${search}%`;
@@ -100,6 +125,13 @@ class Case {
     if (party_name) {
       sql += ' AND lp.name LIKE ?';
       params.push(`%${party_name}%`);
+    }
+    
+    // 按承接人姓名搜索
+    if (handler) {
+      sql += ' AND (u.username LIKE ? OR u.real_name LIKE ?)';
+      const handlerPattern = `%${handler}%`;
+      params.push(handlerPattern, handlerPattern);
     }
 
     sql += ' ORDER BY c.created_at DESC LIMIT ? OFFSET ?';
@@ -158,6 +190,11 @@ class Case {
       sql += ' LEFT JOIN litigation_parties lp ON c.id = lp.case_id';
     }
     
+    // 如果搜索承接人，需要 JOIN users 表
+    if (filters.handler) {
+      sql += ' LEFT JOIN users u ON c.team_id = u.id';
+    }
+    
     sql += ' WHERE 1=1';
 
     if (filters.status) {
@@ -170,6 +207,11 @@ class Case {
       params.push(filters.case_type);
     }
 
+    if (filters.industry_segment) {
+      sql += ' AND c.industry_segment = ?';
+      params.push(filters.industry_segment);
+    }
+
     if (filters.search) {
       sql += ' AND (c.internal_number LIKE ? OR c.case_number LIKE ? OR c.case_cause LIKE ? OR c.court LIKE ?)';
       const searchPattern = `%${filters.search}%`;
@@ -180,6 +222,13 @@ class Case {
     if (filters.party_name) {
       sql += ' AND lp.name LIKE ?';
       params.push(`%${filters.party_name}%`);
+    }
+    
+    // 按承接人姓名搜索
+    if (filters.handler) {
+      sql += ' AND (u.username LIKE ? OR u.real_name LIKE ?)';
+      const handlerPattern = `%${filters.handler}%`;
+      params.push(handlerPattern, handlerPattern);
     }
 
     const result = await get(sql, params);

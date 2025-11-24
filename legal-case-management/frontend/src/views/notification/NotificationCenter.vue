@@ -4,16 +4,15 @@
 
     <el-card class="filter-card">
       <el-row :gutter="16">
-        <el-col :span="6">
-          <el-select v-model="filters.status" placeholder="状态筛选" clearable @change="handleFilterChange">
+        <el-col :span="5">
+          <el-select v-model="filters.status" placeholder="状态筛选" clearable style="width: 100%">
             <el-option label="全部" value="" />
             <el-option label="未读" value="unread" />
             <el-option label="已读" value="read" />
-            <el-option label="待处理" value="pending" />
           </el-select>
         </el-col>
-        <el-col :span="6">
-          <el-select v-model="filters.taskType" placeholder="类型筛选" clearable @change="handleFilterChange">
+        <el-col :span="5">
+          <el-select v-model="filters.taskType" placeholder="类型筛选" clearable style="width: 100%">
             <el-option label="全部" value="" />
             <el-option label="节点到期" value="deadline" />
             <el-option label="节点超期" value="overdue" />
@@ -22,28 +21,47 @@
             <el-option label="系统通知" value="system" />
           </el-select>
         </el-col>
-        <el-col :span="12" style="text-align: right">
-          <el-button type="primary" @click="handleMarkAllAsRead" :disabled="unreadCount === 0">
-            全部标记已读
+        <el-col :span="8">
+          <el-input 
+            v-model="filters.keyword" 
+            placeholder="搜索提醒内容" 
+            clearable
+            @keyup.enter="handleSearch"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+        </el-col>
+        <el-col :span="6" style="text-align: left">
+          <el-button type="primary" @click="handleSearch">
+            <el-icon><Search /></el-icon>
+            搜索
           </el-button>
-          <el-button @click="handleRefresh" :loading="loading">
-            <el-icon><Refresh /></el-icon>
-            刷新
+          <el-button @click="handleReset">
+            <el-icon><RefreshLeft /></el-icon>
+            重置
           </el-button>
         </el-col>
       </el-row>
     </el-card>
 
     <el-card class="notification-list-card" v-loading="loading">
-      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-        <el-tab-pane label="全部" name="all">
-          <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="tab-badge" />
-        </el-tab-pane>
-        <el-tab-pane label="未读" name="unread">
-          <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="tab-badge" />
-        </el-tab-pane>
-        <el-tab-pane label="已读" name="read" />
-      </el-tabs>
+      <div class="card-header">
+        <div class="header-left">
+          <span class="stats-text">共{{ total }}条提醒，其中{{ unreadCount }}条未读</span>
+        </div>
+        <div class="header-right">
+          <el-button type="primary" @click="handleMarkAllAsRead" :disabled="unreadCount === 0">
+            <el-icon><Check /></el-icon>
+            一键标为已读
+          </el-button>
+          <el-button @click="handleRefresh" :loading="loading">
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </el-button>
+        </div>
+      </div>
 
       <div v-if="displayedNotifications.length === 0" class="empty-state">
         <TableEmpty description="暂无提醒" />
@@ -121,6 +139,9 @@
         layout="total, sizes, prev, pager, next, jumper"
         @size-change="handleSizeChange"
         @current-change="handlePageChange"
+        :prev-text="'上一页'"
+        :next-text="'下一页'"
+        background
       />
     </el-card>
   </div>
@@ -129,7 +150,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Bell, Warning, Clock, Money, Document } from '@element-plus/icons-vue'
+import { Refresh, Bell, Warning, Clock, Money, Document, Search, RefreshLeft, Check } from '@element-plus/icons-vue'
 import { notificationApi } from '@/api/notification'
 import { useNotificationStore } from '@/stores/notification'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -140,14 +161,14 @@ const notificationStore = useNotificationStore()
 
 // State
 const loading = ref(false)
-const activeTab = ref('all')
 const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 
 const filters = ref({
   status: '',
-  taskType: ''
+  taskType: '',
+  keyword: ''
 })
 
 // Computed
@@ -156,19 +177,18 @@ const unreadCount = computed(() => notificationStore.unreadCount)
 const displayedNotifications = computed(() => {
   let notifications = notificationStore.notifications
 
-  // Filter by tab
-  if (activeTab.value === 'unread') {
-    notifications = notifications.filter(n => n.status === 'unread')
-  } else if (activeTab.value === 'read') {
-    notifications = notifications.filter(n => n.status === 'read')
-  }
-
   // Apply filters
   if (filters.value.status) {
     notifications = notifications.filter(n => n.status === filters.value.status)
   }
   if (filters.value.taskType) {
     notifications = notifications.filter(n => n.taskType === filters.value.taskType)
+  }
+  if (filters.value.keyword) {
+    const keyword = filters.value.keyword.toLowerCase()
+    notifications = notifications.filter(n => 
+      n.content.toLowerCase().includes(keyword)
+    )
   }
 
   total.value = notifications.length
@@ -183,13 +203,9 @@ const displayedNotifications = computed(() => {
 const fetchNotifications = async () => {
   loading.value = true
   try {
-    const params: any = {}
-    if (filters.value.status) params.status = filters.value.status
-    if (filters.value.taskType) params.task_type = filters.value.taskType
-
-    const response = await notificationApi.getNotifications(params)
-    if (response.data.success) {
-      notificationStore.setNotifications(response.data.data)
+    const response = await notificationApi.getNotifications()
+    if (response && response.success) {
+      notificationStore.setNotifications(response.data || [])
     }
   } catch (error: any) {
     ElMessage.error(error.message || '获取提醒列表失败')
@@ -198,13 +214,17 @@ const fetchNotifications = async () => {
   }
 }
 
-const handleTabChange = () => {
+const handleSearch = () => {
   currentPage.value = 1
 }
 
-const handleFilterChange = () => {
+const handleReset = () => {
+  filters.value = {
+    status: '',
+    taskType: '',
+    keyword: ''
+  }
   currentPage.value = 1
-  fetchNotifications()
 }
 
 const handleRefresh = () => {
@@ -229,7 +249,7 @@ const handleNotificationClick = (notification: any) => {
 const handleMarkAsRead = async (id: number) => {
   try {
     const response = await notificationApi.markAsRead(id)
-    if (response.data.success) {
+    if (response && response.success) {
       notificationStore.markAsRead(id)
       ElMessage.success('已标记为已读')
     }
@@ -247,13 +267,17 @@ const handleMarkAllAsRead = async () => {
     })
 
     const unreadIds = notificationStore.unreadNotifications.map(n => n.id)
-    if (unreadIds.length === 0) return
+    if (unreadIds.length === 0) {
+      ElMessage.info('没有未读提醒')
+      return
+    }
 
     // Call API to mark multiple as read
-    const response = await notificationApi.getNotifications() // This would need a batch endpoint
-    notificationStore.markAllAsRead()
-    ElMessage.success('已全部标记为已读')
-    fetchNotifications()
+    const response = await notificationApi.markAllAsRead()
+    if (response && response.success) {
+      notificationStore.markAllAsRead()
+      ElMessage.success('已全部标记为已读')
+    }
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error(error.message || '操作失败')
@@ -270,7 +294,7 @@ const handleDelete = async (id: number) => {
     })
 
     const response = await notificationApi.deleteNotification(id)
-    if (response.data.success) {
+    if (response && response.success) {
       notificationStore.removeNotification(id)
       ElMessage.success('删除成功')
     }
@@ -342,18 +366,47 @@ onMounted(() => {
 <style scoped>
 .notification-center-container {
   padding: 20px;
+  min-width: 1100px;
 }
 
 .filter-card {
   margin-bottom: 20px;
+  min-width: 1000px;
 }
 
 .notification-list-card {
   min-height: 500px;
+  min-width: 1000px;
 }
 
-.tab-badge {
-  margin-left: 8px;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 16px;
+  min-width: 800px;
+  flex-wrap: nowrap;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.stats-text {
+  font-size: 14px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.header-right {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .empty-state {
@@ -362,7 +415,7 @@ onMounted(() => {
 }
 
 .notification-list {
-  margin-top: 20px;
+  margin-top: 0;
 }
 
 .notification-item {
@@ -372,6 +425,7 @@ onMounted(() => {
   border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
   transition: background-color 0.3s;
+  min-width: 800px;
 }
 
 .notification-item:hover {
@@ -442,11 +496,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .pagination {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+  min-width: 600px;
+  flex-wrap: wrap;
 }
 </style>

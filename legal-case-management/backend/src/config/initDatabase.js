@@ -1,4 +1,5 @@
-const { getDatabase, saveDatabase } = require('./database');
+const { DB_PATH } = require('./database');
+const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
 
@@ -18,6 +19,12 @@ CREATE TABLE IF NOT EXISTS cases (
   filing_date DATE,
   status VARCHAR(50) DEFAULT 'active',
   team_id INTEGER,
+  industry_segment VARCHAR(50),
+  handler VARCHAR(100),
+  is_external_agent BOOLEAN DEFAULT 0,
+  law_firm_name VARCHAR(200),
+  agent_lawyer VARCHAR(100),
+  agent_contact VARCHAR(100),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -327,6 +334,9 @@ CREATE TABLE IF NOT EXISTS case_logs (
 -- 创建索引以提高查询性能
 CREATE INDEX IF NOT EXISTS idx_cases_case_number ON cases(case_number);
 CREATE INDEX IF NOT EXISTS idx_cases_status ON cases(status);
+CREATE INDEX IF NOT EXISTS idx_cases_industry_segment ON cases(industry_segment);
+CREATE INDEX IF NOT EXISTS idx_cases_handler ON cases(handler);
+CREATE INDEX IF NOT EXISTS idx_cases_is_external_agent ON cases(is_external_agent);
 CREATE INDEX IF NOT EXISTS idx_litigation_parties_case_id ON litigation_parties(case_id);
 CREATE INDEX IF NOT EXISTS idx_process_nodes_case_id ON process_nodes(case_id);
 CREATE INDEX IF NOT EXISTS idx_process_templates_case_type ON process_templates(case_type);
@@ -370,33 +380,65 @@ function initializeDatabase() {
       fs.mkdirSync(dbDir, { recursive: true });
     }
 
-    getDatabase().then(db => {
+    const db = new sqlite3.Database(DB_PATH, (err) => {
+      if (err) {
+        console.error('数据库连接失败:', err.message);
+        reject(err);
+        return;
+      }
+      
       console.log('数据库连接成功');
       
-      try {
-        // 启用外键约束
-        db.run('PRAGMA foreign_keys = ON');
-        
-        // 执行初始化 SQL - 分割成单独的语句
-        const statements = initSQL.split(';').filter(stmt => stmt.trim());
-        
-        for (const statement of statements) {
-          if (statement.trim()) {
-            db.run(statement);
-          }
+      // 启用外键约束
+      db.run('PRAGMA foreign_keys = ON', (err) => {
+        if (err) {
+          console.error('启用外键约束失败:', err.message);
         }
-        
-        saveDatabase();
+      });
+      
+      // 执行初始化 SQL - 分割成单独的语句
+      const statements = initSQL.split(';').filter(stmt => stmt.trim());
+      let completed = 0;
+      let hasError = false;
+      
+      if (statements.length === 0) {
+        db.close();
         console.log('数据库表创建成功');
         console.log('数据库初始化完成');
         resolve();
-      } catch (err) {
-        console.error('数据库初始化失败:', err.message);
-        reject(err);
+        return;
       }
-    }).catch(err => {
-      console.error('数据库连接失败:', err.message);
-      reject(err);
+      
+      statements.forEach((statement, index) => {
+        if (statement.trim() && !hasError) {
+          db.run(statement.trim(), (err) => {
+            if (err && !err.message.includes('already exists')) {
+              console.error(`执行 SQL 语句失败 (${index + 1}/${statements.length}):`, err.message);
+              console.error('SQL:', statement.substring(0, 100));
+              hasError = true;
+              db.close();
+              reject(err);
+              return;
+            }
+            
+            completed++;
+            if (completed === statements.length) {
+              db.close();
+              console.log('数据库表创建成功');
+              console.log('数据库初始化完成');
+              resolve();
+            }
+          });
+        } else {
+          completed++;
+          if (completed === statements.length && !hasError) {
+            db.close();
+            console.log('数据库表创建成功');
+            console.log('数据库初始化完成');
+            resolve();
+          }
+        }
+      });
     });
   });
 }

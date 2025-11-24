@@ -60,7 +60,7 @@ export function setupRouterGuards(router: Router) {
       'DocumentOCR': '文书识别',
       'CostManagement': '成本管理',
       'CostCalculator': '费用计算器',
-      'CostAnalytics': '成本分析',
+      // 'CostAnalytics': '成本分析', // 已集成到数据驾驶舱
       'NotificationCenter': '提醒中心',
       'NotificationRules': '提醒规则',
       'NotificationAlerts': '超期预警',

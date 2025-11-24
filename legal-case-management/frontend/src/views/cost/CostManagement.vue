@@ -11,6 +11,7 @@
             <el-option label="律师费" value="律师费" />
             <el-option label="保全费" value="保全费" />
             <el-option label="鉴定费" value="鉴定费" />
+            <el-option label="诉责险费" value="诉责险费" />
             <el-option label="公证费" value="公证费" />
             <el-option label="差旅费" value="差旅费" />
             <el-option label="其他费用" value="其他费用" />
@@ -44,7 +45,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="paymentDate" label="支付日期" width="120" sortable="custom" />
-        <el-table-column prop="dueDate" label="到期日期" width="120" sortable="custom" />
+        <el-table-column prop="dueDate" label="退费日期" width="120" sortable="custom" />
         <el-table-column prop="status" label="支付状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">{{ row.status }}</el-tag>
@@ -80,6 +81,7 @@
             <el-option label="律师费" value="律师费" />
             <el-option label="保全费" value="保全费" />
             <el-option label="鉴定费" value="鉴定费" />
+            <el-option label="诉责险费" value="诉责险费" />
             <el-option label="公证费" value="公证费" />
             <el-option label="差旅费" value="差旅费" />
             <el-option label="其他费用" value="其他费用" />
@@ -96,7 +98,7 @@
             value-format="YYYY-MM-DD"
           />
         </el-form-item>
-        <el-form-item label="到期日期" prop="dueDate">
+        <el-form-item label="退费日期" prop="dueDate">
           <el-date-picker 
             v-model="costForm.dueDate" 
             type="date" 

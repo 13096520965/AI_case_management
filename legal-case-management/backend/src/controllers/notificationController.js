@@ -1,6 +1,23 @@
 const NotificationTask = require('../models/NotificationTask');
 
 /**
+ * 转换数据库字段为前端格式 (snake_case -> camelCase)
+ */
+const convertToCamelCase = (notification) => {
+  if (!notification) return null;
+  return {
+    id: notification.id,
+    relatedId: notification.related_id,
+    relatedType: notification.related_type,
+    taskType: notification.task_type,
+    scheduledTime: notification.scheduled_time,
+    content: notification.content,
+    status: notification.status,
+    createdAt: notification.created_at
+  };
+};
+
+/**
  * 获取提醒列表
  */
 exports.getNotifications = async (req, res) => {
@@ -15,9 +32,12 @@ exports.getNotifications = async (req, res) => {
 
     const notifications = await NotificationTask.findAll(filters);
     
+    // 转换为前端格式
+    const convertedNotifications = notifications.map(convertToCamelCase);
+    
     res.json({
       success: true,
-      data: notifications
+      data: convertedNotifications
     });
   } catch (error) {
     console.error('Error fetching notifications:', error);
@@ -45,7 +65,7 @@ exports.getNotificationById = async (req, res) => {
 
     res.json({
       success: true,
-      data: notification
+      data: convertToCamelCase(notification)
     });
   } catch (error) {
     console.error('Error fetching notification:', error);
@@ -116,7 +136,7 @@ exports.updateNotification = async (req, res) => {
 
     res.json({
       success: true,
-      data: notification
+      data: convertToCamelCase(notification)
     });
   } catch (error) {
     console.error('Error updating notification:', error);
@@ -147,7 +167,7 @@ exports.markAsRead = async (req, res) => {
 
     res.json({
       success: true,
-      data: notification,
+      data: convertToCamelCase(notification),
       message: 'Notification marked as read'
     });
   } catch (error) {
@@ -262,7 +282,7 @@ exports.getNotificationsByRelated = async (req, res) => {
 
     res.json({
       success: true,
-      data: notifications
+      data: notifications.map(convertToCamelCase)
     });
   } catch (error) {
     console.error('Error fetching notifications by related:', error);
@@ -385,6 +405,29 @@ exports.resendNotification = async (req, res) => {
     });
   } catch (error) {
     console.error('Error resending notification:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * 标记所有提醒为已读
+ */
+exports.markAllAsRead = async (req, res) => {
+  try {
+    const changes = await NotificationTask.markAllAsRead();
+
+    res.json({
+      success: true,
+      data: {
+        updated_count: changes
+      },
+      message: `${changes} notifications marked as read`
+    });
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
     res.status(500).json({
       success: false,
       error: error.message

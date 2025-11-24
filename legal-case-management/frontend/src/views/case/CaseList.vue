@@ -45,12 +45,49 @@
           </el-select>
         </el-form-item>
         
+        <el-form-item label="产业板块">
+          <el-select
+            v-model="searchForm.industrySegment"
+            placeholder="请选择"
+            clearable
+            style="width: 150px"
+            @change="handleSearch"
+          >
+            <el-option label="新奥新智" value="新奥新智" />
+            <el-option label="新奥股份" value="新奥股份" />
+            <el-option label="新奥能源" value="新奥能源" />
+            <el-option label="新地环保" value="新地环保" />
+            <el-option label="新奥动力" value="新奥动力" />
+            <el-option label="能源研究院" value="能源研究院" />
+            <el-option label="新绎控股" value="新绎控股" />
+            <el-option label="数能科技" value="数能科技" />
+            <el-option label="新智认知" value="新智认知" />
+            <el-option label="质信智购" value="质信智购" />
+            <el-option label="新智感知" value="新智感知" />
+            <el-option label="新智通才" value="新智通才" />
+            <el-option label="财务公司" value="财务公司" />
+            <el-option label="新奥国际" value="新奥国际" />
+            <el-option label="河北金租" value="河北金租" />
+            <el-option label="新博卓畅" value="新博卓畅" />
+          </el-select>
+        </el-form-item>
+        
         <el-form-item label="当事人">
           <el-input
             v-model="searchForm.partyName"
             placeholder="当事人姓名/名称"
             clearable
             style="width: 180px"
+            @clear="handleSearch"
+          />
+        </el-form-item>
+        
+        <el-form-item label="案件承接人">
+          <el-input
+            v-model="searchForm.handler"
+            placeholder="承接人姓名"
+            clearable
+            style="width: 150px"
             @clear="handleSearch"
           />
         </el-form-item>
@@ -152,6 +189,60 @@
           </template>
         </el-table-column>
         <el-table-column
+          prop="industry_segment"
+          label="产业板块"
+          width="120"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="handler"
+          label="案件承接人"
+          width="120"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="is_external_agent"
+          label="外部代理"
+          width="100"
+          align="center"
+        >
+          <template #default="{ row }">
+            <el-tag :type="row.is_external_agent ? 'success' : 'info'" size="small">
+              {{ row.is_external_agent ? '是' : '否' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="law_firm_name"
+          label="律所名称"
+          width="150"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.law_firm_name || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="agent_lawyer"
+          label="代理律师"
+          width="120"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.agent_lawyer || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="agent_contact"
+          label="联系方式"
+          width="130"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.agent_contact || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column
           label="操作"
           width="200"
           fixed="right"
@@ -221,7 +312,9 @@ const searchForm = reactive({
   keyword: '',
   caseType: '',
   status: '',
-  partyName: ''
+  industrySegment: '',
+  partyName: '',
+  handler: ''
 })
 const pagination = reactive({
   page: 1,
@@ -249,8 +342,14 @@ const fetchCaseList = async () => {
     if (searchForm.status) {
       params.status = searchForm.status
     }
+    if (searchForm.industrySegment) {
+      params.industry_segment = searchForm.industrySegment
+    }
     if (searchForm.partyName) {
       params.party_name = searchForm.partyName
+    }
+    if (searchForm.handler) {
+      params.handler = searchForm.handler
     }
     if (sortField.value) {
       params.sortField = sortField.value
@@ -298,6 +397,7 @@ const handleReset = () => {
   searchForm.caseType = ''
   searchForm.status = ''
   searchForm.partyName = ''
+  searchForm.handler = ''
   sortField.value = ''
   sortOrder.value = ''
   pagination.page = 1

@@ -23,7 +23,7 @@ export type CaseStatus = '立案' | '审理中' | '已结案' | '已归档'
 export type PartyType = '原告' | '被告' | '第三人'
 export type EntityType = '企业' | '个人'
 export type NodeStatus = '待处理' | '进行中' | '已完成' | '超期'
-export type CostType = '诉讼费' | '律师费' | '保全费' | '鉴定费' | '其他'
+export type CostType = '诉讼费' | '律师费' | '保全费' | '鉴定费' | '诉责险费' | '其他'
 export type PaymentStatus = '待支付' | '已支付' | '已退回'
 
 // Evidence types
