@@ -100,7 +100,6 @@
             <el-option label="节点到期提醒" value="deadline" />
             <el-option label="节点超期预警" value="overdue" />
             <el-option label="费用支付提醒" value="payment" />
-            <el-option label="协作任务提醒" value="task" />
           </el-select>
         </el-form-item>
 

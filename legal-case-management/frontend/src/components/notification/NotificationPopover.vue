@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Bell, Warning, Clock, Money, Document } from '@element-plus/icons-vue'
@@ -156,16 +156,27 @@ const formatTime = (time: string): string => {
 }
 
 // 定期刷新未读数量
+let refreshInterval: NodeJS.Timeout | null = null
+
 onMounted(() => {
+  // 初始加载
   fetchNotifications()
   
-  // 每30秒刷新一次
-  const interval = setInterval(() => {
-    fetchNotifications()
-  }, 30000)
+  // 每60秒刷新一次（从30秒改为60秒，减少请求频率）
+  refreshInterval = setInterval(() => {
+    // 只在页面可见时刷新
+    if (document.visibilityState === 'visible') {
+      fetchNotifications()
+    }
+  }, 60000)
+})
 
-  // 组件卸载时清除定时器
-  return () => clearInterval(interval)
+// 组件卸载时清除定时器
+onUnmounted(() => {
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+    refreshInterval = null
+  }
 })
 </script>
 

@@ -102,7 +102,18 @@
 
             <div class="notification-footer">
               <span class="notification-related">
-                关联: {{ notification.relatedType }} #{{ notification.relatedId }}
+                关联: 
+                <el-link 
+                  v-if="notification.caseNumber"
+                  type="primary" 
+                  :underline="false"
+                  @click.stop="handleViewCase(notification)"
+                >
+                  {{ notification.caseNumber }}
+                </el-link>
+                <span v-else>
+                  {{ notification.relatedType }} #{{ notification.relatedId }}
+                </span>
               </span>
             </div>
           </div>
@@ -149,6 +160,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Bell, Warning, Clock, Money, Document, Search, RefreshLeft, Check } from '@element-plus/icons-vue'
 import { notificationApi } from '@/api/notification'
@@ -156,7 +168,9 @@ import { useNotificationStore } from '@/stores/notification'
 import PageHeader from '@/components/common/PageHeader.vue'
 import TableEmpty from '@/components/common/TableEmpty.vue'
 import { formatDistanceToNow } from '@/utils/format'
+import request from '@/api/request'
 
+const router = useRouter()
 const notificationStore = useNotificationStore()
 
 // State
@@ -205,12 +219,48 @@ const fetchNotifications = async () => {
   try {
     const response = await notificationApi.getNotifications()
     if (response && response.success) {
-      notificationStore.setNotifications(response.data || [])
+      const notifications = response.data || []
+      
+      // 获取关联的案号
+      const notificationsWithCaseNumber = await Promise.all(
+        notifications.map(async (notification: any) => {
+          if (notification.relatedType === 'process_node' && notification.relatedId) {
+            try {
+              // 获取节点信息
+              const nodeResponse: any = await request.get(`/nodes/${notification.relatedId}`)
+              const node = nodeResponse?.data?.node || nodeResponse?.node || nodeResponse
+              
+              if (node && node.case_id) {
+                // 获取案件信息
+                const caseResponse: any = await request.get(`/cases/${node.case_id}`)
+                const caseData = caseResponse?.data?.case || caseResponse?.case || caseResponse
+                
+                return {
+                  ...notification,
+                  caseId: node.case_id,
+                  caseNumber: caseData?.case_number || caseData?.internal_number || `案件 #${node.case_id}`
+                }
+              }
+            } catch (error) {
+              console.error('获取案号失败:', error)
+            }
+          }
+          return notification
+        })
+      )
+      
+      notificationStore.setNotifications(notificationsWithCaseNumber)
     }
   } catch (error: any) {
     ElMessage.error(error.message || '获取提醒列表失败')
   } finally {
     loading.value = false
+  }
+}
+
+const handleViewCase = (notification: any) => {
+  if (notification.caseId) {
+    router.push(`/cases/${notification.caseId}`)
   }
 }
 

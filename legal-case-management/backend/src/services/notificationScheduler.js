@@ -97,8 +97,14 @@ class NotificationScheduler {
 
   /**
    * 处理节点截止日期规则
+   * 注意：node_deadline 类型已废弃，改用 deadline 类型
    */
   async processNodeDeadlineRule(rule) {
+    // 注释掉 node_deadline 类型的生成逻辑
+    // 业务中不需要这种类型的提醒，改用 deadline 类型
+    console.log('node_deadline 类型已禁用，请使用 deadline 类型');
+    
+    /*
     try {
       const { threshold_value, threshold_unit } = rule;
       
@@ -143,6 +149,7 @@ class NotificationScheduler {
     } catch (error) {
       console.error('处理节点截止日期规则失败:', error);
     }
+    */
   }
 
   /**
@@ -245,6 +252,7 @@ class NotificationScheduler {
 
   /**
    * 检查超期节点（独立任务）
+   * 注意：node_overdue 类型已废弃，改用 overdue 类型
    */
   async checkOverdueNodes() {
     try {
@@ -258,6 +266,9 @@ class NotificationScheduler {
       
       const nodes = await query(sql);
 
+      // 注释掉 node_overdue 类型的生成逻辑
+      // 业务中不需要这种类型的提醒
+      /*
       for (const node of nodes) {
         // 检查是否已存在最近的超期提醒
         const existingNotifications = await NotificationTask.findByRelated('process_node', node.id);
@@ -284,8 +295,9 @@ class NotificationScheduler {
           console.log(`创建超期预警: ${node.node_name} (超期 ${overdueDays} 天)`);
         }
       }
+      */
 
-      console.log(`检查到 ${nodes.length} 个超期节点`);
+      console.log(`检查到 ${nodes.length} 个超期节点（node_overdue 类型已禁用）`);
     } catch (error) {
       console.error('检查超期节点失败:', error);
     }

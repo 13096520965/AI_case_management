@@ -77,6 +77,14 @@ function get(sql, params = []) {
   });
 }
 
+/**
+ * 保存数据库（用于某些需要显式保存的场景）
+ * 注意：SQLite 默认自动保存，此函数主要用于兼容性
+ */
+function saveDatabase() {
+  return Promise.resolve();
+}
+
 module.exports = {
   getDatabase,
   query,
