@@ -80,6 +80,9 @@ function get(sql, params = []) {
 /**
  * 保存数据库（用于某些需要显式保存的场景）
  * 注意：SQLite 默认自动保存，此函数主要用于兼容性
+ * Placeholder saver for compatibility with migration scripts that expect a
+ * `saveDatabase` helper. SQLite writes are already durable on disk, so simply
+ * resolve immediately to keep the existing interface intact.
  */
 function saveDatabase() {
   return Promise.resolve();
@@ -90,5 +93,6 @@ module.exports = {
   query,
   run,
   get,
+  saveDatabase,
   DB_PATH
 };
