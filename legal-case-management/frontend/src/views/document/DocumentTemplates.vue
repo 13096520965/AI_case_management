@@ -103,21 +103,54 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="选择变量">
+          <div class="variable-selector">
+            <el-checkbox-group v-model="selectedVariableKeys">
+              <el-row :gutter="20">
+                <el-col
+                  v-for="varItem in fixedVariables"
+                  :key="varItem.key"
+                  :span="8"
+                  style="margin-bottom: 10px"
+                >
+                  <el-checkbox :label="varItem.key" :value="varItem.key">
+                    {{ varItem.label }}
+                  </el-checkbox>
+                </el-col>
+              </el-row>
+            </el-checkbox-group>
+            <el-button
+              type="primary"
+              size="small"
+              style="margin-top: 10px"
+              @click="insertSelectedVariables"
+              :disabled="selectedVariableKeys.length === 0"
+            >
+              <el-icon><Plus /></el-icon>
+              插入选中变量到模板内容
+            </el-button>
+            <div style="margin-top: 8px; font-size: 12px; color: #909399">
+              提示：选择变量后点击按钮插入，或手动输入
+              &#123;&#123;变量key&#125;&#125; 格式
+            </div>
+          </div>
+        </el-form-item>
         <el-form-item label="模板内容" prop="content">
           <el-input
+            ref="contentInputRef"
             v-model="templateForm.content"
             type="textarea"
             :rows="12"
-            placeholder="输入模板内容，使用 {{变量名}} 表示可替换变量，例如：{{案号}}、{{原告}}、{{被告}}"
+            placeholder="输入模板内容，点击上方按钮插入变量，或手动输入 {{变量key}} 格式"
           />
         </el-form-item>
-        <el-form-item label="变量说明">
+        <el-form-item label="已使用变量">
           <el-tag
             v-for="variable in extractedVariables"
             :key="variable"
-            style="margin-right: 8px"
+            style="margin-right: 8px; margin-bottom: 4px"
           >
-            {{ variable }}
+            {{ getVariableLabel(variable) }}
           </el-tag>
           <span v-if="extractedVariables.length === 0" class="text-muted"
             >暂无变量</span
@@ -212,20 +245,34 @@
           </div>
         </el-form-item>
 
-        <el-divider>填充变量</el-divider>
+        <el-divider>变量预览</el-divider>
 
-        <el-form-item
-          v-for="variable in currentTemplateVariables"
-          :key="variable"
-          :label="variable"
+        <div
+          v-if="currentTemplateVariables.length > 0"
+          class="variable-preview"
         >
-          <el-input
-            v-model="generateForm.variables[variable]"
-            :placeholder="`请输入${variable}`"
-          />
-        </el-form-item>
+          <el-alert type="info" :closable="false" style="margin-bottom: 12px">
+            <template #title>
+              <span
+                >已检测到
+                {{ currentTemplateVariables.length }}
+                个变量，选择案件后将自动填充</span
+              >
+            </template>
+          </el-alert>
+          <el-tag
+            v-for="variable in currentTemplateVariables"
+            :key="variable"
+            style="margin-right: 8px; margin-bottom: 4px"
+          >
+            {{ getVariableLabel(variable) }}
+          </el-tag>
+        </div>
+        <div v-else class="text-muted" style="margin-bottom: 12px">
+          模板中未使用变量
+        </div>
 
-        <el-divider>预览</el-divider>
+        <el-divider>文书预览</el-divider>
 
         <div class="generated-preview">
           <el-input
@@ -294,7 +341,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, nextTick } from "vue";
 import {
   ElMessage,
   ElMessageBox,
@@ -319,6 +366,22 @@ const documentTypes = [
   "通知书",
   "其他",
 ];
+
+// 固定变量定义
+const fixedVariables = [
+  { key: "原告信息", label: "原告信息" },
+  { key: "被告主体信息", label: "被告主体信息" },
+  { key: "受理法院名称", label: "受理法院名称" },
+  { key: "日期", label: "日期" },
+  { key: "申请人", label: "申请人" },
+  { key: "案号", label: "案号" },
+  { key: "案由", label: "案由" },
+  { key: "第三人", label: "第三人" },
+  { key: "实体类型", label: "实体类型" },
+];
+
+// 选中的变量key
+const selectedVariableKeys = ref<string[]>([]);
 
 // State
 const loading = ref(false);
@@ -349,6 +412,8 @@ const generateForm = reactive({
   caseId: null as number | null,
   variables: {} as Record<string, string>,
 });
+
+const contentInputRef = ref<any>(null);
 
 const templateFormRef = ref<FormInstance>();
 
@@ -539,7 +604,42 @@ const handleGenerate = async (template: any) => {
   }
 };
 
+// 格式化诉讼主体信息
+const formatPartyInfo = (party: any) => {
+  const parts: string[] = [];
+
+  // 名称
+  if (party.name) parts.push(`名称：${party.name}`);
+
+  // 实体类型
+  if (party.entityType) parts.push(`实体类型：${party.entityType}`);
+
+  // 标识信息
+  if (party.identifier) parts.push(`标识信息：${party.identifier}`);
+
+  // 法定代表人
+  if (party.legalRepresentative)
+    parts.push(`法定代表人：${party.legalRepresentative}`);
+
+  // 联系方式
+  const contacts: string[] = [];
+  if (party.contactPhone) contacts.push(`电话：${party.contactPhone}`);
+  if (party.contactEmail) contacts.push(`邮箱：${party.contactEmail}`);
+  if (contacts.length > 0) parts.push(`联系方式：${contacts.join("，")}`);
+
+  // 地址
+  if (party.address) parts.push(`地址：${party.address}`);
+
+  return parts.join("\n");
+};
+
 const handleCaseChange = async (caseId: number) => {
+  if (!caseId) {
+    generateForm.variables = {};
+    selectedCaseParties.value = [];
+    return;
+  }
+
   try {
     const response = await caseApi.getCaseById(caseId);
     // 后端返回格式：{ data: { case: {...} } }
@@ -556,29 +656,17 @@ const handleCaseChange = async (caseId: number) => {
       caseType: caseData.case_type || caseData.caseType,
     };
 
-    // Auto-fill common variables
-    generateForm.variables = {
-      案号: normalizedCase.caseNumber || normalizedCase.internalNumber || "",
-      内部编号: normalizedCase.internalNumber || "",
-      案由: normalizedCase.caseCause || "",
-      案件类型: normalizedCase.caseType || "",
-      法院: normalizedCase.court || "",
-      标的额: normalizedCase.targetAmount
-        ? `${normalizedCase.targetAmount}元`
-        : "",
-      立案日期: normalizedCase.filingDate || "",
-      ...generateForm.variables,
-    };
-
     // 获取诉讼主体列表
     loadingParties.value = true;
+    let parties: any[] = [];
     try {
       const partiesResponse = await caseApi.getCaseParties(caseId);
       const rawParties =
         partiesResponse.data?.parties ||
         partiesResponse.data?.data?.parties ||
+        partiesResponse.data ||
         [];
-      selectedCaseParties.value = rawParties.map((party: any) => ({
+      parties = rawParties.map((party: any) => ({
         id: party.id,
         name: party.name || party.organization_name || "未命名主体",
         partyType: party.party_type || party.partyType || "未知",
@@ -594,13 +682,123 @@ const handleCaseChange = async (caseId: number) => {
         legalRepresentative:
           party.legal_representative || party.legalRepresentative || "",
       }));
+      selectedCaseParties.value = parties;
     } catch (error) {
       console.error("加载诉讼主体失败", error);
       selectedCaseParties.value = [];
-      ElMessage.error("加载诉讼主体失败");
     } finally {
       loadingParties.value = false;
     }
+
+    // 根据模板中使用的变量自动填充数据
+    const variables: Record<string, string> = {};
+
+    // 获取模板中使用的所有变量
+    const templateVars = currentTemplateVariables.value;
+
+    // 填充案号
+    if (templateVars.includes("案号")) {
+      variables["案号"] =
+        normalizedCase.caseNumber || normalizedCase.internalNumber || "";
+    }
+
+    // 填充案由
+    if (templateVars.includes("案由")) {
+      variables["案由"] = normalizedCase.caseCause || "";
+    }
+
+    // 填充受理法院名称
+    if (templateVars.includes("受理法院名称")) {
+      variables["受理法院名称"] = normalizedCase.court || "";
+    }
+
+    // 填充日期（当前日期）
+    if (templateVars.includes("日期")) {
+      const now = new Date();
+      variables["日期"] = now.toLocaleDateString("zh-CN", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+
+    // 填充原告信息
+    if (templateVars.includes("原告信息")) {
+      const plaintiff = parties.find(
+        (p) => p.partyType === "原告" || p.partyType === "plaintiff"
+      );
+      if (plaintiff) {
+        variables["原告信息"] = formatPartyInfo(plaintiff);
+      } else {
+        variables["原告信息"] = "未找到原告信息";
+      }
+    }
+
+    // 填充被告主体信息
+    if (templateVars.includes("被告主体信息")) {
+      const defendant = parties.find(
+        (p) => p.partyType === "被告" || p.partyType === "defendant"
+      );
+      if (defendant) {
+        variables["被告主体信息"] = formatPartyInfo(defendant);
+      } else {
+        variables["被告主体信息"] = "未找到被告信息";
+      }
+    }
+
+    // 填充第三人
+    if (templateVars.includes("第三人")) {
+      const thirdParty = parties.find(
+        (p) => p.partyType === "第三人" || p.partyType === "third_party"
+      );
+      if (thirdParty) {
+        variables["第三人"] = formatPartyInfo(thirdParty);
+      } else {
+        variables["第三人"] = "未找到第三人信息";
+      }
+    }
+
+    // 填充申请人（优先使用原告，如果没有则使用第一个主体）
+    if (templateVars.includes("申请人")) {
+      const applicant =
+        parties.find(
+          (p) => p.partyType === "申请人" || p.partyType === "applicant"
+        ) ||
+        parties.find(
+          (p) => p.partyType === "原告" || p.partyType === "plaintiff"
+        ) ||
+        parties[0];
+      if (applicant) {
+        variables["申请人"] = applicant.name || "未知申请人";
+      } else {
+        variables["申请人"] = "未找到申请人信息";
+      }
+    }
+
+    // 填充实体类型（从第一个主体获取，或从原告/被告获取）
+    if (templateVars.includes("实体类型")) {
+      const firstParty =
+        parties.find(
+          (p) => p.partyType === "原告" || p.partyType === "plaintiff"
+        ) ||
+        parties.find(
+          (p) => p.partyType === "被告" || p.partyType === "defendant"
+        ) ||
+        parties[0];
+      if (firstParty && firstParty.entityType) {
+        variables["实体类型"] = firstParty.entityType;
+      } else {
+        variables["实体类型"] = "未知";
+      }
+    }
+
+    // 更新变量（保留用户手动修改的值）
+    generateForm.variables = {
+      ...variables,
+      ...generateForm.variables,
+    };
+
+    ElMessage.success("已自动填充变量数据");
   } catch (error) {
     console.error("加载案件详情失败", error);
     ElMessage.error("加载案件详情失败");
@@ -613,6 +811,13 @@ const handleEdit = (template: any) => {
   templateForm.documentType = template.documentType;
   templateForm.content = template.content;
   templateForm.description = template.description || "";
+
+  // 从模板内容中提取已使用的变量，并选中对应的固定变量
+  const usedVars = extractedVariables.value;
+  selectedVariableKeys.value = usedVars.filter((v) =>
+    fixedVariables.some((fv) => fv.key === v)
+  );
+
   showCreateDialog.value = true;
 };
 
@@ -703,12 +908,66 @@ const handleExport = (format: "word" | "pdf") => {
   ElMessage.success(`已导出为 ${format.toUpperCase()} 格式（简化版）`);
 };
 
+const insertTextAtCursor = (text: string) => {
+  const textarea = contentInputRef.value?.textarea as
+    | HTMLTextAreaElement
+    | undefined;
+
+  if (!textarea) {
+    templateForm.content += (templateForm.content ? "\n" : "") + text;
+    return;
+  }
+
+  const start = textarea.selectionStart ?? templateForm.content.length;
+  const end = textarea.selectionEnd ?? start;
+
+  const before = templateForm.content.substring(0, start);
+  const after = templateForm.content.substring(end);
+
+  const needsNewlineBefore = before && !before.endsWith("\n");
+  const needsNewlineAfter = after && !after.startsWith("\n");
+
+  const insertText =
+    (needsNewlineBefore ? "\n" : "") + text + (needsNewlineAfter ? "\n" : "");
+
+  templateForm.content = `${before}${insertText}${after}`;
+
+  nextTick(() => {
+    textarea.focus();
+    const cursorPos = start + insertText.length;
+    textarea.selectionStart = textarea.selectionEnd = cursorPos;
+  });
+};
+
+// 插入选中的变量到模板内容
+const insertSelectedVariables = () => {
+  if (selectedVariableKeys.value.length === 0) {
+    ElMessage.warning("请先选择要插入的变量");
+    return;
+  }
+
+  const variablesToInsert = selectedVariableKeys.value
+    .map((key) => `{{${key}}}`)
+    .join("\n");
+
+  insertTextAtCursor(variablesToInsert);
+
+  ElMessage.success("变量已插入到模板内容");
+};
+
+// 获取变量标签（用于显示）
+const getVariableLabel = (variableKey: string) => {
+  const variable = fixedVariables.find((v) => v.key === variableKey);
+  return variable ? variable.label : variableKey;
+};
+
 const resetForm = () => {
   editingTemplate.value = null;
   templateForm.name = "";
   templateForm.documentType = "";
   templateForm.content = "";
   templateForm.description = "";
+  selectedVariableKeys.value = [];
   templateFormRef.value?.resetFields();
 };
 
@@ -790,6 +1049,14 @@ onMounted(() => {
 
 .text-muted {
   color: #999;
+}
+
+.variable-selector {
+  width: 100%;
+}
+
+.variable-preview {
+  margin-bottom: 12px;
 }
 
 .party-list {
