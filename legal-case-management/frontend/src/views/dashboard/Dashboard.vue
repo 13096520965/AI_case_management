@@ -84,7 +84,7 @@
 
     <el-row :gutter="20" class="charts-row">
       <el-col :xs="24" :md="12">
-        <el-card shadow="hover">
+        <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header">
               <span>成本分析</span>
@@ -95,26 +95,56 @@
       </el-col>
       
       <el-col :xs="24" :md="12">
-        <el-card shadow="hover">
+        <el-card shadow="hover" class="todo-card">
           <template #header>
-            <div class="card-header">
-              <span>待办事项</span>
+            <div class="card-header todo-header">
+              <div class="header-left">
+                <span class="header-title">待办事项</span>
+                <el-badge :value="totalAlerts" :max="99" class="alert-badge" />
+              </div>
+              <div class="header-right">
+                <el-button 
+                  :icon="RefreshIcon" 
+                  circle 
+                  size="small" 
+                  @click="refreshAlertList"
+                  :loading="loading"
+                  title="刷新"
+                />
+              </div>
             </div>
           </template>
-          <div class="todo-list">
-            <TableEmpty v-if="todoList.length === 0" description="暂无待办事项" />
+          <div 
+            class="todo-list" 
+            @scroll="handleScroll"
+            v-loading="loading"
+          >
+            <TableEmpty v-if="alertList.length === 0 && !loading" description="暂无待办事项" />
             <div v-else>
-              <div v-for="item in todoList" :key="item.id" class="todo-item" :class="item.priority">
-                <div class="todo-icon">
-                  <el-icon v-if="item.type === 'overdue'" color="#f56c6c"><WarningFilled /></el-icon>
-                  <el-icon v-else-if="item.type === 'deadline'" color="#e6a23c"><Clock /></el-icon>
-                  <el-icon v-else color="#409eff"><DocumentChecked /></el-icon>
+              <div 
+                v-for="item in alertList" 
+                :key="item.id" 
+                class="todo-item"
+                :class="{ 'is-unread': item.status === 'unread' }"
+                @click="handleAlertClick(item)"
+              >
+                <div class="item-dot" v-if="item.status === 'unread'"></div>
+                <div class="item-icon">
+                  <el-icon :size="18" :color="getNotificationColor(item)">
+                    <component :is="getNotificationIcon(item)" />
+                  </el-icon>
                 </div>
-                <div class="todo-content">
-                  <div class="todo-title">{{ item.title }}</div>
-                  <div class="todo-desc">{{ item.description }}</div>
-                  <div class="todo-time">{{ item.time }}</div>
+                <div class="item-content">
+                  <div class="item-text">{{ item.content }}</div>
+                  <div class="item-desc" v-if="item.caseNumber">案件编号: {{ item.caseNumber }}</div>
+                  <div class="item-time">{{ formatTime(item.scheduledTime) }}</div>
                 </div>
+              </div>
+              <div v-if="hasMore" class="load-more">
+                <el-text type="info" size="small">下滑加载更多...</el-text>
+              </div>
+              <div v-else-if="alertList.length > 0" class="no-more">
+                <el-text type="info" size="small">没有更多了</el-text>
               </div>
             </div>
           </div>
@@ -125,16 +155,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { Folder, Money, TrendCharts, Bell, WarningFilled, Clock, DocumentChecked } from '@element-plus/icons-vue'
+import { ref, onMounted, onUnmounted, shallowRef } from 'vue'
+import { useRouter } from 'vue-router'
+import { Folder, Money, TrendCharts, Bell, Warning, Clock, Refresh, Document } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import { analyticsApi } from '@/api/analytics'
 import { notificationApi } from '@/api/notification'
-import { processNodeApi } from '@/api/processNode'
-import { costApi } from '@/api/cost'
 import { ElMessage } from 'element-plus'
 import TableEmpty from '@/components/common/TableEmpty.vue'
+
+const RefreshIcon = shallowRef(Refresh)
 
 interface DashboardData {
   totalCases: number
@@ -143,14 +174,20 @@ interface DashboardData {
   pendingTasks: number
 }
 
-interface TodoItem {
+interface AlertItem {
   id: number
-  type: 'overdue' | 'deadline' | 'payment'
-  priority: 'high' | 'medium' | 'low'
-  title: string
-  description: string
-  time: string
+  taskType: string
+  type?: string
+  content: string
+  caseId?: number
+  caseNumber?: string
+  caseName?: string
+  status: string
+  scheduledTime: string
+  createdAt: string
 }
+
+const router = useRouter()
 
 const dashboardData = ref<DashboardData>({
   totalCases: 0,
@@ -159,7 +196,12 @@ const dashboardData = ref<DashboardData>({
   pendingTasks: 0
 })
 
-const todoList = ref<TodoItem[]>([])
+const alertList = ref<AlertItem[]>([])
+const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(20)
+const totalAlerts = ref(0)
+const hasMore = ref(true)
 
 const caseTypeChartRef = ref<HTMLElement>()
 const caseTrendChartRef = ref<HTMLElement>()
@@ -196,43 +238,151 @@ const loadDashboardData = async () => {
   }
 }
 
-const loadTodoList = async () => {
+const loadAlertList = async (append = false) => {
+  if (loading.value) return
+  
   try {
-    const todos: TodoItem[] = []
+    loading.value = true
     
-    // Get pending notifications
-    const notificationResponse = await notificationApi.getNotifications({ 
-      status: 'pending',
-      pageSize: 5 
+    const response = await notificationApi.getNotifications({ 
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      status: 'unread'  // 只获取未读提醒
     })
     
-    if (notificationResponse.data?.list) {
-      notificationResponse.data.list.forEach((notification: any) => {
-        let type: 'overdue' | 'deadline' | 'payment' = 'deadline'
-        let priority: 'high' | 'medium' | 'low' = 'medium'
-        
-        if (notification.taskType === 'overdue_warning') {
-          type = 'overdue'
-          priority = 'high'
-        } else if (notification.taskType === 'payment_reminder') {
-          type = 'payment'
-          priority = 'medium'
-        }
-        
-        todos.push({
-          id: notification.id,
-          type,
-          priority,
-          title: notification.content || '待办事项',
-          description: `案件相关提醒`,
-          time: notification.scheduledTime || ''
-        })
-      })
-    }
+    console.log('Dashboard Alert Response:', response)
     
-    todoList.value = todos
+    if (response.data) {
+      let newAlerts = []
+      let total = 0
+      
+      // 检查返回的数据格式
+      if (response.data.list) {
+        // 分页格式
+        newAlerts = response.data.list || []
+        total = response.data.total || 0
+      } else if (Array.isArray(response.data)) {
+        // 数组格式（兼容旧接口）
+        newAlerts = response.data
+        total = response.data.length
+      }
+      
+      console.log('New alerts:', newAlerts)
+      console.log('Total:', total)
+      
+      if (append) {
+        alertList.value = [...alertList.value, ...newAlerts]
+      } else {
+        alertList.value = newAlerts
+      }
+      
+      totalAlerts.value = total
+      hasMore.value = alertList.value.length < total
+      
+      console.log('Alert list after update:', alertList.value)
+      console.log('Has more:', hasMore.value)
+      
+      // 同步更新待办事项数量
+      dashboardData.value.pendingTasks = total
+    }
   } catch (error) {
-    console.error('Failed to load todo list:', error)
+    console.error('Failed to load alert list:', error)
+    ElMessage.error('加载待办事项失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 刷新提醒列表（重置到第一页）
+const refreshAlertList = async () => {
+  currentPage.value = 1
+  await loadAlertList(false)
+}
+
+const handleScroll = (event: Event) => {
+  const target = event.target as HTMLElement
+  const scrollTop = target.scrollTop
+  const scrollHeight = target.scrollHeight
+  const clientHeight = target.clientHeight
+  
+  // 当滚动到底部附近时加载更多
+  if (scrollHeight - scrollTop - clientHeight < 50 && hasMore.value && !loading.value) {
+    currentPage.value++
+    loadAlertList(true)
+  }
+}
+
+const getNotificationIcon = (alert: AlertItem) => {
+  const taskType = alert.taskType || alert.type || ''
+  
+  if (taskType.includes('overdue')) {
+    return Warning
+  } else if (taskType.includes('deadline')) {
+    return Clock
+  } else if (taskType.includes('payment')) {
+    return Money
+  } else if (taskType.includes('task')) {
+    return Document
+  }
+  return Bell
+}
+
+const getNotificationColor = (alert: AlertItem): string => {
+  const taskType = alert.taskType || alert.type || ''
+  
+  if (taskType.includes('overdue')) {
+    return '#F56C6C'
+  } else if (taskType.includes('deadline')) {
+    return '#E6A23C'
+  } else if (taskType.includes('payment')) {
+    return '#409EFF'
+  } else if (taskType.includes('task')) {
+    return '#67C23A'
+  }
+  return '#909399'
+}
+
+const formatTime = (time: string): string => {
+  if (!time) return ''
+  const date = new Date(time)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  
+  if (days === 0) {
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    if (hours === 0) {
+      const minutes = Math.floor(diff / (1000 * 60))
+      return minutes <= 0 ? '刚刚' : `${minutes}分钟前`
+    }
+    return `${hours}小时前`
+  } else if (days === 1) {
+    return '昨天'
+  } else if (days < 7) {
+    return `${days}天前`
+  }
+  
+  return date.toLocaleDateString('zh-CN')
+}
+
+const handleAlertClick = async (alert: AlertItem) => {
+  try {
+    // 标记为已读
+    await notificationApi.markAsRead(alert.id)
+    
+    // 更新本地列表，移除已读项
+    alertList.value = alertList.value.filter(item => item.id !== alert.id)
+    totalAlerts.value = Math.max(0, totalAlerts.value - 1)
+    dashboardData.value.pendingTasks = totalAlerts.value
+    
+    // 跳转到案件详情或提醒中心
+    if (alert.caseId) {
+      router.push(`/cases/${alert.caseId}`)
+    } else {
+      router.push('/notifications/alerts')
+    }
+  } catch (error) {
+    console.error('Failed to handle alert click:', error)
   }
 }
 
@@ -399,7 +549,7 @@ const handleResize = () => {
 
 onMounted(async () => {
   await loadDashboardData()
-  await loadTodoList()
+  await loadAlertList()
   await initCaseTypeChart()
   await initCaseTrendChart()
   await initCostChart()
@@ -409,6 +559,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  
   caseTypeChart?.dispose()
   caseTrendChart?.dispose()
   costChart?.dispose()
@@ -493,69 +644,157 @@ onUnmounted(() => {
   height: 350px;
 }
 
+/* 图表卡片样式 */
+.chart-card :deep(.el-card__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.chart-card :deep(.el-card__body) {
+  padding: 20px;
+}
+
+/* 待办事项卡片样式 */
+.todo-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.todo-card :deep(.el-card__header) {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.todo-card :deep(.el-card__body) {
+  padding: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.todo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.header-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  white-space: nowrap;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.alert-badge {
+  flex-shrink: 0;
+}
+
 .todo-list {
-  max-height: 350px;
+  height: 350px;
   overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  padding: 8px 0;
+  word-wrap: break-word;
+}
+
+.todo-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.todo-list::-webkit-scrollbar-thumb {
+  background-color: #dcdfe6;
+  border-radius: 3px;
+}
+
+.todo-list::-webkit-scrollbar-thumb:hover {
+  background-color: #c0c4cc;
 }
 
 .todo-item {
+  position: relative;
   display: flex;
-  gap: 15px;
-  padding: 15px;
-  border-bottom: 1px solid #ebeef5;
+  align-items: flex-start;
+  padding: 12px 16px;
+  cursor: pointer;
   transition: background-color 0.3s;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.todo-item:first-child {
+  border-top: 1px solid #ebeef5;
 }
 
 .todo-item:hover {
   background-color: #f5f7fa;
 }
 
-.todo-item:last-child {
-  border-bottom: none;
-}
-
-.todo-item.high {
-  border-left: 3px solid #f56c6c;
-}
-
-.todo-item.medium {
-  border-left: 3px solid #e6a23c;
-}
-
-.todo-item.low {
-  border-left: 3px solid #409eff;
-}
-
-.todo-icon {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f5f7fa;
+.item-dot {
+  position: absolute;
+  left: 8px;
+  top: 18px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
+  background-color: #f56c6c;
 }
 
-.todo-content {
+.item-icon {
+  flex-shrink: 0;
+  margin-right: 12px;
+  margin-top: 2px;
+}
+
+.item-content {
   flex: 1;
+  min-width: 0;
 }
 
-.todo-title {
+.item-text {
   font-size: 14px;
-  font-weight: 500;
-  color: #303133;
-  margin-bottom: 5px;
-}
-
-.todo-desc {
-  font-size: 13px;
   color: #606266;
-  margin-bottom: 5px;
+  line-height: 1.5;
+  margin-bottom: 4px;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
 }
 
-.todo-time {
+.item-desc {
   font-size: 12px;
+  color: #909399;
+  margin-bottom: 4px;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.item-time {
+  font-size: 12px;
+  color: #909399;
+}
+
+.load-more,
+.no-more {
+  text-align: center;
+  padding: 15px;
   color: #909399;
 }
 
