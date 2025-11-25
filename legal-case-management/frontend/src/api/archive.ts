@@ -11,10 +11,11 @@ export interface ClosureReportData {
 }
 
 export interface ArchivePackageData {
-  caseId: number
-  archiveNumber?: string
-  archiveDate?: string
-  archiveLocation?: string
+  case_id: number
+  archived_by?: string
+  archive_number?: string
+  archive_date?: string
+  archive_location?: string
   notes?: string
 }
 

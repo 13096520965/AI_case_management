@@ -8,10 +8,20 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">基本信息</span>
-            <el-button type="primary" link @click="handleEdit">
-              <el-icon><Edit /></el-icon>
-              编辑
-            </el-button>
+            <div class="header-actions">
+              <el-button 
+                v-if="caseData.status === '已结案'" 
+                type="success" 
+                @click="handleArchive"
+              >
+                <el-icon><FolderChecked /></el-icon>
+                一键归档
+              </el-button>
+              <el-button type="primary" link @click="handleEdit">
+                <el-icon><Edit /></el-icon>
+                编辑
+              </el-button>
+            </div>
           </div>
         </template>
         
@@ -206,16 +216,61 @@
       <CaseLogViewer :case-id="caseId" />
     </div>
 
+    <!-- 归档对话框 -->
+    <el-dialog
+      v-model="archiveDialogVisible"
+      title="案件归档"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="archiveFormRef"
+        :model="archiveForm"
+        label-width="100px"
+      >
+        <el-form-item label="案件名称">
+          <el-input
+            :value="caseData.caseCause || caseData.caseNumber || caseData.internalNumber || '未命名案件'"
+            disabled
+          />
+        </el-form-item>
 
+        <el-form-item
+          label="归档人"
+          prop="archiver"
+          :rules="[{ required: true, message: '请输入归档人', trigger: 'blur' }]"
+        >
+          <el-input
+            v-model="archiveForm.archiver"
+            placeholder="请输入归档人姓名"
+          />
+        </el-form-item>
+
+        <el-form-item label="备注" prop="notes">
+          <el-input
+            v-model="archiveForm.notes"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入归档备注（选填）"
+          />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="archiveDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitArchive">确定归档</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Edit, Document } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
+import { Edit, Document, FolderChecked } from '@element-plus/icons-vue'
 import { caseApi } from '@/api/case'
+import { archiveApi } from '@/api/archive'
 import { processNodeApi } from '@/api/processNode'
 import { evidenceApi } from '@/api/evidence'
 import { documentApi } from '@/api/document'
@@ -235,6 +290,12 @@ const caseStore = useCaseStore()
 const loading = ref(false)
 const caseId = Number(route.params.id)
 const caseData = reactive<any>({})
+const archiveDialogVisible = ref(false)
+const archiveFormRef = ref<FormInstance>()
+const archiveForm = reactive({
+  archiver: '',
+  notes: ''
+})
 const processNodes = ref<any[]>([])
 const evidenceList = ref<any[]>([])
 const documentList = ref<any[]>([])
@@ -398,6 +459,47 @@ const handleEdit = () => {
   router.push(`/cases/${caseId}/edit`)
 }
 
+// Handle archive - 打开归档对话框
+const handleArchive = () => {
+  // 重置表单
+  archiveForm.archiver = ''
+  archiveForm.notes = ''
+  archiveFormRef.value?.clearValidate()
+  // 打开对话框
+  archiveDialogVisible.value = true
+}
+
+// 提交归档
+const submitArchive = async () => {
+  if (!archiveFormRef.value) return
+  
+  await archiveFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    try {
+      // 更新案件状态为已归档
+      await caseApi.updateCase(caseId, { status: '已归档' })
+      
+      // 创建归档记录（使用下划线命名以匹配后端）
+      await archiveApi.createArchivePackage({
+        case_id: caseId,
+        archived_by: archiveForm.archiver,
+        notes: archiveForm.notes || ''
+      } as any)
+      
+      ElMessage.success('案件已成功归档，已加入归档列表')
+      
+      // 关闭对话框
+      archiveDialogVisible.value = false
+      
+      // 刷新案件数据
+      await fetchCaseData()
+    } catch (error: any) {
+      ElMessage.error(error.message || '归档失败')
+    }
+  })
+}
+
 const goToProcess = () => {
   router.push(`/cases/${caseId}/process`)
 }
@@ -528,6 +630,12 @@ onMounted(async () => {
 .card-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
   align-items: center;
 }
 

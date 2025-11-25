@@ -150,11 +150,11 @@
             </el-table-column>
             <el-table-column prop="notes" label="备注" min-width="150" show-overflow-tooltip />
             <el-table-column label="操作" width="150" fixed="right">
-              <template #default="{ row, $index }">
-                <el-button type="primary" link @click="handleEditPayment(row, $index)">
+              <template #default="{ row }">
+                <el-button type="primary" link @click="handleEditPayment(row)">
                   编辑
                 </el-button>
-                <el-button type="danger" link @click="handleDeletePayment($index)">
+                <el-button type="danger" link @click="handleDeletePayment(row)">
                   删除
                 </el-button>
               </template>
@@ -234,57 +234,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Money, Plus } from '@element-plus/icons-vue'
 import TableEmpty from '@/components/common/TableEmpty.vue'
+import { targetAmountApi } from '@/api/targetAmount'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   caseId: number
   showDetailButton?: boolean
-}>()
+}>(), {
+  showDetailButton: true
+})
 
 // 默认显示详情按钮
-const showButton = props.showDetailButton !== false
+const showButton = computed(() => props.showDetailButton !== false)
 
 // State
+const loading = ref(false)
 const dialogVisible = ref(false)
 const paymentDialogVisible = ref(false)
 const activeTab = ref('basic')
 const isEditPayment = ref(false)
-const editingIndex = ref(-1)
+const editingPaymentId = ref<number | null>(null)
 const paymentFormRef = ref<FormInstance>()
 
 // 详细数据
 const detailData = reactive({
-  totalAmount: 100000,
-  penaltyAmount: 5000,
-  litigationCost: 3000,
-  costBearer: '被告',
+  totalAmount: 0,
+  penaltyAmount: 0,
+  litigationCost: 0,
+  costBearer: '',
   notes: ''
 })
 
 // 汇款记录
-const payments = ref([
-  {
-    paymentDate: '2024-11-15',
-    amount: 50000,
-    payer: '被告公司',
-    payee: '原告公司',
-    paymentMethod: '银行转账',
-    status: '已确认',
-    notes: '第一笔款项'
-  },
-  {
-    paymentDate: '2024-11-20',
-    amount: 30000,
-    payer: '被告公司',
-    payee: '原告公司',
-    paymentMethod: '银行转账',
-    status: '待汇款',
-    notes: '第二笔款项'
-  }
-])
+const payments = ref<any[]>([])
 
 // 汇款表单
 const paymentForm = reactive({
@@ -304,6 +289,42 @@ const paymentRules: FormRules = {
   payee: [{ required: true, message: '请输入收款方', trigger: 'blur' }],
   paymentMethod: [{ required: true, message: '请选择支付方式', trigger: 'change' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
+}
+
+// 加载数据
+const loadData = async () => {
+  try {
+    loading.value = true
+    const response = await targetAmountApi.getTargetAmountDetail(props.caseId)
+    
+    if (response.data) {
+      const { detail, payments: paymentList } = response.data
+      
+      // 更新详情数据
+      detailData.totalAmount = detail.total_amount || 0
+      detailData.penaltyAmount = detail.penalty_amount || 0
+      detailData.litigationCost = detail.litigation_cost || 0
+      detailData.costBearer = detail.cost_bearer || ''
+      detailData.notes = detail.notes || ''
+      
+      // 更新汇款记录（转换为驼峰命名）
+      payments.value = paymentList.map((p: any) => ({
+        id: p.id,
+        paymentDate: p.payment_date,
+        amount: p.amount,
+        payer: p.payer,
+        payee: p.payee,
+        paymentMethod: p.payment_method,
+        status: p.status,
+        notes: p.notes
+      }))
+    }
+  } catch (error: any) {
+    console.error('加载标的处理详情失败:', error)
+    // 不显示错误消息，使用默认值
+  } finally {
+    loading.value = false
+  }
 }
 
 // 计算汇总数据
@@ -342,15 +363,26 @@ const getStatusTag = (status: string) => {
 }
 
 // 保存基本信息
-const handleSaveBasic = () => {
-  ElMessage.success('基本信息保存成功')
-  // TODO: 调用API保存
+const handleSaveBasic = async () => {
+  try {
+    await targetAmountApi.updateTargetAmountDetail(props.caseId, {
+      total_amount: detailData.totalAmount,
+      penalty_amount: detailData.penaltyAmount,
+      litigation_cost: detailData.litigationCost,
+      cost_bearer: detailData.costBearer,
+      notes: detailData.notes
+    })
+    ElMessage.success('基本信息保存成功')
+    await loadData()
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.error?.message || '保存失败')
+  }
 }
 
 // 添加汇款记录
 const handleAddPayment = () => {
   isEditPayment.value = false
-  editingIndex.value = -1
+  editingPaymentId.value = null
   Object.assign(paymentForm, {
     paymentDate: '',
     amount: 0,
@@ -364,10 +396,18 @@ const handleAddPayment = () => {
 }
 
 // 编辑汇款记录
-const handleEditPayment = (row: any, index: number) => {
+const handleEditPayment = (row: any) => {
   isEditPayment.value = true
-  editingIndex.value = index
-  Object.assign(paymentForm, row)
+  editingPaymentId.value = row.id
+  Object.assign(paymentForm, {
+    paymentDate: row.paymentDate,
+    amount: row.amount,
+    payer: row.payer,
+    payee: row.payee,
+    paymentMethod: row.paymentMethod,
+    status: row.status,
+    notes: row.notes
+  })
   paymentDialogVisible.value = true
 }
 
@@ -375,24 +415,38 @@ const handleEditPayment = (row: any, index: number) => {
 const handleSavePayment = async () => {
   if (!paymentFormRef.value) return
   
-  await paymentFormRef.value.validate((valid) => {
+  await paymentFormRef.value.validate(async (valid) => {
     if (!valid) return
     
-    if (isEditPayment.value) {
-      payments.value[editingIndex.value] = { ...paymentForm }
-      ElMessage.success('汇款记录更新成功')
-    } else {
-      payments.value.push({ ...paymentForm })
-      ElMessage.success('汇款记录添加成功')
+    try {
+      const data = {
+        payment_date: paymentForm.paymentDate,
+        amount: paymentForm.amount,
+        payer: paymentForm.payer,
+        payee: paymentForm.payee,
+        payment_method: paymentForm.paymentMethod,
+        status: paymentForm.status,
+        notes: paymentForm.notes
+      }
+      
+      if (isEditPayment.value && editingPaymentId.value) {
+        await targetAmountApi.updatePaymentRecord(editingPaymentId.value, data)
+        ElMessage.success('汇款记录更新成功')
+      } else {
+        await targetAmountApi.createPaymentRecord(props.caseId, data)
+        ElMessage.success('汇款记录添加成功')
+      }
+      
+      paymentDialogVisible.value = false
+      await loadData()
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.error?.message || '保存失败')
     }
-    
-    paymentDialogVisible.value = false
-    // TODO: 调用API保存
   })
 }
 
 // 删除汇款记录
-const handleDeletePayment = async (index: number) => {
+const handleDeletePayment = async (row: any) => {
   try {
     await ElMessageBox.confirm('确定要删除该汇款记录吗？', '删除确认', {
       confirmButtonText: '确定',
@@ -400,13 +454,33 @@ const handleDeletePayment = async (index: number) => {
       type: 'warning'
     })
     
-    payments.value.splice(index, 1)
+    await targetAmountApi.deletePaymentRecord(row.id)
     ElMessage.success('删除成功')
-    // TODO: 调用API删除
-  } catch {
-    // 用户取消
+    await loadData()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.error?.message || '删除失败')
+    }
   }
 }
+
+// 监听 caseId 变化
+watch(() => props.caseId, () => {
+  if (props.caseId) {
+    loadData()
+  }
+}, { immediate: true })
+
+// 打开对话框时加载数据
+watch(dialogVisible, (newVal) => {
+  if (newVal) {
+    loadData()
+  }
+})
+
+onMounted(() => {
+  loadData()
+})
 </script>
 
 <style scoped>

@@ -40,6 +40,7 @@ app.use('/api/collaboration', require('./routes/collaboration'));
 app.use('/api/knowledge', require('./routes/knowledge'));
 app.use('/api/archive', require('./routes/archive'));
 app.use('/api/regions', require('./routes/region'));
+app.use('/api', require('./routes/targetAmount'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -67,9 +68,15 @@ const PORT = process.env.PORT || 3000;
 // 启动提醒调度器
 const notificationScheduler = require('./services/notificationScheduler');
 
-app.listen(PORT, () => {
+// 初始化标的处理详情表
+const initTargetAmountTables = require('../init-target-amount-tables');
+
+app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // 初始化标的处理详情表
+  await initTargetAmountTables();
   
   // 启动提醒调度器
   notificationScheduler.start();

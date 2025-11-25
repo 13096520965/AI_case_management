@@ -1,30 +1,6 @@
 <template>
   <div class="process-management-container">
     <PageHeader title="流程管理" :show-back="true" />
-    
-    <!-- Visual Process Steps -->
-    <el-card class="process-steps-card" v-if="nodes.length > 0">
-      <div class="steps-header">
-        <h3>案件流程概览</h3>
-      </div>
-      <el-steps :active="activeStepIndex" align-center finish-status="success">
-        <el-step
-          v-for="(node, index) in nodes"
-          :key="node.id"
-          :title="node.nodeName"
-          :description="node.handler || ''"
-          :status="getStepStatus(node)"
-          :icon="getStepIcon(node)"
-        >
-          <template #description>
-            <div class="step-desc">
-              <div>{{ node.handler || '未指定经办人' }}</div>
-              <div class="step-date">{{ formatStepDate(node) }}</div>
-            </div>
-          </template>
-        </el-step>
-      </el-steps>
-    </el-card>
 
     <el-card class="process-card">
       <template #header>
