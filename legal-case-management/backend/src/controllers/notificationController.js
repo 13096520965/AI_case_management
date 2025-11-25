@@ -1,6 +1,15 @@
 const NotificationTask = require('../models/NotificationTask');
 
 /**
+ * 从 content 中移除关联案件编码
+ */
+const removeInternalNumberFromContent = (content) => {
+  if (!content) return content;
+  // 移除 "关联案件编码:AN..." 这样的内容（包括前面的换行符）
+  return content.replace(/\n关联案件编码:[^\n]*/g, '').trim();
+};
+
+/**
  * 转换数据库字段为前端格式 (snake_case -> camelCase)
  */
 const convertToCamelCase = (notification) => {
@@ -11,7 +20,7 @@ const convertToCamelCase = (notification) => {
     relatedType: notification.related_type,
     taskType: notification.task_type,
     scheduledTime: notification.scheduled_time,
-    content: notification.content,
+    content: removeInternalNumberFromContent(notification.content),
     status: notification.status,
     createdAt: notification.created_at
   };
@@ -37,42 +46,91 @@ exports.getNotifications = async (req, res) => {
     const notificationsWithCase = await Promise.all(
       notifications.map(async (notification) => {
         let caseInfo = null;
+        let linkUrl = null;
+        let isValid = true;
+        
+        // 系统通知不需要案件编码
+        if (notification.task_type === 'system') {
+          return {
+            ...notification,
+            caseId: null,
+            internalNumber: null,
+            linkUrl: null,
+            isValid: true
+          };
+        }
         
         // 如果是节点相关的提醒，获取案件信息
         if (notification.related_type === 'process_node' && notification.related_id) {
           try {
             const nodeResult = await dbQuery(
-              'SELECT pn.*, c.case_number, c.case_name FROM process_nodes pn LEFT JOIN cases c ON pn.case_id = c.id WHERE pn.id = ?',
+              'SELECT pn.*, c.id as caseId, c.internal_number FROM process_nodes pn LEFT JOIN cases c ON pn.case_id = c.id WHERE pn.id = ?',
               [notification.related_id]
             );
             if (nodeResult && nodeResult.length > 0) {
               caseInfo = {
-                caseId: nodeResult[0].case_id,
-                caseNumber: nodeResult[0].case_number,
-                caseName: nodeResult[0].case_name
+                caseId: nodeResult[0].caseId,
+                internalNumber: nodeResult[0].internal_number
               };
+              // 生成跳转链接
+              linkUrl = `/cases/${nodeResult[0].caseId}`;
+            } else {
+              // 节点不存在，标记为无效
+              isValid = false;
             }
           } catch (err) {
             console.error('Error fetching case info:', err);
+            isValid = false;
+          }
+        }
+        
+        // 如果是费用相关的提醒，获取案件信息
+        if (notification.related_type === 'cost_record' && notification.related_id) {
+          try {
+            const costResult = await dbQuery(
+              'SELECT cr.*, c.id as caseId, c.internal_number FROM cost_records cr LEFT JOIN cases c ON cr.case_id = c.id WHERE cr.id = ?',
+              [notification.related_id]
+            );
+            if (costResult && costResult.length > 0) {
+              caseInfo = {
+                caseId: costResult[0].caseId,
+                internalNumber: costResult[0].internal_number
+              };
+              // 生成跳转链接
+              linkUrl = `/cases/${costResult[0].caseId}`;
+            } else {
+              // 费用记录不存在，标记为无效
+              isValid = false;
+            }
+          } catch (err) {
+            console.error('Error fetching case info:', err);
+            isValid = false;
           }
         }
         
         return {
           ...notification,
           caseId: caseInfo?.caseId,
-          caseNumber: caseInfo?.caseNumber,
-          caseName: caseInfo?.caseName
+          internalNumber: caseInfo?.internalNumber,
+          linkUrl: linkUrl,
+          isValid: isValid
         };
       })
     );
     
+    // 过滤出有效的通知
+    const validNotifications = notificationsWithCase.filter(n => n.isValid !== false);
+    
     // 转换为前端格式
-    const convertedNotifications = notificationsWithCase.map(notification => ({
-      ...convertToCamelCase(notification),
-      caseId: notification.caseId,
-      caseNumber: notification.caseNumber,
-      caseName: notification.caseName
-    }));
+    const convertedNotifications = validNotifications.map(notification => {
+      const converted = convertToCamelCase(notification);
+      return {
+        ...converted,
+        caseId: notification.caseId,
+        internalNumber: notification.internalNumber,
+        linkUrl: notification.linkUrl
+      };
+    });
     
     // 如果请求了分页，则返回分页数据
     if (page && pageSize) {

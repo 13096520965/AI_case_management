@@ -10,6 +10,9 @@ export interface Notification {
   content: string
   status: string
   createdAt?: string
+  caseId?: number
+  internalNumber?: string
+  linkUrl?: string
 }
 
 export type NotificationType = 'deadline' | 'overdue' | 'payment' | 'task' | 'system'

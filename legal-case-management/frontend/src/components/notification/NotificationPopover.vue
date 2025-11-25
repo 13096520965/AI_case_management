@@ -43,8 +43,17 @@
               </el-icon>
             </div>
             <div class="item-content">
-              <div class="item-text">{{ notification.content }}</div>
-              <div class="item-time">{{ formatTime(notification.scheduledTime) }}</div>
+              <div class="item-text">
+                <div v-for="(line, index) in notification.content.split('\n')" :key="index" class="text-line">
+                  {{ line }}
+                </div>
+              </div>
+              <div class="item-footer">
+                <span class="item-time">{{ formatTime(notification.scheduledTime) }}</span>
+                <span v-if="notification.taskType !== 'system' && notification.internalNumber && notification.internalNumber !== '--'" class="item-case-code">
+                  案件编码: {{ notification.internalNumber }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -62,11 +71,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { Bell, Warning, Clock, Money, Document } from '@element-plus/icons-vue'
 import { useNotificationStore } from '@/stores/notification'
 import { notificationApi } from '@/api/notification'
 import { formatDistanceToNow } from '@/utils/format'
+import request from '@/api/request'
 
 const router = useRouter()
 const notificationStore = useNotificationStore()
@@ -94,9 +103,10 @@ const fetchNotifications = async () => {
   loading.value = true
   try {
     const response = await notificationApi.getNotifications()
-    if (response && response.success) {
-      notificationStore.setNotifications(response.data || [])
-    }
+    const notifications = Array.isArray(response) ? response : response?.data || []
+    
+    // 后端已经返回了 internalNumber 和 caseId，直接使用
+    notificationStore.setNotifications(notifications)
   } catch (error: any) {
     console.error('Failed to fetch notifications:', error)
   } finally {
@@ -108,10 +118,8 @@ const handleNotificationClick = async (notification: any) => {
   // 标记为已读
   if (notification.status === 'unread') {
     try {
-      const response = await notificationApi.markAsRead(notification.id)
-      if (response && response.success) {
-        notificationStore.markAsRead(notification.id)
-      }
+      await notificationApi.markAsRead(notification.id)
+      notificationStore.markAsRead(notification.id)
     } catch (error) {
       console.error('Failed to mark as read:', error)
     }
@@ -120,8 +128,16 @@ const handleNotificationClick = async (notification: any) => {
   // 关闭弹窗
   visible.value = false
 
-  // 跳转到提醒中心
-  router.push('/notifications')
+  // 如果有链接URL，则跳转到对应页面
+  if (notification.linkUrl) {
+    router.push(notification.linkUrl)
+  } else if (notification.caseId) {
+    // 备用方案：使用caseId跳转
+    router.push(`/cases/${notification.caseId}`)
+  } else {
+    // 默认跳转到提醒中心
+    router.push('/notifications')
+  }
 }
 
 const handleViewMore = () => {
@@ -250,6 +266,8 @@ onUnmounted(() => {
   cursor: pointer;
   transition: background-color 0.3s;
   border-bottom: 1px solid #ebeef5;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .notification-item:first-child {
@@ -261,11 +279,11 @@ onUnmounted(() => {
 }
 
 .notification-item.is-unread {
-  background-color: #f0f9ff;
+  /* 未读消息不需要背景色 */
 }
 
 .notification-item.is-unread:hover {
-  background-color: #e6f4ff;
+  background-color: #f5f7fa;
 }
 
 .item-dot {
@@ -287,6 +305,8 @@ onUnmounted(() => {
 .item-content {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .item-text {
@@ -297,11 +317,41 @@ onUnmounted(() => {
   word-wrap: break-word;
   word-break: break-word;
   white-space: normal;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.text-line {
+  margin-bottom: 4px;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.text-line:last-child {
+  margin-bottom: 0;
+}
+
+.item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #909399;
+  gap: 8px;
 }
 
 .item-time {
   font-size: 12px;
   color: #909399;
+  flex-shrink: 0;
+}
+
+.item-case-code {
+  font-size: 12px;
+  color: #909399;
+  flex-shrink: 0;
 }
 
 .popover-footer {
