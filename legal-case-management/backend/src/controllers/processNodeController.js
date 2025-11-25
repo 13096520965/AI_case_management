@@ -22,10 +22,10 @@ exports.createNode = async (req, res) => {
     }
 
     // 验证必填字段
-    if (!nodeData.node_name) {
+    if (!nodeData.node_type || !nodeData.node_name) {
       return res.status(400).json({
         error: {
-          message: '节点名称为必填项',
+          message: '节点类型和节点名称为必填项',
           status: 400
         }
       });
