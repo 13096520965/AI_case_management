@@ -72,14 +72,11 @@
           v-for="notification in displayedNotifications"
           :key="notification.id"
           class="notification-item"
-          :class="{
-            'unread': notification.status === 'unread',
-            'urgent': isUrgent(notification)
-          }"
           @click="handleNotificationClick(notification)"
         >
+          <div class="item-dot" v-if="notification.status === 'unread'"></div>
           <div class="notification-icon">
-            <el-icon :size="24" :color="getNotificationColor(notification)">
+            <el-icon :size="20" :color="getNotificationColor(notification)">
               <component :is="getNotificationIcon(notification)" />
             </el-icon>
           </div>
@@ -469,6 +466,7 @@ onMounted(() => {
 }
 
 .notification-item {
+  position: relative;
   display: flex;
   align-items: flex-start;
   padding: 16px;
@@ -482,16 +480,14 @@ onMounted(() => {
   background-color: #f5f7fa;
 }
 
-.notification-item.unread {
-  background-color: #f0f9ff;
-}
-
-.notification-item.unread:hover {
-  background-color: #e6f4ff;
-}
-
-.notification-item.urgent {
-  border-left: 3px solid #f56c6c;
+.item-dot {
+  position: absolute;
+  left: 8px;
+  top: 22px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #f56c6c;
 }
 
 .notification-icon {

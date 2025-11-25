@@ -225,8 +225,10 @@ onUnmounted(() => {
 .popover-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   min-height: 200px;
   max-height: 400px;
+  word-wrap: break-word;
 }
 
 .empty-state {
@@ -247,6 +249,11 @@ onUnmounted(() => {
   padding: 12px 16px;
   cursor: pointer;
   transition: background-color 0.3s;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.notification-item:first-child {
+  border-top: 1px solid #ebeef5;
 }
 
 .notification-item:hover {
@@ -287,11 +294,9 @@ onUnmounted(() => {
   color: #606266;
   line-height: 1.5;
   margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .item-time {

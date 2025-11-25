@@ -22,7 +22,7 @@ const convertToCamelCase = (notification) => {
  */
 exports.getNotifications = async (req, res) => {
   try {
-    const { status, task_type, related_type, related_id } = req.query;
+    const { status, task_type, related_type, related_id, page, pageSize } = req.query;
     
     const filters = {};
     if (status) filters.status = status;
@@ -32,13 +32,72 @@ exports.getNotifications = async (req, res) => {
 
     const notifications = await NotificationTask.findAll(filters);
     
-    // 转换为前端格式
-    const convertedNotifications = notifications.map(convertToCamelCase);
+    // 获取案件信息
+    const { query: dbQuery } = require('../config/database');
+    const notificationsWithCase = await Promise.all(
+      notifications.map(async (notification) => {
+        let caseInfo = null;
+        
+        // 如果是节点相关的提醒，获取案件信息
+        if (notification.related_type === 'process_node' && notification.related_id) {
+          try {
+            const nodeResult = await dbQuery(
+              'SELECT pn.*, c.case_number, c.case_name FROM process_nodes pn LEFT JOIN cases c ON pn.case_id = c.id WHERE pn.id = ?',
+              [notification.related_id]
+            );
+            if (nodeResult && nodeResult.length > 0) {
+              caseInfo = {
+                caseId: nodeResult[0].case_id,
+                caseNumber: nodeResult[0].case_number,
+                caseName: nodeResult[0].case_name
+              };
+            }
+          } catch (err) {
+            console.error('Error fetching case info:', err);
+          }
+        }
+        
+        return {
+          ...notification,
+          caseId: caseInfo?.caseId,
+          caseNumber: caseInfo?.caseNumber,
+          caseName: caseInfo?.caseName
+        };
+      })
+    );
     
-    res.json({
-      success: true,
-      data: convertedNotifications
-    });
+    // 转换为前端格式
+    const convertedNotifications = notificationsWithCase.map(notification => ({
+      ...convertToCamelCase(notification),
+      caseId: notification.caseId,
+      caseNumber: notification.caseNumber,
+      caseName: notification.caseName
+    }));
+    
+    // 如果请求了分页，则返回分页数据
+    if (page && pageSize) {
+      const pageNum = parseInt(page);
+      const size = parseInt(pageSize);
+      const startIndex = (pageNum - 1) * size;
+      const endIndex = startIndex + size;
+      const paginatedData = convertedNotifications.slice(startIndex, endIndex);
+      
+      res.json({
+        success: true,
+        data: {
+          list: paginatedData,
+          total: convertedNotifications.length,
+          page: pageNum,
+          pageSize: size
+        }
+      });
+    } else {
+      // 兼容旧的返回格式
+      res.json({
+        success: true,
+        data: convertedNotifications
+      });
+    }
   } catch (error) {
     console.error('Error fetching notifications:', error);
     res.status(500).json({
