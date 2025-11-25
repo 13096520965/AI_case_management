@@ -17,10 +17,10 @@ const {
 
 /**
  * @route   POST /api/evidence/upload
- * @desc    上传证据文件
+ * @desc    上传证据文件（接收线上文件URL）
  * @access  Private
  */
-router.post('/upload', authenticate, upload.single('file'), uploadEvidence);
+router.post('/upload', authenticate, uploadEvidence);
 
 /**
  * @route   GET /api/evidence/:id

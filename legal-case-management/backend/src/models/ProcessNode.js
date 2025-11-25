@@ -31,10 +31,9 @@ class ProcessNode {
     `;
 
     // 将 undefined 转换为 null，避免 SQL 绑定错误
-    // node_type 字段在数据库中为 NOT NULL，所以使用空字符串作为默认值
     const result = await run(sql, [
       case_id ?? null,
-      node_type ?? '',
+      node_type ?? null,
       node_name ?? null,
       handler ?? null,
       start_time ?? null,
