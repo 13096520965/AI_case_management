@@ -21,26 +21,58 @@ exports.getTargetAmountDetail = async (req, res) => {
     }
 
     // 获取标的处理详情
-    let detail = await TargetAmountDetail.findByCaseId(caseId);
-    
-    // 如果不存在，创建默认记录
-    if (!detail) {
-      const detailId = await TargetAmountDetail.create({
-        case_id: caseId,
-        total_amount: caseData.target_amount || 0,
-        penalty_amount: 0,
-        litigation_cost: 0,
-        cost_bearer: '',
-        notes: ''
-      });
+    // 获取标的处理详情（防御性处理以避免启动或并发时的临时错误）
+    let detail;
+    try {
       detail = await TargetAmountDetail.findByCaseId(caseId);
+    } catch (e) {
+      console.error('读取标的处理详情失败（非致命）:', e.message || e);
+      detail = null;
     }
 
-    // 获取汇款记录
-    const payments = await PaymentRecord.findByCaseId(caseId);
+    // 如果不存在，尝试创建默认记录（创建失败也不要直接抛 500，退回到默认展示）
+    if (!detail) {
+      try {
+        await TargetAmountDetail.create({
+          case_id: caseId,
+          total_amount: caseData.target_amount || 0,
+          penalty_amount: 0,
+          litigation_cost: 0,
+          cost_bearer: '',
+          notes: ''
+        });
+        detail = await TargetAmountDetail.findByCaseId(caseId);
+      } catch (e) {
+        console.error('创建默认标的处理详情失败（非致命）:', e.message || e);
+        // fallback to a minimal default object so frontend can render without error
+        detail = {
+          case_id: caseId,
+          total_amount: caseData.target_amount || 0,
+          penalty_amount: 0,
+          litigation_cost: 0,
+          cost_bearer: '',
+          notes: ''
+        };
+      }
+    }
 
-    // 计算已确认的回收金额
-    const recoveredAmount = await PaymentRecord.sumByCaseId(caseId, '已确认');
+    // 获取汇款记录（若失败则降级为空数组）
+    let payments = [];
+    try {
+      payments = await PaymentRecord.findByCaseId(caseId);
+    } catch (e) {
+      console.error('读取汇款记录失败（非致命）:', e.message || e);
+      payments = [];
+    }
+
+    // 计算已确认的回收金额（若失败则降级为 0）
+    let recoveredAmount = 0;
+    try {
+      recoveredAmount = await PaymentRecord.sumByCaseId(caseId, '已确认');
+    } catch (e) {
+      console.error('计算已确认回收金额失败（非致命）:', e.message || e);
+      recoveredAmount = 0;
+    }
 
     res.json({
       data: {
