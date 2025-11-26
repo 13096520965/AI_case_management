@@ -94,22 +94,18 @@
             </div>
 
             <div class="notification-body">
-              <p class="notification-text">{{ notification.content }}</p>
+              <p class="notification-text" v-for="(line, index) in notification.content.split('\n')" :key="index">
+                {{ line }}
+              </p>
             </div>
 
-            <div class="notification-footer">
+            <div v-if="notification.taskType !== 'system'" class="notification-footer">
               <span class="notification-related">
-                关联: 
-                <el-link 
-                  v-if="notification.caseNumber"
-                  type="primary" 
-                  :underline="false"
-                  @click.stop="handleViewCase(notification)"
-                >
-                  {{ notification.caseNumber }}
-                </el-link>
+                <span v-if="notification.internalNumber && notification.internalNumber !== '--'">
+                  案件编码: {{ notification.internalNumber }}
+                </span>
                 <span v-else>
-                  {{ notification.relatedType }} #{{ notification.relatedId }}
+                  案件编码: --
                 </span>
               </span>
             </div>
@@ -215,49 +211,14 @@ const fetchNotifications = async () => {
   loading.value = true
   try {
     const response = await notificationApi.getNotifications()
-    if (response && response.success) {
-      const notifications = response.data || []
-      
-      // 获取关联的案号
-      const notificationsWithCaseNumber = await Promise.all(
-        notifications.map(async (notification: any) => {
-          if (notification.relatedType === 'process_node' && notification.relatedId) {
-            try {
-              // 获取节点信息
-              const nodeResponse: any = await request.get(`/nodes/${notification.relatedId}`)
-              const node = nodeResponse?.data?.node || nodeResponse?.node || nodeResponse
-              
-              if (node && node.case_id) {
-                // 获取案件信息
-                const caseResponse: any = await request.get(`/cases/${node.case_id}`)
-                const caseData = caseResponse?.data?.case || caseResponse?.case || caseResponse
-                
-                return {
-                  ...notification,
-                  caseId: node.case_id,
-                  caseNumber: caseData?.case_number || caseData?.internal_number || `案件 #${node.case_id}`
-                }
-              }
-            } catch (error) {
-              console.error('获取案号失败:', error)
-            }
-          }
-          return notification
-        })
-      )
-      
-      notificationStore.setNotifications(notificationsWithCaseNumber)
-    }
+    const notifications = Array.isArray(response) ? response : response?.data || []
+    
+    // 后端已经返回了 internalNumber 和 caseId，直接使用
+    notificationStore.setNotifications(notifications)
   } catch (error: any) {
     ElMessage.error(error.message || '获取提醒列表失败')
   } finally {
     loading.value = false
-  }
-}
-
-const handleViewCase = (notification: any) => {
-  if (notification.caseId) {
-    router.push(`/cases/${notification.caseId}`)
   }
 }
 
@@ -290,16 +251,20 @@ const handleNotificationClick = (notification: any) => {
   if (notification.status === 'unread') {
     handleMarkAsRead(notification.id)
   }
-  // Could navigate to related item here
+  // 如果有链接URL，则跳转到对应页面
+  if (notification.linkUrl) {
+    router.push(notification.linkUrl)
+  } else if (notification.caseId) {
+    // 备用方案：使用caseId跳转
+    router.push(`/cases/${notification.caseId}`)
+  }
 }
 
 const handleMarkAsRead = async (id: number) => {
   try {
-    const response = await notificationApi.markAsRead(id)
-    if (response && response.success) {
-      notificationStore.markAsRead(id)
-      ElMessage.success('已标记为已读')
-    }
+    await notificationApi.markAsRead(id)
+    notificationStore.markAsRead(id)
+    ElMessage.success('已标记为已读')
   } catch (error: any) {
     ElMessage.error(error.message || '标记失败')
   }
@@ -320,11 +285,9 @@ const handleMarkAllAsRead = async () => {
     }
 
     // Call API to mark multiple as read
-    const response = await notificationApi.markAllAsRead()
-    if (response && response.success) {
-      notificationStore.markAllAsRead()
-      ElMessage.success('已全部标记为已读')
-    }
+    await notificationApi.markAllAsRead()
+    notificationStore.markAllAsRead()
+    ElMessage.success('已全部标记为已读')
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error(error.message || '操作失败')
@@ -340,20 +303,14 @@ const handleDelete = async (id: number) => {
       type: 'warning'
     })
 
-    const response = await notificationApi.deleteNotification(id)
-    if (response && response.success) {
-      notificationStore.removeNotification(id)
-      ElMessage.success('删除成功')
-    }
+    await notificationApi.deleteNotification(id)
+    notificationStore.removeNotification(id)
+    ElMessage.success('删除成功')
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error(error.message || '删除失败')
     }
   }
-}
-
-const isUrgent = (notification: any): boolean => {
-  return notification.taskType === 'overdue' || notification.taskType === 'deadline'
 }
 
 const getNotificationIcon = (notification: any) => {

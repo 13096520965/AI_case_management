@@ -80,7 +80,7 @@
 
         <el-table-column prop="caseName" label="案件名称" min-width="150">
           <template #default="{ row }">
-            <el-link type="primary" @click="handleViewCase(row.caseId)">
+            <el-link type="primary" @click="handleViewCase(row.caseId)" :underline="false">
               {{ row.caseName || `案件 #${row.caseId}` }}
             </el-link>
           </template>

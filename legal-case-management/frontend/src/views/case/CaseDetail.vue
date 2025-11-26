@@ -1,17 +1,72 @@
 <template>
   <div class="case-detail-container">
     <PageHeader title="案件详情" :show-back="true" @back="goBack" />
-    
+
     <div v-loading="loading">
+      <!-- Case Notifications -->
+      <el-card
+        v-if="caseNotifications.length > 0"
+        shadow="never"
+        class="info-card notification-card"
+      >
+        <template #header>
+          <div class="card-header">
+            <span class="card-title">
+              <el-icon style="margin-right: 8px; color: #f56c6c">
+                <Warning />
+              </el-icon>
+              提醒消息
+            </span>
+          </div>
+        </template>
+
+        <div class="notifications-list">
+          <div
+            v-for="notification in caseNotifications"
+            :key="notification.id"
+            class="notification-item"
+          >
+            <div
+              class="notification-badge"
+              :class="`badge-${notification.taskType}`"
+            ></div>
+            <div class="notification-content">
+              <div class="notification-title">
+                <span class="node-name">{{ notification.nodeName }}</span>
+                <el-tag
+                  :type="getNotificationTagType(notification.taskType)"
+                  size="small"
+                >
+                  {{ getNotificationTypeLabel(notification.taskType) }}
+                </el-tag>
+              </div>
+              <div class="notification-text">
+                {{ notification.content }}
+              </div>
+              <div class="notification-meta">
+                <span v-if="notification.nodeDeadline" class="meta-item">
+                  <strong>截止日期:</strong>
+                  {{ formatDate(notification.nodeDeadline) }}
+                </span>
+                <span class="meta-item">
+                  <strong>提醒时间:</strong>
+                  {{ formatDateTime(notification.scheduledTime) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </el-card>
+
       <!-- Basic Information -->
       <el-card shadow="never" class="info-card">
         <template #header>
           <div class="card-header">
             <span class="card-title">基本信息</span>
             <div class="header-actions">
-              <el-button 
-                v-if="caseData.status === '已结案'" 
-                type="success" 
+              <el-button
+                v-if="caseData.status === '已结案'"
+                type="success"
                 @click="handleArchive"
               >
                 <el-icon><FolderChecked /></el-icon>
@@ -24,7 +79,7 @@
             </div>
           </div>
         </template>
-        
+
         <el-descriptions :column="2" border>
           <el-descriptions-item label="内部编号">
             {{ caseData.internalNumber || '-' }}
@@ -64,17 +119,29 @@
             {{ caseData.handler || '-' }}
           </el-descriptions-item>
           <el-descriptions-item label="外部代理">
-            <el-tag :type="caseData.isExternalAgent ? 'success' : 'info'" size="small">
+            <el-tag
+              :type="caseData.isExternalAgent ? 'success' : 'info'"
+              size="small"
+            >
               {{ caseData.isExternalAgent ? '是' : '否' }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item v-if="caseData.isExternalAgent" label="律所名称">
+          <el-descriptions-item
+            v-if="caseData.isExternalAgent"
+            label="律所名称"
+          >
             {{ caseData.lawFirmName || '-' }}
           </el-descriptions-item>
-          <el-descriptions-item v-if="caseData.isExternalAgent" label="代理律师">
+          <el-descriptions-item
+            v-if="caseData.isExternalAgent"
+            label="代理律师"
+          >
             {{ caseData.agentLawyer || '-' }}
           </el-descriptions-item>
-          <el-descriptions-item v-if="caseData.isExternalAgent" label="联系方式">
+          <el-descriptions-item
+            v-if="caseData.isExternalAgent"
+            label="联系方式"
+          >
             {{ caseData.agentContact || '-' }}
           </el-descriptions-item>
           <el-descriptions-item label="创建时间">
@@ -96,8 +163,12 @@
             <span class="card-title">诉讼主体</span>
           </div>
         </template>
-        
-        <PartyManagement :case-id="caseId" :readonly="true" @refresh="fetchCaseData" />
+
+        <PartyManagement
+          :case-id="caseId"
+          :readonly="true"
+          @refresh="fetchCaseData"
+        />
       </el-card>
 
       <!-- Process Nodes Timeline -->
@@ -107,7 +178,7 @@
             <span class="card-title">流程节点</span>
           </div>
         </template>
-        
+
         <el-timeline v-if="processNodes.length > 0">
           <el-timeline-item
             v-for="node in processNodes"
@@ -124,12 +195,14 @@
               </div>
               <div class="node-info">
                 <span>经办人: {{ node.handler || '-' }}</span>
-                <span v-if="node.deadline">截止日期: {{ formatDate(node.deadline) }}</span>
+                <span v-if="node.deadline"
+                  >截止日期: {{ formatDate(node.deadline) }}</span
+                >
               </div>
             </div>
           </el-timeline-item>
         </el-timeline>
-        
+
         <TableEmpty v-else description="暂无流程节点" />
       </el-card>
 
@@ -140,9 +213,14 @@
             <span class="card-title">证据材料</span>
           </div>
         </template>
-        
+
         <el-table :data="evidenceList" stripe max-height="300">
-          <el-table-column prop="fileName" label="文件名" min-width="200" show-overflow-tooltip />
+          <el-table-column
+            prop="fileName"
+            label="文件名"
+            min-width="200"
+            show-overflow-tooltip
+          />
           <el-table-column prop="fileType" label="文件类型" width="100" />
           <el-table-column prop="category" label="分类" width="120" />
           <el-table-column prop="uploadedAt" label="上传时间" width="180">
@@ -163,10 +241,15 @@
             <span class="card-title">文书材料</span>
           </div>
         </template>
-        
+
         <el-table :data="documentList" stripe max-height="300">
           <el-table-column prop="documentType" label="文书类型" width="120" />
-          <el-table-column prop="fileName" label="文件名" min-width="200" show-overflow-tooltip />
+          <el-table-column
+            prop="fileName"
+            label="文件名"
+            min-width="200"
+            show-overflow-tooltip
+          />
           <el-table-column prop="uploadedAt" label="上传时间" width="180">
             <template #default="{ row }">
               {{ formatDateTime(row.uploadedAt) }}
@@ -185,10 +268,21 @@
             <span class="card-title">成本记录</span>
           </div>
         </template>
-        
-        <el-table :data="costRecords" stripe max-height="300" show-summary :summary-method="getCostSummary">
+
+        <el-table
+          :data="costRecords"
+          stripe
+          max-height="300"
+          show-summary
+          :summary-method="getCostSummary"
+        >
           <el-table-column prop="costType" label="费用类型" width="120" />
-          <el-table-column prop="amount" label="金额（元）" width="150" align="right">
+          <el-table-column
+            prop="amount"
+            label="金额（元）"
+            width="150"
+            align="right"
+          >
             <template #default="{ row }">
               {{ formatAmount(row.amount) }}
             </template>
@@ -200,7 +294,10 @@
           </el-table-column>
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.status === '已支付' ? 'success' : 'warning'" size="small">
+              <el-tag
+                :type="row.status === '已支付' ? 'success' : 'warning'"
+                size="small"
+              >
                 {{ row.status }}
               </el-tag>
             </template>
@@ -223,14 +320,15 @@
       width="500px"
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="archiveFormRef"
-        :model="archiveForm"
-        label-width="100px"
-      >
+      <el-form ref="archiveFormRef" :model="archiveForm" label-width="100px">
         <el-form-item label="案件名称">
           <el-input
-            :value="caseData.caseCause || caseData.caseNumber || caseData.internalNumber || '未命名案件'"
+            :value="
+              caseData.caseCause ||
+              caseData.caseNumber ||
+              caseData.internalNumber ||
+              '未命名案件'
+            "
             disabled
           />
         </el-form-item>
@@ -238,7 +336,9 @@
         <el-form-item
           label="归档人"
           prop="archiver"
-          :rules="[{ required: true, message: '请输入归档人', trigger: 'blur' }]"
+          :rules="[
+            { required: true, message: '请输入归档人', trigger: 'blur' },
+          ]"
         >
           <el-input
             v-model="archiveForm.archiver"
@@ -265,57 +365,60 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
-import { Edit, Document, FolderChecked } from '@element-plus/icons-vue'
-import { caseApi } from '@/api/case'
-import { archiveApi } from '@/api/archive'
-import { processNodeApi } from '@/api/processNode'
-import { evidenceApi } from '@/api/evidence'
-import { documentApi } from '@/api/document'
-import { costApi } from '@/api/cost'
-import { useCaseStore } from '@/stores/case'
-import PageHeader from '@/components/common/PageHeader.vue'
-import PartyManagement from '@/components/case/PartyManagement.vue'
-import TableEmpty from '@/components/common/TableEmpty.vue'
-import CaseLogViewer from '@/components/case/CaseLogViewer.vue'
-import TargetAmountDetail from '@/components/case/TargetAmountDetail.vue'
+import { ref, reactive, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { ElMessage, type FormInstance } from 'element-plus';
+import { Edit, FolderChecked, Warning } from '@element-plus/icons-vue';
+import { caseApi } from '@/api/case';
+import { archiveApi } from '@/api/archive';
+import { processNodeApi } from '@/api/processNode';
+import { evidenceApi } from '@/api/evidence';
+import { documentApi } from '@/api/document';
+import { costApi } from '@/api/cost';
+import { notificationApi, notificationRuleApi } from '@/api/notification';
+import { useCaseStore } from '@/stores/case';
+import PageHeader from '@/components/common/PageHeader.vue';
+import PartyManagement from '@/components/case/PartyManagement.vue';
+import TableEmpty from '@/components/common/TableEmpty.vue';
+import CaseLogViewer from '@/components/case/CaseLogViewer.vue';
+import TargetAmountDetail from '@/components/case/TargetAmountDetail.vue';
+import request from '@/api/request';
 
-const route = useRoute()
-const router = useRouter()
-const caseStore = useCaseStore()
+const route = useRoute();
+const router = useRouter();
+const caseStore = useCaseStore();
 
 // State
-const loading = ref(false)
-const caseId = Number(route.params.id)
-const caseData = reactive<any>({})
-const archiveDialogVisible = ref(false)
-const archiveFormRef = ref<FormInstance>()
+const loading = ref(false);
+const caseId = Number(route.params.id);
+const caseData = reactive<any>({});
+const archiveDialogVisible = ref(false);
+const archiveFormRef = ref<FormInstance>();
 const archiveForm = reactive({
   archiver: '',
-  notes: ''
-})
-const processNodes = ref<any[]>([])
-const evidenceList = ref<any[]>([])
-const documentList = ref<any[]>([])
-const costRecords = ref<any[]>([])
+  notes: '',
+});
+const processNodes = ref<any[]>([]);
+const evidenceList = ref<any[]>([]);
+const documentList = ref<any[]>([]);
+const costRecords = ref<any[]>([]);
+const caseNotifications = ref<any[]>([]);
 
 // Fetch case data
 const fetchCaseData = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    const response = await caseApi.getCaseById(caseId)
+    const response = await caseApi.getCaseById(caseId);
     if (response && response.data) {
       // 后端返回 { data: { case: {...} } }
-      const data = response.data.case
-      
+      const data = response.data.case;
+
       if (!data || !data.id) {
-        console.error('案件数据格式错误:', response)
-        ElMessage.error('案件数据格式错误')
-        return
+        console.error('案件数据格式错误:', response);
+        ElMessage.error('案件数据格式错误');
+        return;
       }
-      
+
       // 转换字段名从下划线到驼峰
       Object.assign(caseData, {
         id: data.id,
@@ -330,292 +433,346 @@ const fetchCaseData = async () => {
         status: data.status,
         teamId: data.team_id,
         industrySegment: data.industry_segment,
-        handler: data.handler,
         isExternalAgent: data.is_external_agent,
         lawFirmName: data.law_firm_name,
         agentLawyer: data.agent_lawyer,
         agentContact: data.agent_contact,
         createdAt: data.created_at,
-        updatedAt: data.updated_at
-      })
-      caseStore.setCurrentCase(data)
+        updatedAt: data.updated_at,
+      });
+      caseStore.setCurrentCase(data);
     }
   } catch (error: any) {
-    console.error('获取案件信息失败:', error)
-    ElMessage.error(error.message || '获取案件信息失败')
+    console.error('获取案件信息失败:', error);
+    ElMessage.error(error.message || '获取案件信息失败');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 // Fetch process nodes
 const fetchProcessNodes = async () => {
   try {
-    const response = await processNodeApi.getNodesByCaseId(caseId)
+    const response = await processNodeApi.getNodesByCaseId(caseId);
     if (response && response.data) {
-      const data = response.data.nodes || []
+      const data = response.data.nodes || [];
       // 转换字段名从下划线到驼峰，并转换状态为中文
-      const nodes = Array.isArray(data) ? data.map((node: any) => ({
-        id: node.id,
-        caseId: node.case_id,
-        nodeName: node.node_name,
-        handler: node.handler,
-        startTime: node.start_time,
-        deadline: node.deadline,
-        completionTime: node.completion_time,
-        status: convertStatusToChinese(node.status),
-        progress: node.progress,
-        nodeOrder: node.node_order,
-        createdAt: node.created_at,
-        updatedAt: node.updated_at
-      })) : []
-      processNodes.value = nodes.slice(0, 5)
+      const nodes = Array.isArray(data)
+        ? data.map((node: any) => ({
+            id: node.id,
+            caseId: node.case_id,
+            nodeName: node.node_name,
+            handler: node.handler,
+            startTime: node.start_time,
+            deadline: node.deadline,
+            completionTime: node.completion_time,
+            status: convertStatusToChinese(node.status),
+            progress: node.progress,
+            nodeOrder: node.node_order,
+            createdAt: node.created_at,
+            updatedAt: node.updated_at,
+          }))
+        : [];
+      processNodes.value = nodes.slice(0, 5);
     }
   } catch (error: any) {
-    console.error('获取流程节点失败:', error)
+    console.error('获取流程节点失败:', error);
   }
-}
+};
 
 // Fetch evidence
 const fetchEvidence = async () => {
   try {
-    const response = await evidenceApi.getEvidenceByCaseId(caseId)
+    const response = await evidenceApi.getEvidenceByCaseId(caseId);
     if (response) {
       // 后端返回 { count: ..., evidence: [...] }
-      const data = response.evidence || []
+      const data = response.evidence || [];
       // 转换字段名从下划线到驼峰
-      const evidence = Array.isArray(data) ? data.map((item: any) => ({
-        id: item.id,
-        caseId: item.case_id,
-        fileName: item.file_name,
-        fileType: item.file_type,
-        filePath: item.storage_path,
-        fileSize: item.file_size,
-        category: item.category,
-        tags: item.tags,
-        uploadedBy: item.uploaded_by,
-        uploadedAt: item.uploaded_at
-      })) : []
-      evidenceList.value = evidence.slice(0, 5)
+      const evidence = Array.isArray(data)
+        ? data.map((item: any) => ({
+            id: item.id,
+            caseId: item.case_id,
+            fileName: item.file_name,
+            fileType: item.file_type,
+            filePath: item.storage_path,
+            fileSize: item.file_size,
+            category: item.category,
+            tags: item.tags,
+            uploadedBy: item.uploaded_by,
+            uploadedAt: item.uploaded_at,
+          }))
+        : [];
+      evidenceList.value = evidence.slice(0, 5);
     }
   } catch (error: any) {
-    console.error('获取证据材料失败:', error)
+    console.error('获取证据材料失败:', error);
   }
-}
+};
 
 // Fetch documents
 const fetchDocuments = async () => {
   try {
-    const response = await documentApi.getDocumentsByCaseId(caseId)
+    const response = await documentApi.getDocumentsByCaseId(caseId);
     if (response) {
       // 后端返回 { count: ..., documents: [...] }
-      const data = response.documents || []
+      const data = response.documents || [];
       // 转换字段名从下划线到驼峰
-      const documents = Array.isArray(data) ? data.map((item: any) => ({
-        id: item.id,
-        caseId: item.case_id,
-        documentType: item.document_type,
-        fileName: item.file_name,
-        filePath: item.storage_path,
-        extractedContent: item.extracted_content,
-        uploadedAt: item.uploaded_at
-      })) : []
-      documentList.value = documents.slice(0, 5)
+      const documents = Array.isArray(data)
+        ? data.map((item: any) => ({
+            id: item.id,
+            caseId: item.case_id,
+            documentType: item.document_type,
+            fileName: item.file_name,
+            filePath: item.storage_path,
+            extractedContent: item.extracted_content,
+            uploadedAt: item.uploaded_at,
+          }))
+        : [];
+      documentList.value = documents.slice(0, 5);
     }
   } catch (error: any) {
-    console.error('获取文书材料失败:', error)
+    console.error('获取文书材料失败:', error);
   }
-}
+};
 
 // Fetch costs
 const fetchCosts = async () => {
   try {
-    const response = await costApi.getCostsByCaseId(caseId)
+    const response = await costApi.getCostsByCaseId(caseId);
     if (response && response.data) {
-      const data = response.data.costs || []
+      const data = response.data.costs || [];
       // 转换字段名从下划线到驼峰
-      const costs = Array.isArray(data) ? data.map((item: any) => ({
-        id: item.id,
-        caseId: item.case_id,
-        costType: item.cost_type,
-        amount: item.amount,
-        paymentDate: item.payment_date,
-        status: item.status,
-        payer: item.payer,
-        description: item.description,
-        createdAt: item.created_at
-      })) : []
-      costRecords.value = costs.slice(0, 5)
+      const costs = Array.isArray(data)
+        ? data.map((item: any) => ({
+            id: item.id,
+            caseId: item.case_id,
+            costType: item.cost_type,
+            amount: item.amount,
+            paymentDate: item.payment_date,
+            status: item.status,
+            payer: item.payer,
+            description: item.description,
+            createdAt: item.created_at,
+          }))
+        : [];
+      costRecords.value = costs.slice(0, 5);
     }
   } catch (error: any) {
-    console.error('获取成本记录失败:', error)
+    console.error('获取成本记录失败:', error);
   }
-}
+};
 
+// Fetch case notifications
+const fetchCaseNotifications = async () => {
+  try {
+    // 获取所有通知
+    const notificationsResponse = await notificationApi.getNotifications();
+    const allNotifications = Array.isArray(notificationsResponse)
+      ? notificationsResponse
+      : notificationsResponse?.data || [];
 
+    // 获取该案件的所有节点
+    const nodesResponse = await processNodeApi.getNodesByCaseId(caseId);
+    const nodes = nodesResponse?.data?.nodes || [];
+
+    // 过滤出与该案件相关的通知（后端已返回 caseId）
+    const relevantNotifications: any[] = [];
+
+    for (const notification of allNotifications) {
+      // 检查通知是否属于当前案件
+      if (notification.caseId === caseId) {
+        // 获取对应的节点信息
+        const node = nodes.find((n: any) => n.id === notification.relatedId);
+
+        relevantNotifications.push({
+          ...notification,
+          nodeName: node?.node_name || node?.nodeName || '未知节点',
+          nodeDeadline: node?.deadline,
+        });
+      }
+    }
+
+    caseNotifications.value = relevantNotifications;
+  } catch (error: any) {
+    console.error('获取案件通知失败:', error);
+  }
+};
 
 // Action handlers
 const handleEdit = () => {
-  router.push(`/cases/${caseId}/edit`)
-}
+  router.push(`/cases/${caseId}/edit`);
+};
 
 // Handle archive - 打开归档对话框
 const handleArchive = () => {
   // 重置表单
-  archiveForm.archiver = ''
-  archiveForm.notes = ''
-  archiveFormRef.value?.clearValidate()
+  archiveForm.archiver = '';
+  archiveForm.notes = '';
+  archiveFormRef.value?.clearValidate();
   // 打开对话框
-  archiveDialogVisible.value = true
-}
+  archiveDialogVisible.value = true;
+};
 
 // 提交归档
 const submitArchive = async () => {
-  if (!archiveFormRef.value) return
-  
+  if (!archiveFormRef.value) return;
+
   await archiveFormRef.value.validate(async (valid) => {
-    if (!valid) return
-    
+    if (!valid) return;
+
     try {
       // 更新案件状态为已归档
-      await caseApi.updateCase(caseId, { status: '已归档' })
-      
+      await caseApi.updateCase(caseId, { status: '已归档' });
+
       // 创建归档记录（使用下划线命名以匹配后端）
       await archiveApi.createArchivePackage({
         case_id: caseId,
         archived_by: archiveForm.archiver,
-        notes: archiveForm.notes || ''
-      } as any)
-      
-      ElMessage.success('案件已成功归档，已加入归档列表')
-      
+        notes: archiveForm.notes || '',
+      } as any);
+
+      ElMessage.success('案件已成功归档，已加入归档列表');
+
       // 关闭对话框
-      archiveDialogVisible.value = false
-      
+      archiveDialogVisible.value = false;
+
       // 刷新案件数据
-      await fetchCaseData()
+      await fetchCaseData();
     } catch (error: any) {
-      ElMessage.error(error.message || '归档失败')
+      ElMessage.error(error.message || '归档失败');
     }
-  })
-}
-
-const goToProcess = () => {
-  router.push(`/cases/${caseId}/process`)
-}
-
-const goToEvidence = () => {
-  router.push(`/cases/${caseId}/evidence`)
-}
-
-const goToDocuments = () => {
-  router.push(`/cases/${caseId}/documents`)
-}
+  });
+};
 
 const goBack = () => {
-  router.push('/cases')
-}
-
-const goToCosts = () => {
-  router.push(`/cases/${caseId}/costs`)
-}
+  router.push('/cases');
+};
 
 // Utility functions
 const getCaseTypeTag = (type: string) => {
   const tagMap: Record<string, string> = {
-    '民事': '',
-    '刑事': 'danger',
-    '行政': 'warning',
-    '劳动仲裁': 'success'
-  }
-  return tagMap[type] || ''
-}
+    民事: '',
+    刑事: 'danger',
+    行政: 'warning',
+    劳动仲裁: 'success',
+  };
+  return tagMap[type] || '';
+};
 
 const getStatusTag = (status: string) => {
   const tagMap: Record<string, string> = {
-    '立案': 'info',
-    '审理中': '',
-    '已结案': 'success',
-    '已归档': 'info'
-  }
-  return tagMap[status] || ''
-}
+    立案: 'info',
+    审理中: '',
+    已结案: 'success',
+    已归档: 'info',
+  };
+  return tagMap[status] || '';
+};
 
 // Convert English status to Chinese
 const convertStatusToChinese = (status: string): string => {
   const statusMap: Record<string, string> = {
-    'pending': '待处理',
-    'in_progress': '进行中',
-    'completed': '已完成',
-    'overdue': '超期'
-  }
-  return statusMap[status] || status
-}
+    pending: '待处理',
+    in_progress: '进行中',
+    completed: '已完成',
+    overdue: '超期',
+  };
+  return statusMap[status] || status;
+};
 
 const getNodeStatusTag = (status: string) => {
   const tagMap: Record<string, string> = {
-    '待处理': 'info',
-    '进行中': 'warning',
-    '已完成': 'success',
-    '超期': 'danger'
-  }
-  return tagMap[status] || 'info'
-}
+    待处理: 'info',
+    进行中: 'warning',
+    已完成: 'success',
+    超期: 'danger',
+  };
+  return tagMap[status] || 'info';
+};
 
 const getNodeColor = (status: string) => {
   const colorMap: Record<string, string> = {
-    '待处理': '#909399',
-    '进行中': '#E6A23C',
-    '已完成': '#67C23A',
-    '超期': '#F56C6C'
-  }
-  return colorMap[status] || '#909399'
-}
+    待处理: '#909399',
+    进行中: '#E6A23C',
+    已完成: '#67C23A',
+    超期: '#F56C6C',
+  };
+  return colorMap[status] || '#909399';
+};
 
 const formatAmount = (amount: number) => {
-  if (!amount) return '-'
-  return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+  if (!amount) return '-';
+  return amount.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
 
 const formatDate = (date: string) => {
-  if (!date) return '-'
-  return date.split('T')[0]
-}
+  if (!date) return '-';
+  return date.split('T')[0];
+};
 
 const formatDateTime = (datetime: string) => {
-  if (!datetime) return '-'
-  return datetime.replace('T', ' ').split('.')[0]
-}
+  if (!datetime) return '-';
+  return datetime.replace('T', ' ').split('.')[0];
+};
 
 const getCostSummary = (param: any) => {
-  const { columns, data } = param
-  const sums: string[] = []
+  const { columns, data } = param;
+  const sums: string[] = [];
   columns.forEach((column: any, index: number) => {
     if (index === 0) {
-      sums[index] = '合计'
-      return
+      sums[index] = '合计';
+      return;
     }
     if (column.property === 'amount') {
-      const values = data.map((item: any) => Number(item.amount))
-      const total = values.reduce((prev: number, curr: number) => prev + curr, 0)
-      sums[index] = formatAmount(total)
+      const values = data.map((item: any) => Number(item.amount));
+      const total = values.reduce(
+        (prev: number, curr: number) => prev + curr,
+        0
+      );
+      sums[index] = formatAmount(total);
     } else {
-      sums[index] = ''
+      sums[index] = '';
     }
-  })
-  return sums
-}
+  });
+  return sums;
+};
+
+const getNotificationTagType = (taskType: string): any => {
+  const typeMap: Record<string, any> = {
+    deadline: 'warning',
+    overdue: 'danger',
+    payment: 'primary',
+    task: 'success',
+    system: 'info',
+  };
+  return typeMap[taskType] || 'info';
+};
+
+const getNotificationTypeLabel = (taskType: string): string => {
+  const labelMap: Record<string, string> = {
+    deadline: '节点到期',
+    overdue: '节点超期',
+    payment: '费用支付',
+    task: '协作任务',
+    system: '系统通知',
+  };
+  return labelMap[taskType] || taskType;
+};
 
 // Lifecycle
 onMounted(async () => {
-  await fetchCaseData()
+  await fetchCaseData();
   await Promise.all([
     fetchProcessNodes(),
     fetchEvidence(),
     fetchDocuments(),
-    fetchCosts()
-  ])
-})
+    fetchCosts(),
+    fetchCaseNotifications(),
+  ]);
+});
 </script>
 
 <style scoped>
@@ -674,5 +831,84 @@ onMounted(async () => {
 
 .log-text {
   color: #606266;
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.notification-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background-color: #fef0f0;
+  border-radius: 4px;
+  border-left: 3px solid #f56c6c;
+}
+
+.notification-badge {
+  width: 4px;
+  height: 100%;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.badge-deadline {
+  background-color: #e6a23c;
+}
+
+.badge-overdue {
+  background-color: #f56c6c;
+}
+
+.badge-payment {
+  background-color: #409eff;
+}
+
+.badge-task {
+  background-color: #67c23a;
+}
+
+.badge-system {
+  background-color: #909399;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.node-name {
+  font-weight: 600;
+  color: #303133;
+}
+
+.notification-text {
+  color: #606266;
+  font-size: 14px;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.notification-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 </style>
