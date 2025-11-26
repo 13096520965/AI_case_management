@@ -42,12 +42,13 @@ const generateDocument = async (templateId, data) => {
   // 替换变量生成内容
   const generatedContent = replaceVariables(template.content, data);
   
+  const { beijingNow } = require('../utils/time');
   return {
     template_id: templateId,
     template_name: template.template_name,
     document_type: template.document_type,
     content: generatedContent,
-    generated_at: new Date().toISOString()
+    generated_at: beijingNow(new Date())
   };
 };
 

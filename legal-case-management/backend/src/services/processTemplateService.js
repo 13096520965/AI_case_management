@@ -1,5 +1,6 @@
 const { ProcessTemplate, ProcessTemplateNode } = require('../models/ProcessTemplate');
 const ProcessNode = require('../models/ProcessNode');
+const { beijingNow, formatToBeijing } = require('../utils/time');
 
 /**
  * 默认流程模板数据
@@ -141,8 +142,8 @@ class ProcessTemplateService {
       }
 
       // 创建案件流程节点
-      const createdNodes = [];
-      const currentDate = new Date();
+    const createdNodes = [];
+    const currentDate = new Date();
 
       for (let i = 0; i < templateNodes.length; i++) {
         const templateNode = templateNodes[i];
@@ -162,7 +163,7 @@ class ProcessTemplateService {
         if (i === 0) {
           // 第一个节点自动开始
           status = 'in_progress';
-          startTime = currentDate.toISOString();
+          startTime = formatToBeijing(currentDate);
         }
 
         const nodeData = {
@@ -170,7 +171,7 @@ class ProcessTemplateService {
           node_type: templateNode.node_type,
           node_name: templateNode.node_name,
           start_time: startTime,
-          deadline: deadline ? deadline.toISOString() : null,
+          deadline: deadline ? formatToBeijing(deadline) : null,
           status: status,
           node_order: templateNode.node_order,
           progress: templateNode.description

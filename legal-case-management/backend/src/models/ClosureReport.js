@@ -79,7 +79,10 @@ class ClosureReport {
       }
     });
 
-    fields.push('updated_at = CURRENT_TIMESTAMP');
+    // 使用后端北京时间更新 updated_at
+    const { beijingNow } = require('../utils/time');
+    fields.push('updated_at = ?');
+    params.push(beijingNow());
     params.push(id);
 
     const sql = `UPDATE closure_reports SET ${fields.join(', ')} WHERE id = ?`;

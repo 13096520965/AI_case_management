@@ -143,7 +143,7 @@ exports.getDashboardData = async (req, res) => {
       SELECT COUNT(*) as count 
       FROM process_nodes 
       WHERE status != 'completed' 
-      AND deadline < datetime('now')
+      AND deadline < datetime('now', '+8 hours')
       AND deadline IS NOT NULL
     `);
     const overdueNodes = overdueNodesResult.count;

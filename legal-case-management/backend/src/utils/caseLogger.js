@@ -86,9 +86,10 @@ async function logCaseAction(options) {
       INSERT INTO case_logs (
         case_id, action_type, action_description, operator_id, 
         operator_name, ip_address, user_agent, related_data, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
+    const { beijingNow } = require('../utils/time');
     const result = await run(sql, [
       parseInt(caseId),
       actionType,
@@ -97,7 +98,8 @@ async function logCaseAction(options) {
       operatorName,
       ipAddress,
       userAgent,
-      relatedData ? JSON.stringify(relatedData) : null
+      relatedData ? JSON.stringify(relatedData) : null,
+      beijingNow()
     ]);
 
     return result.lastID;

@@ -1,4 +1,5 @@
 const { query, run, get } = require('../config/database');
+const { beijingNow } = require('../utils/time');
 
 /**
  * 知识库数据访问层
@@ -159,8 +160,10 @@ class KnowledgeModel {
       throw new Error('没有要更新的字段');
     }
     
-    // 自动更新 updated_at 字段
-    fields.push('updated_at = CURRENT_TIMESTAMP');
+    // 自动更新 updated_at 字段（使用后端北京时间）
+    fields.push('updated_at = ?');
+    // 将 updated_at 的值加入参数列表
+    params.push(beijingNow());
     
     params.push(id);
     const sql = `UPDATE case_knowledge SET ${fields.join(', ')} WHERE id = ?`;

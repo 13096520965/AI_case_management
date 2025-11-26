@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const { beijingNow } = require('../utils/time');
 
 class PaymentRecord {
   /**
@@ -89,8 +90,10 @@ class PaymentRecord {
       return 0;
     }
 
-    fields.push('updated_at = CURRENT_TIMESTAMP');
-    values.push(id);
+  // 使用后端北京时间更新 updated_at
+  fields.push('updated_at = ?');
+  values.push(beijingNow());
+  values.push(id);
 
     const result = await db.run(
       `UPDATE payment_records SET ${fields.join(', ')} WHERE id = ?`,

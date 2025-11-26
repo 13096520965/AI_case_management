@@ -23,14 +23,16 @@ class ProcessNode {
       node_order
     } = nodeData;
 
+    const { beijingNow } = require('../utils/time');
     const sql = `
       INSERT INTO process_nodes (
         case_id, node_type, node_name, handler, start_time,
-        deadline, completion_time, status, progress, node_order
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        deadline, completion_time, status, progress, node_order, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // 将 undefined 转换为 null，避免 SQL 绑定错误
+    const now = beijingNow();
     const result = await run(sql, [
       case_id ?? null,
       node_type ?? '',
@@ -41,7 +43,9 @@ class ProcessNode {
       completion_time ?? null,
       status ?? 'pending',
       progress ?? null,
-      node_order ?? null
+      node_order ?? null,
+      now,
+      now
     ]);
 
     return result.lastID;
@@ -84,8 +88,10 @@ class ProcessNode {
       }
     });
 
-    fields.push('updated_at = CURRENT_TIMESTAMP');
-    params.push(id);
+  const { beijingNow } = require('../utils/time');
+  fields.push('updated_at = ?');
+  params.push(beijingNow());
+  params.push(id);
 
     const sql = `UPDATE process_nodes SET ${fields.join(', ')} WHERE id = ?`;
     const result = await run(sql, params);
@@ -116,7 +122,7 @@ class ProcessNode {
       FROM process_nodes pn
       LEFT JOIN cases c ON pn.case_id = c.id
       WHERE pn.status != 'completed' 
-      AND pn.deadline < datetime('now')
+      AND pn.deadline < datetime('now', '+8 hours')
       ORDER BY pn.deadline ASC
     `;
     return await query(sql);
@@ -136,7 +142,7 @@ class ProcessNode {
       FROM process_nodes pn
       LEFT JOIN cases c ON pn.case_id = c.id
       WHERE pn.status != 'completed' 
-      AND pn.deadline BETWEEN datetime('now') AND datetime('now', '+${days} days')
+      AND pn.deadline BETWEEN datetime('now', '+8 hours') AND datetime('now', '+8 hours', '+${days} days')
       ORDER BY pn.deadline ASC
     `;
     return await query(sql);

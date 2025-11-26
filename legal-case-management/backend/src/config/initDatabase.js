@@ -6,7 +6,7 @@ const path = require('path');
 /**
  * 数据库初始化脚本
  */
-const initSQL = `
+const initSQL_RAW = `
 -- 案件表
 CREATE TABLE IF NOT EXISTS cases (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,8 +25,8 @@ CREATE TABLE IF NOT EXISTS cases (
   law_firm_name VARCHAR(200),
   agent_lawyer VARCHAR(100),
   agent_contact VARCHAR(100),
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at DATETIME DEFAULT (datetime('now', '+8 hours')),
+  updated_at DATETIME DEFAULT (datetime('now', '+8 hours'))
 );
 
 -- 诉讼主体表
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS litigation_parties (
   address TEXT,
   region_code VARCHAR(100),
   detail_address TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_at DATETIME DEFAULT (datetime('now', '+8 hours')),
   FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
 );
 
@@ -61,8 +61,8 @@ CREATE TABLE IF NOT EXISTS process_nodes (
   status VARCHAR(50) DEFAULT 'pending',
   progress TEXT,
   node_order INTEGER,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_at DATETIME DEFAULT (datetime('now', '+8 hours')),
+  updated_at DATETIME DEFAULT (datetime('now', '+8 hours')),
   FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
 );
 
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS evidence (
   category VARCHAR(50),
   tags TEXT,
   uploaded_by VARCHAR(100),
-  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  uploaded_at DATETIME DEFAULT (datetime('now', '+8 hours')),
   version INTEGER DEFAULT 1,
   parent_id INTEGER,
   FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS evidence_versions (
   category VARCHAR(50),
   tags TEXT,
   uploaded_by VARCHAR(100),
-  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  uploaded_at DATETIME DEFAULT (datetime('now', '+8 hours')),
   FOREIGN KEY (evidence_id) REFERENCES evidence(id) ON DELETE CASCADE
 );
 
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS documents (
   file_name VARCHAR(255) NOT NULL,
   storage_path VARCHAR(500) NOT NULL,
   extracted_content TEXT,
-  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  uploaded_at DATETIME DEFAULT (datetime('now', '+8 hours')),
   FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
 );
 
@@ -368,6 +368,9 @@ CREATE INDEX IF NOT EXISTS idx_case_logs_case_id ON case_logs(case_id);
 CREATE INDEX IF NOT EXISTS idx_case_logs_action_type ON case_logs(action_type);
 `;
 
+// 将所有 SQL 中的 DEFAULT CURRENT_TIMESTAMP 替换为 北京时间的默认值
+const initSQL = initSQL_RAW.replace(/DEFAULT CURRENT_TIMESTAMP/g, "DEFAULT (datetime('now', '+8 hours'))");
+
 /**
  * 初始化数据库
  * @returns {Promise<void>}
@@ -402,13 +405,30 @@ function initializeDatabase() {
       let hasError = false;
       
       if (statements.length === 0) {
-        db.close();
-        console.log('数据库表创建成功');
-        console.log('数据库初始化完成');
-        resolve();
+        // 即使没有语句，也确保 documents 和 evidence 表包含 description 列（向后兼容升级）
+        const ensureColumn = (tableName, columnName, columnDef, cb) => {
+          db.all(`PRAGMA table_info('${tableName}')`, (err, rows) => {
+            if (err) return cb(err);
+            const hasColumn = Array.isArray(rows) && rows.some(r => r && r.name === columnName);
+            if (!hasColumn) {
+              db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnDef}`, (err2) => cb(err2));
+            } else cb(null);
+          });
+        };
+
+        ensureColumn('documents', 'description', 'description TEXT', (err) => {
+          if (err) console.error('升级 documents 表失败:', err.message);
+          ensureColumn('evidence', 'description', 'description TEXT', (err2) => {
+            if (err2) console.error('升级 evidence 表失败:', err2.message);
+            db.close();
+            console.log('数据库表创建成功');
+            console.log('数据库初始化完成');
+            resolve();
+          });
+        });
         return;
       }
-      
+
       statements.forEach((statement, index) => {
         if (statement.trim() && !hasError) {
           db.run(statement.trim(), (err) => {
@@ -420,22 +440,56 @@ function initializeDatabase() {
               reject(err);
               return;
             }
-            
+
             completed++;
             if (completed === statements.length) {
-              db.close();
-              console.log('数据库表创建成功');
-              console.log('数据库初始化完成');
-              resolve();
+              // 在所有表创建/更新完成后，确保 documents 与 evidence 表包含 description 字段（向后兼容）
+              const ensureColumn = (tableName, columnName, columnDef, cb) => {
+                db.all(`PRAGMA table_info('${tableName}')`, (err, rows) => {
+                  if (err) return cb(err);
+                  const hasColumn = Array.isArray(rows) && rows.some(r => r && r.name === columnName);
+                  if (!hasColumn) {
+                    db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnDef}`, (err2) => cb(err2));
+                  } else cb(null);
+                });
+              };
+
+              ensureColumn('documents', 'description', 'description TEXT', (err2) => {
+                if (err2) console.error('为 documents 表添加 description 列失败:', err2.message);
+                ensureColumn('evidence', 'description', 'description TEXT', (err3) => {
+                  if (err3) console.error('为 evidence 表添加 description 列失败:', err3.message);
+                  db.close();
+                  console.log('数据库表创建成功');
+                  console.log('数据库初始化完成');
+                  resolve();
+                });
+              });
             }
           });
         } else {
           completed++;
           if (completed === statements.length && !hasError) {
-            db.close();
-            console.log('数据库表创建成功');
-            console.log('数据库初始化完成');
-            resolve();
+            // 同样在这里保证 documents 与 evidence 表的 description 字段存在
+            const ensureColumn = (tableName, columnName, columnDef, cb) => {
+              db.all(`PRAGMA table_info('${tableName}')`, (err, rows) => {
+                if (err) return cb(err);
+                const hasColumn = Array.isArray(rows) && rows.some(r => r && r.name === columnName);
+                if (!hasColumn) {
+                  db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnDef}`, (err2) => cb(err2));
+                } else cb(null);
+              });
+            };
+
+            ensureColumn('documents', 'description', 'description TEXT', (err2) => {
+              if (err2) console.error('为 documents 表添加 description 列失败:', err2.message);
+              ensureColumn('evidence', 'description', 'description TEXT', (err3) => {
+                if (err3) console.error('为 evidence 表添加 description 列失败:', err3.message);
+                db.close();
+                console.log('数据库表创建成功');
+                console.log('数据库初始化完成');
+                resolve();
+              });
+            });
           }
         }
       });

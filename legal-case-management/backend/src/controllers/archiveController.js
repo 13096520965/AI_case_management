@@ -204,10 +204,11 @@ exports.createArchivePackage = async (req, res) => {
     const package_size = (evidence.length + documents.length) * 1024; // 假设每个文件1KB
 
     // 创建归档包数据
+    const { beijingNow } = require('../utils/time');
     const packageData = {
       case_id,
       archive_number,
-      archive_date: new Date().toISOString().split('T')[0],
+      archive_date: beijingNow(new Date()).split(' ')[0],
       archive_location: `archive/${archive_number}`,
       package_size,
       package_path: `/archive/${archive_number}`,

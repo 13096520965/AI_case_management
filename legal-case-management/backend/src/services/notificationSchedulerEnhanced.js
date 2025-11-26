@@ -1,19 +1,13 @@
 const cron = require('node-cron');
 const NotificationTask = require('../models/NotificationTask');
 const { query } = require('../config/database');
+const { beijingNow, beijingFromMs, formatToBeijing } = require('../utils/time');
 
 /**
  * 格式化日期为 YYYY-MM-DD HH:mm:ss 格式
  */
 function formatDateTime(dateString) {
-  const date = new Date(dateString);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  return formatToBeijing(new Date(dateString));
 }
 
 /**
@@ -149,7 +143,8 @@ class NotificationSchedulerEnhanced {
             related_id: node.id,
             related_type: 'process_node',
             task_type: 'deadline',
-            scheduled_time: new Date().toISOString(),
+            // 使用后端统一的北京时间
+            scheduled_time: beijingNow(),
             content: content,
             status: 'unread'
           });
@@ -218,7 +213,7 @@ class NotificationSchedulerEnhanced {
             related_id: node.id,
             related_type: 'process_node',
             task_type: 'overdue',
-            scheduled_time: new Date().toISOString(),
+            scheduled_time: beijingNow(),
             content: content,
             status: 'unread'
           });
@@ -284,7 +279,7 @@ class NotificationSchedulerEnhanced {
             related_id: cost.id,
             related_type: 'cost_record',
             task_type: 'payment',
-            scheduled_time: new Date().toISOString(),
+            scheduled_time: beijingNow(),
             content: content,
             status: 'unread'
           });
@@ -304,7 +299,7 @@ class NotificationSchedulerEnhanced {
    */
   async checkExistingNotification(relatedId, relatedType, taskType, hoursWindow = 24) {
     try {
-      const cutoffTime = new Date(Date.now() - hoursWindow * 60 * 60 * 1000).toISOString();
+  const cutoffTime = beijingFromMs(Date.now() - hoursWindow * 60 * 60 * 1000);
       
       const existing = await query(`
         SELECT * FROM notification_tasks
@@ -354,7 +349,7 @@ class NotificationSchedulerEnhanced {
           hoursWindow = 24;
       }
 
-      const cutoffTime = new Date(Date.now() - hoursWindow * 60 * 60 * 1000).toISOString();
+  const cutoffTime = beijingFromMs(Date.now() - hoursWindow * 60 * 60 * 1000);
       
       const existing = await query(`
         SELECT * FROM notification_tasks
@@ -367,9 +362,9 @@ class NotificationSchedulerEnhanced {
       // 如果是"每天"频率，需要检查是否是同一天
       if (frequency === 'daily' && existing.length > 0) {
         // 检查最近的提醒是否是今天创建的
-        const today = new Date().toISOString().split('T')[0];
+        const today = beijingNow(new Date()).split(' ')[0];
         const recentNotification = existing.find(n => {
-          const notificationDate = new Date(n.created_at).toISOString().split('T')[0];
+          const notificationDate = beijingNow(new Date(n.created_at)).split(' ')[0];
           return notificationDate === today;
         });
         
@@ -441,12 +436,12 @@ class NotificationSchedulerEnhanced {
           taskType = 'task';
       }
 
-      // 创建提醒
+      // 创建提醒（使用北京时间）
       await NotificationTask.create({
         related_id: nodeId,
         related_type: 'process_node',
         task_type: taskType,
-        scheduled_time: new Date().toISOString(),
+        scheduled_time: beijingNow(),
         content: content,
         status: 'unread'
       });

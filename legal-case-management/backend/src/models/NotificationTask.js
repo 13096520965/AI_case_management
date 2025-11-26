@@ -133,7 +133,7 @@ class NotificationTask {
     const sql = `
       SELECT * FROM notification_tasks 
       WHERE status = 'pending' 
-      AND scheduled_time <= datetime('now')
+      AND scheduled_time <= datetime('now', '+8 hours')
       ORDER BY scheduled_time ASC
     `;
     return await query(sql);

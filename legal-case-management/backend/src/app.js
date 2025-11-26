@@ -70,12 +70,16 @@ const notificationScheduler = require('./services/notificationScheduler');
 
 // 初始化标的处理详情表
 const initTargetAmountTables = require('../init-target-amount-tables');
+// 初始化数据库（创建表并执行必要的向后兼容字段升级）
+const { initializeDatabase } = require('./config/initDatabase');
 
 app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   
   // 初始化标的处理详情表
+  // 确保数据库表存在并执行迁移（例如为 documents 表添加 description 列）
+  await initializeDatabase();
   await initTargetAmountTables();
   
   // 启动提醒调度器

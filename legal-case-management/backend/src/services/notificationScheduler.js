@@ -1,5 +1,6 @@
 const cron = require('node-cron');
 const NotificationTask = require('../models/NotificationTask');
+const { beijingNow, beijingFromMs } = require('../utils/time');
 const NotificationRule = require('../models/NotificationRule');
 const ProcessNode = require('../models/ProcessNode');
 const CostRecord = require('../models/CostRecord');
@@ -127,9 +128,12 @@ class NotificationScheduler {
       for (const node of nodes) {
         // 检查是否已存在相同的提醒
         const existingNotifications = await NotificationTask.findByRelated('process_node', node.id);
+        const cutoffMs = Date.now() - 24 * 60 * 60 * 1000;
+        const cutoff = beijingFromMs(cutoffMs);
         const hasRecentNotification = existingNotifications.some(n => 
-          n.status === 'pending' && 
-          new Date(n.scheduled_time) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+          n.status === 'pending' &&
+          // scheduled_time 存储为 YYYY-MM-DD HH:mm:ss，可直接字符串比较
+          n.scheduled_time > cutoff
         );
 
         if (!hasRecentNotification) {
@@ -138,7 +142,7 @@ class NotificationScheduler {
             related_id: node.id,
             related_type: 'process_node',
             task_type: 'node_deadline',
-            scheduled_time: new Date().toISOString(),
+            scheduled_time: beijingNow(),
             content: `流程节点"${node.node_name}"即将到期，截止时间：${node.deadline}`,
             status: 'pending'
           });
@@ -177,9 +181,10 @@ class NotificationScheduler {
       for (const cost of costs) {
         // 检查是否已存在相同的提醒
         const existingNotifications = await NotificationTask.findByRelated('cost_record', cost.id);
+        const cutoff2 = beijingFromMs(Date.now() - 24 * 60 * 60 * 1000);
         const hasRecentNotification = existingNotifications.some(n => 
-          n.status === 'pending' && 
-          new Date(n.scheduled_time) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+          n.status === 'pending' &&
+          n.scheduled_time > cutoff2
         );
 
         if (!hasRecentNotification) {
@@ -188,7 +193,7 @@ class NotificationScheduler {
             related_id: cost.id,
             related_type: 'cost_record',
             task_type: 'cost_payment',
-            scheduled_time: new Date().toISOString(),
+            scheduled_time: beijingNow(),
             content: `费用"${cost.cost_type}"即将到期，金额：${cost.amount}元，到期日期：${cost.due_date}`,
             status: 'pending'
           });
@@ -220,10 +225,11 @@ class NotificationScheduler {
       for (const node of nodes) {
         // 检查是否已存在相同的提醒
         const existingNotifications = await NotificationTask.findByRelated('process_node', node.id);
+        const cutoff3 = beijingFromMs(Date.now() - 24 * 60 * 60 * 1000);
         const hasRecentNotification = existingNotifications.some(n => 
           n.task_type === 'node_overdue' &&
-          n.status === 'pending' && 
-          new Date(n.scheduled_time) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+          n.status === 'pending' &&
+          n.scheduled_time > cutoff3
         );
 
         if (!hasRecentNotification) {
@@ -237,7 +243,7 @@ class NotificationScheduler {
             related_id: node.id,
             related_type: 'process_node',
             task_type: 'node_overdue',
-            scheduled_time: new Date().toISOString(),
+            scheduled_time: beijingNow(),
             content: `流程节点"${node.node_name}"已超期 ${overdueDays} 天，截止时间：${node.deadline}`,
             status: 'pending'
           });
@@ -272,10 +278,11 @@ class NotificationScheduler {
       for (const node of nodes) {
         // 检查是否已存在最近的超期提醒
         const existingNotifications = await NotificationTask.findByRelated('process_node', node.id);
-        const hasRecentOverdueNotification = existingNotifications.some(n => 
+          const cutoffOverdue = beijingFromMs(Date.now() - 24 * 60 * 60 * 1000);
+          const hasRecentOverdueNotification = existingNotifications.some(n => 
           n.task_type === 'node_overdue' &&
           n.status === 'pending' && 
-          new Date(n.scheduled_time) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+          n.scheduled_time > cutoffOverdue
         );
 
         if (!hasRecentOverdueNotification) {
@@ -287,7 +294,7 @@ class NotificationScheduler {
             related_id: node.id,
             related_type: 'process_node',
             task_type: 'node_overdue',
-            scheduled_time: new Date().toISOString(),
+            scheduled_time: beijingNow(),
             content: `【超期预警】流程节点"${node.node_name}"已超期 ${overdueDays} 天`,
             status: 'pending'
           });
@@ -323,9 +330,10 @@ class NotificationScheduler {
 
       for (const cost of costs) {
         const existingNotifications = await NotificationTask.findByRelated('cost_record', cost.id);
+  const cutoff4 = beijingFromMs(Date.now() - 24 * 60 * 60 * 1000);
         const hasRecentNotification = existingNotifications.some(n => 
-          n.status === 'pending' && 
-          new Date(n.scheduled_time) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+          n.status === 'pending' &&
+          n.scheduled_time > cutoff4
         );
 
         if (!hasRecentNotification) {
@@ -337,7 +345,7 @@ class NotificationScheduler {
             related_id: cost.id,
             related_type: 'cost_record',
             task_type: 'cost_payment',
-            scheduled_time: new Date().toISOString(),
+            scheduled_time: beijingNow(),
             content: `费用"${cost.cost_type}"将在 ${daysUntilDue} 天后到期，金额：${cost.amount}元`,
             status: 'pending'
           });

@@ -3,11 +3,7 @@
     <el-table :data="documentList" v-loading="loading" max-height="300">
       <el-table-column prop="document_type" label="文书类型" width="120" />
       <el-table-column prop="file_name" label="文件名" min-width="200" show-overflow-tooltip />
-      <el-table-column label="文件大小" width="120">
-        <template #default="{ row }">
-          {{ formatFileSize(row.file_size) }}
-        </template>
-      </el-table-column>
+      <el-table-column label="备注" prop="description" width="120" />
       <el-table-column prop="uploaded_at" label="上传时间" width="180" />
       <template #empty>
         <TableEmpty description="暂无文书材料" />

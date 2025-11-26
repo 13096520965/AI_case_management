@@ -105,28 +105,56 @@ const upload = multer({
  */
 const uploadDocument = async (req, res) => {
   try {
-    if (!req.file) {
+    // uploadDocument: 支持 multipart 本地文件上传或前端传回的远程 storage_path（不在服务器下载）
+    // 支持两种上传方式：
+    // 1) multipart/form-data 上传文件（req.file）
+    // 2) 前端已将文件上传到云存储，仅传回 storage_path（或 file_url / file 字段）
+    const storagePathFromBody = ((req.body && (req.body.storage_path || req.body.file_url || req.body.file)) || '').toString().trim();
+    const { case_id, document_type, file_name } = req.body || {};
+
+    // multer 会在 req.file 中放置上传的文件（如果有）
+    const uploadedFile = req.file || null;
+
+    // 如果既没有上传文件也没有提供 storage_path，则报错
+    if (!uploadedFile && !storagePathFromBody) {
       return res.status(400).json({ error: '请选择要上传的文件' });
     }
 
-    const { case_id, document_type } = req.body;
-
     if (!case_id) {
-      // 删除已上传的文件
-      fs.unlinkSync(req.file.path);
+      // 若上传了本地文件，删除临时文件
+      if (uploadedFile && uploadedFile.path && fs.existsSync(uploadedFile.path)) {
+        fs.unlinkSync(uploadedFile.path);
+      }
       return res.status(400).json({ error: '案件 ID 不能为空' });
     }
 
     // 自动识别文书类型（如果未指定）
-    const finalDocumentType = document_type || identifyDocumentType(req.file.originalname);
+    let finalDocumentType = document_type;
+    let finalFileName = file_name;
+    let storage_path = null;
 
-    // 创建文书记录
+    if (uploadedFile) {
+      finalFileName = uploadedFile.originalname || uploadedFile.filename;
+      finalDocumentType = document_type || identifyDocumentType(finalFileName);
+      // 保存为相对路径，便于 HTTP 访问
+      storage_path = `/uploads/documents/${uploadedFile.filename}`;
+    } else {
+      // 使用前端提供的远程 URL
+      storage_path = storagePathFromBody;
+      finalFileName = (file_name && file_name.toString().trim()) ? file_name.toString().trim() : path.basename(storage_path);
+      finalDocumentType = document_type || identifyDocumentType(finalFileName);
+    }
+
+    // 创建文书记录，强制写入北京时间
+    const { beijingNow } = require('../utils/time');
     const documentData = {
       case_id: parseInt(case_id),
       document_type: finalDocumentType,
-      file_name: req.file.originalname,
-      storage_path: req.file.path,
-      extracted_content: null
+      file_name: finalFileName,
+      storage_path: storage_path,
+      extracted_content: null,
+      description: (req.body && (req.body.description || req.body.remark || req.body.notes)) || null,
+      uploaded_at: beijingNow()
     };
 
     const documentId = await Document.create(documentData);
@@ -205,16 +233,23 @@ const downloadDocument = async (req, res) => {
     if (!document) {
       return res.status(404).json({ error: '文书不存在' });
     }
+    // 如果 storage_path 是外部 URL，则重定向到该 URL（让浏览器直接从云存储下载）
+    if (/^https?:\/\//i.test(document.storage_path)) {
+      return res.redirect(302, document.storage_path);
+    }
 
-    // 检查文件是否存在
-    if (!fs.existsSync(document.storage_path)) {
+    // 否则按本地文件路径处理：检查文件是否存在并返回流
+    const absolutePath = path.isAbsolute(document.storage_path)
+      ? document.storage_path
+      : path.join(__dirname, '../../', document.storage_path);
+
+    if (!fs.existsSync(absolutePath)) {
       return res.status(404).json({ error: '文书文件不存在' });
     }
 
-    // 获取文件信息
-    const stats = fs.statSync(document.storage_path);
+    const stats = fs.statSync(absolutePath);
     const ext = path.extname(document.file_name).toLowerCase();
-    
+
     // 根据文件扩展名设置 Content-Type
     let contentType = 'application/octet-stream';
     if (ext === '.pdf') contentType = 'application/pdf';
@@ -226,13 +261,12 @@ const downloadDocument = async (req, res) => {
     else if (ext === '.png') contentType = 'image/png';
     else if (ext === '.txt') contentType = 'text/plain';
 
-    // 设置响应头
+    // 设置响应头并返回文件流
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(document.file_name)}"`);
     res.setHeader('Content-Length', stats.size);
 
-    // 创建文件流并发送
-    const fileStream = fs.createReadStream(document.storage_path);
+    const fileStream = fs.createReadStream(absolutePath);
     fileStream.pipe(res);
   } catch (error) {
     console.error('下载文书失败:', error);

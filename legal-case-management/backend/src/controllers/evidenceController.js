@@ -116,6 +116,8 @@ const uploadEvidence = async (req, res) => {
       // file_type/size 保留 null 或可在前端传入
     }
 
+    // 引入北京时间工具
+    const { beijingNow } = require('../utils/time');
     const evidenceData = {
       case_id: parseInt(case_id),
       file_name: finalFileName,
@@ -125,8 +127,12 @@ const uploadEvidence = async (req, res) => {
       uploaded_by: req.username || null,
       version: 1,
       file_type: file_type,
-      file_size: file_size
+      file_size: file_size,
+      uploaded_at: beijingNow() // 强制写入北京时间
     };
+
+    // 支持前端传入的描述字段 description（兼容 remark/notes）
+    evidenceData.description = (req.body && (req.body.description || req.body.remark || req.body.notes)) || null;
 
     const evidenceId = await Evidence.create(evidenceData);
     const evidence = await Evidence.findById(evidenceId);
@@ -237,7 +243,7 @@ const downloadEvidence = async (req, res) => {
 const updateEvidence = async (req, res) => {
   try {
     const { id } = req.params;
-    const { category, tags } = req.body;
+    const { category, tags, description } = req.body;
 
     const evidence = await Evidence.findById(parseInt(id));
     if (!evidence) {
@@ -245,8 +251,9 @@ const updateEvidence = async (req, res) => {
     }
 
     const updateData = {};
-    if (category !== undefined) updateData.category = category;
-    if (tags !== undefined) updateData.tags = tags;
+  if (category !== undefined) updateData.category = category;
+  if (tags !== undefined) updateData.tags = tags;
+  if (description !== undefined) updateData.description = description;
 
     if (Object.keys(updateData).length === 0) {
       return resp.fail(res, 1, '没有提供要更新的字段', 400);
@@ -330,6 +337,7 @@ const uploadNewVersion = async (req, res) => {
     }
 
     // 保存当前版本到历史记录
+    const { beijingNow } = require('../utils/time');
     await EvidenceVersion.create({
       evidence_id: evidence.id,
       version: evidence.version,
@@ -339,7 +347,8 @@ const uploadNewVersion = async (req, res) => {
       storage_path: evidence.storage_path,
       category: evidence.category,
       tags: evidence.tags,
-      uploaded_by: evidence.uploaded_by
+      uploaded_by: evidence.uploaded_by,
+      uploaded_at: beijingNow()
     });
 
     // 转换为相对URL路径格式，便于HTTP访问
@@ -353,7 +362,8 @@ const uploadNewVersion = async (req, res) => {
       file_size: uploadedFile.size,
       storage_path: relativePath,
       version: newVersion,
-      uploaded_by: req.username
+      uploaded_by: req.username,
+      uploaded_at: beijingNow()
     });
 
     const updatedEvidence = await Evidence.findById(parseInt(id));

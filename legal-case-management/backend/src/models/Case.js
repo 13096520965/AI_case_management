@@ -28,15 +28,18 @@ class Case {
       agent_contact
     } = caseData;
 
+    const { beijingNow } = require('../utils/time');
     const sql = `
       INSERT INTO cases (
         case_number, internal_number, case_type, case_cause, 
         court, target_amount, filing_date, status, team_id, industry_segment,
-        handler, is_external_agent, law_firm_name, agent_lawyer, agent_contact
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        handler, is_external_agent, law_firm_name, agent_lawyer, agent_contact,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // 将 undefined 转换为 null，避免 SQL 绑定错误
+    const now = beijingNow();
     const result = await run(sql, [
       case_number ?? null,
       internal_number ?? null,
@@ -52,7 +55,9 @@ class Case {
       is_external_agent ?? 0,
       law_firm_name ?? null,
       agent_lawyer ?? null,
-      agent_contact ?? null
+      agent_contact ?? null,
+      now,
+      now
     ]);
 
     return result.lastID;
@@ -157,8 +162,10 @@ class Case {
       }
     });
 
-    fields.push('updated_at = CURRENT_TIMESTAMP');
-    params.push(id);
+  const { beijingNow } = require('../utils/time');
+  fields.push('updated_at = ?');
+  params.push(beijingNow());
+  params.push(id);
 
     const sql = `UPDATE cases SET ${fields.join(', ')} WHERE id = ?`;
     const result = await run(sql, params);
@@ -278,11 +285,8 @@ class Case {
    * @returns {Promise<number>} 日志 ID
    */
   static async addLog(caseId, operator, action) {
-    // 获取北京时间 (UTC+8)
-    const now = new Date();
-    const beijingTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
-    const timestamp = beijingTime.toISOString().replace('T', ' ').substring(0, 19);
-    
+    const { beijingNow } = require('../utils/time');
+    const timestamp = beijingNow();
     const sql = `
       INSERT INTO case_logs (case_id, operator, action, created_at)
       VALUES (?, ?, ?, ?)

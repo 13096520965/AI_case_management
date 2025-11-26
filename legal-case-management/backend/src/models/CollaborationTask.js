@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const { beijingNow } = require('../utils/time');
 
 /**
  * 协作任务模型
@@ -170,7 +171,8 @@ class CollaborationTask {
         
         // 如果状态更新为 completed，自动设置完成时间
         if (status === 'completed' && !completed_at) {
-          updates.push('completed_at = CURRENT_TIMESTAMP');
+          updates.push('completed_at = ?');
+          values.push(beijingNow());
         }
       }
       if (due_date !== undefined) {
@@ -182,8 +184,9 @@ class CollaborationTask {
         values.push(completed_at);
       }
       
-      updates.push('updated_at = CURRENT_TIMESTAMP');
-      values.push(id);
+  updates.push('updated_at = ?');
+  values.push(beijingNow());
+  values.push(id);
       
       const sql = `
         UPDATE collaboration_tasks

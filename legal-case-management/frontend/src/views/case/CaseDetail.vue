@@ -213,7 +213,6 @@
             <span class="card-title">证据材料</span>
           </div>
         </template>
-
         <el-table :data="evidenceList" stripe max-height="300">
           <el-table-column
             prop="fileName"
@@ -221,7 +220,20 @@
             min-width="200"
             show-overflow-tooltip
           />
+          <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
           <el-table-column prop="category" label="分类" width="120" />
+          <el-table-column prop="tags" label="标签" width="180">
+            <template #default="{ row }">
+              <el-tag
+                v-for="tag in parseTags(row.tags)"
+                :key="tag"
+                size="small"
+                style="margin-right: 5px"
+              >
+                {{ tag }}
+              </el-tag>
+            </template>
+          </el-table-column>
           <el-table-column prop="uploadedAt" label="上传时间" width="180">
             <template #default="{ row }">
               {{ formatDateTime(row.uploadedAt) }}
@@ -249,6 +261,7 @@
             min-width="200"
             show-overflow-tooltip
           />
+          <el-table-column prop="description" label="备注" width="120" show-overflow-tooltip />
           <el-table-column prop="uploadedAt" label="上传时间" width="180">
             <template #default="{ row }">
               {{ formatDateTime(row.uploadedAt) }}
@@ -509,6 +522,7 @@ const fetchEvidence = async () => {
             fileName: item.file_name,
             fileType: item.file_type || inferFileTypeFromPath(item.storage_path),
             filePath: item.storage_path,
+            description: item.description ?? item.remark ?? item.notes ?? '',
             fileSize: item.file_size,
             category: item.category,
             tags: item.tags,
@@ -555,6 +569,7 @@ const fetchDocuments = async () => {
             documentType: item.document_type,
             fileName: item.file_name,
             filePath: item.storage_path,
+            description: item.description ?? item.remark ?? item.notes ?? '',
             extractedContent: item.extracted_content,
             uploadedAt: item.uploaded_at,
           }))
@@ -747,6 +762,14 @@ const formatDate = (date: string) => {
 const formatDateTime = (datetime: string) => {
   if (!datetime) return '-';
   return datetime.replace('T', ' ').split('.')[0];
+};
+
+const parseTags = (tags?: string): string[] => {
+  if (!tags) return [];
+  return tags
+    .split(',')
+    .map((t) => t.trim())
+    .filter((t) => t);
 };
 
 const getCostSummary = (param: any) => {

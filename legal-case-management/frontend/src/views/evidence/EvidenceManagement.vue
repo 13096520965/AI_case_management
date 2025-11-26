@@ -15,7 +15,7 @@
           >
             上传证据
           </el-button>
-          <el-button
+          <!-- <el-button
             :icon="Download"
             @click="handleBatchDownload"
             :disabled="selectedEvidence.length === 0"
@@ -33,7 +33,7 @@
               :icon="Grid"
               @click="viewMode = 'grid'"
             />
-          </el-button-group>
+          </el-button-group> -->
         </div>
       </div>
     </el-card>
@@ -124,6 +124,7 @@
           min-width="200"
           show-overflow-tooltip
         />
+        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
        
         <el-table-column prop="category" label="分类" width="120">
           <template #default="{ row }">
@@ -223,6 +224,9 @@
               <el-tag v-if="item.category" size="small">{{
                 item.category
               }}</el-tag>
+            </div>
+            <div class="file-description" v-if="item.description" :title="item.description" style="margin-top:8px; color:#606266; font-size:13px;">
+              {{ item.description }}
             </div>
             <div class="file-tags">
               <el-tag

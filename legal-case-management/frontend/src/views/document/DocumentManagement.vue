@@ -80,17 +80,34 @@
 
     <!-- View Dialog -->
     <el-dialog v-model="showViewDialog" :title="currentDocument?.fileName" width="800px">
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="文书类型">{{ currentDocument?.documentType }}</el-descriptions-item>
-        <el-descriptions-item label="文件大小">{{ formatFileSize(currentDocument?.fileSize) }}</el-descriptions-item>
-        <el-descriptions-item label="上传时间">{{ currentDocument?.uploadedAt }}</el-descriptions-item>
-        <el-descriptions-item label="存储路径">{{ currentDocument?.storagePath }}</el-descriptions-item>
-        <el-descriptions-item label="备注" :span="2">{{ currentDocument?.description || '无' }}</el-descriptions-item>
-      </el-descriptions>
+      <div class="preview-area" v-if="showViewDialog">
+        <!-- Preview similar to evidence page: image, pdf, audio/video or download fallback -->
+        <div v-if="currentDocument">
+          <div v-if="isImage(currentDocument.storagePath)">
+            <el-image :src="currentDocument.storagePath" style="width:100%; max-height:70vh" fit="contain">
+              <template #error>
+                <div class="preview-error">图片加载失败</div>
+              </template>
+            </el-image>
+          </div>
+          <div v-else-if="isPdf(currentDocument.storagePath)">
+            <iframe :src="currentDocument.storagePath" style="width:100%; height:70vh; border:none"></iframe>
+          </div>
+          <div v-else-if="isAudio(currentDocument.storagePath)">
+            <audio controls style="width:100%"><source :src="currentDocument.storagePath" /></audio>
+          </div>
+          <div v-else-if="isVideo(currentDocument.storagePath)">
+            <video controls style="width:100%; max-height:70vh"><source :src="currentDocument.storagePath" /></video>
+          </div>
+          <div v-else class="preview-fallback">
+            <p>该文件无法直接预览，请下载查看</p>
+          </div>
+        </div>
+      </div>
       <template #footer>
-        <el-button @click="showViewDialog = false">关闭</el-button>
-        <el-button type="primary" @click="handleDownload(currentDocument)">下载</el-button>
-      </template>
+          <el-button @click="showViewDialog = false">关闭</el-button>
+          <el-button type="primary" @click="handleDownload(currentDocument)">下载</el-button>
+        </template>
     </el-dialog>
   </div>
 </template>
@@ -186,7 +203,9 @@ const loadDocuments = async () => {
       storagePath: item.storage_path,
       extractedContent: item.extracted_content,
       uploadedAt: item.uploaded_at,
-      fileSize: item.file_size
+      fileSize: item.file_size,
+      // 兼容后端可能使用的字段名：remark / description / notes
+      remark: item.remark ?? item.description ?? item.notes ?? ''
     }))
   } catch (error) {
     console.error('加载文书列表失败:', error)
@@ -301,23 +320,58 @@ const handleUpload = async () => {
 
 const resetUploadForm = () => {
   uploadForm.documentType = ''
-  uploadForm.file = null
+  uploadForm.fileUrl = null
+  uploadForm.fileName = null
   uploadForm.description = ''
   uploadFormRef.value?.resetFields()
 }
 
-const handleView = (document: any) => {
-  currentDocument.value = document
+const handleView = (doc: any) => {
+  currentDocument.value = doc
   showViewDialog.value = true
 }
 
-const handleDownload = async (document: any) => {
+const isExternalUrl = (p?: string) => {
+  return !!p && /^https?:\/\//i.test(p)
+}
+
+const isImage = (p?: string) => {
+  return !!p && /\.(jpg|jpeg|png|gif|bmp|webp)(?:[?#]|$)/i.test(p)
+}
+
+const isPdf = (p?: string) => {
+  return !!p && /\.pdf(?:[?#]|$)/i.test(p)
+}
+
+const isAudio = (p?: string) => {
+  return !!p && /\.(mp3|wav|ogg|m4a|aac)(?:[?#]|$)/i.test(p)
+}
+
+const isVideo = (p?: string) => {
+  return !!p && /\.(mp4|avi|mov|wmv|flv|webm|mkv)(?:[?#]|$)/i.test(p)
+}
+
+const handleDownload = async (doc: any) => {
   try {
-    const response = await documentApi.downloadDocument(document.id)
+    // 如果 storagePath 是外部 URL，直接打开该链接（浏览器会处理下载或预览）
+    if (isExternalUrl(doc.storagePath)) {
+      const a = document.createElement('a')
+      a.href = doc.storagePath
+      // 尝试设置 download 属性（跨域时浏览器可能忽略），以便尽可能触发下载
+      a.setAttribute('download', doc.fileName || '')
+      a.target = '_blank'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      return
+    }
+
+    // 否则，使用后端下载接口获取二进制流
+    const response = await documentApi.downloadDocument(doc.id)
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', document.fileName)
+    link.setAttribute('download', doc.fileName)
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -329,7 +383,7 @@ const handleDownload = async (document: any) => {
   }
 }
 
-const handleDelete = async (document: any) => {
+const handleDelete = async (doc: any) => {
   try {
     await ElMessageBox.confirm('确定要删除该文书吗？', '提示', {
       confirmButtonText: '确定',
@@ -337,7 +391,7 @@ const handleDelete = async (document: any) => {
       type: 'warning'
     })
 
-    await documentApi.deleteDocument(document.id)
+    await documentApi.deleteDocument(doc.id)
     ElMessage.success('删除成功')
     loadDocuments()
   } catch (error: any) {

@@ -1,4 +1,5 @@
 const ProcessNode = require('../models/ProcessNode');
+const { beijingNow } = require('../utils/time');
 
 /**
  * 流程节点服务
@@ -105,23 +106,23 @@ class ProcessNodeService {
           WHEN completion_time IS NOT NULL THEN 'completed'
           WHEN deadline IS NULL AND start_time IS NOT NULL THEN 'in_progress'
           WHEN deadline IS NULL THEN 'pending'
-          WHEN datetime(deadline) < datetime('now') THEN 'overdue'
+      WHEN datetime(deadline) < datetime('now', '+8 hours') THEN 'overdue'
           WHEN start_time IS NOT NULL THEN 'in_progress'
           ELSE 'pending'
         END,
-        updated_at = CURRENT_TIMESTAMP
+  updated_at = ?
         WHERE status != CASE
           WHEN completion_time IS NOT NULL THEN 'completed'
           WHEN deadline IS NULL AND start_time IS NOT NULL THEN 'in_progress'
           WHEN deadline IS NULL THEN 'pending'
-          WHEN datetime(deadline) < datetime('now') THEN 'overdue'
+          WHEN datetime(deadline) < datetime('now', '+8 hours') THEN 'overdue'
           WHEN start_time IS NOT NULL THEN 'in_progress'
           ELSE 'pending'
         END
       `;
 
-      const { run } = require('../config/database');
-      const result = await run(sql);
+  const { run } = require('../config/database');
+  const result = await run(sql, [beijingNow()]);
 
       return {
         updated: result.changes,

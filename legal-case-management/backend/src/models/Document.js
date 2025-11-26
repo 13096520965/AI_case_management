@@ -15,24 +15,25 @@ class Document {
       document_type,
       file_name,
       storage_path,
-      extracted_content
+      extracted_content,
+      description
     } = documentData;
 
+    // 支持自定义 uploaded_at 字段（如传入北京时间）
     const sql = `
       INSERT INTO documents (
-        case_id, document_type, file_name, storage_path, extracted_content
-      ) VALUES (?, ?, ?, ?, ?)
+        case_id, document_type, file_name, storage_path, extracted_content, description, uploaded_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-
-    // 将 undefined 转换为 null，避免 SQL 绑定错误
     const result = await run(sql, [
       case_id ?? null,
       document_type ?? null,
       file_name ?? null,
       storage_path ?? null,
-      extracted_content ?? null
+      extracted_content ?? null,
+      description ?? null,
+      documentData.uploaded_at ?? null
     ]);
-
     return result.lastID;
   }
 

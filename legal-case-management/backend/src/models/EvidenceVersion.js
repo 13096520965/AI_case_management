@@ -22,13 +22,13 @@ class EvidenceVersion {
       uploaded_by
     } = versionData;
 
+    // 支持自定义 uploaded_at 字段（如传入北京时间）
     const sql = `
       INSERT INTO evidence_versions (
         evidence_id, version, file_name, file_type, file_size,
-        storage_path, category, tags, uploaded_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        storage_path, category, tags, uploaded_by, uploaded_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-
     const result = await run(sql, [
       evidence_id,
       version,
@@ -38,9 +38,9 @@ class EvidenceVersion {
       storage_path,
       category,
       tags,
-      uploaded_by
+      uploaded_by,
+      versionData.uploaded_at ?? null
     ]);
-
     return result.lastID;
   }
 

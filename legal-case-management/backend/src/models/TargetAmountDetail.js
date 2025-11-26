@@ -67,8 +67,10 @@ class TargetAmountDetail {
       return 0;
     }
 
-    fields.push('updated_at = CURRENT_TIMESTAMP');
-    values.push(caseId);
+  const { beijingNow } = require('../utils/time');
+  fields.push('updated_at = ?');
+  values.push(beijingNow());
+  values.push(caseId);
 
     const result = await db.run(
       `UPDATE target_amount_details SET ${fields.join(', ')} WHERE case_id = ?`,

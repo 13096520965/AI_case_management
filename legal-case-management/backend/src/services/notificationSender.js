@@ -1,4 +1,5 @@
 const NotificationTask = require('../models/NotificationTask');
+const { beijingNow } = require('../utils/time');
 
 /**
  * 提醒发送服务
@@ -206,10 +207,10 @@ class NotificationSender {
       const sql = `
         INSERT INTO notification_send_history (
           notification_id, send_method, send_status, send_time, details
-        ) VALUES (?, ?, ?, datetime('now'), ?)
+        ) VALUES (?, ?, ?, ?, ?)
       `;
 
-      await run(sql, [notificationId, method, status, details]);
+      await run(sql, [notificationId, method, status, beijingNow(), details]);
     } catch (error) {
       console.error('记录发送历史失败:', error);
       // 不抛出错误，避免影响主流程

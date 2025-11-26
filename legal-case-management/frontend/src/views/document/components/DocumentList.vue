@@ -2,13 +2,9 @@
   <div class="document-list">
     <TableEmpty v-if="documents.length === 0" description="暂无文书" />
     <el-table v-else :data="documents" stripe>
-      <el-table-column prop="fileName" label="文件名" min-width="200" />
+  <el-table-column prop="fileName" label="文件名" min-width="200" />
       <el-table-column prop="documentType" label="文书类型" width="120" />
-      <el-table-column label="文件大小" width="120">
-        <template #default="{ row }">
-          {{ formatFileSize(row.fileSize) }}
-        </template>
-      </el-table-column>
+  <el-table-column prop="remark" label="备注" min-width="200" show-overflow-tooltip />
       <el-table-column prop="uploadedAt" label="上传时间" width="180" />
       <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
