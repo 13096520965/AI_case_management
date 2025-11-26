@@ -8,15 +8,31 @@
           <el-tag>案件ID: {{ caseId }}</el-tag>
         </div>
         <div class="action-section">
-          <el-button type="primary" :icon="Upload" @click="showUploadDialog = true">
+          <el-button
+            type="primary"
+            :icon="Upload"
+            @click="showUploadDialog = true"
+          >
             上传证据
           </el-button>
-          <el-button :icon="Download" @click="handleBatchDownload" :disabled="selectedEvidence.length === 0">
+          <el-button
+            :icon="Download"
+            @click="handleBatchDownload"
+            :disabled="selectedEvidence.length === 0"
+          >
             批量下载 ({{ selectedEvidence.length }})
           </el-button>
           <el-button-group class="view-toggle">
-            <el-button :type="viewMode === 'list' ? 'primary' : ''" :icon="List" @click="viewMode = 'list'" />
-            <el-button :type="viewMode === 'grid' ? 'primary' : ''" :icon="Grid" @click="viewMode = 'grid'" />
+            <el-button
+              :type="viewMode === 'list' ? 'primary' : ''"
+              :icon="List"
+              @click="viewMode = 'list'"
+            />
+            <el-button
+              :type="viewMode === 'grid' ? 'primary' : ''"
+              :icon="Grid"
+              @click="viewMode = 'grid'"
+            />
           </el-button-group>
         </div>
       </div>
@@ -26,16 +42,36 @@
     <el-card class="filter-card">
       <el-form :inline="true" :model="filters">
         <el-form-item label="分类">
-          <el-select v-model="filters.category" placeholder="全部分类" clearable @change="loadEvidence">
+          <el-select
+            v-model="filters.category"
+            placeholder="全部分类"
+            clearable
+            @change="loadEvidence"
+          >
             <el-option label="全部" value="" />
-            <el-option v-for="cat in categories" :key="cat" :label="cat" :value="cat" />
+            <el-option
+              v-for="cat in categories"
+              :key="cat"
+              :label="cat"
+              :value="cat"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="标签">
-          <el-input v-model="filters.tags" placeholder="输入标签搜索" clearable @change="loadEvidence" />
+          <el-input
+            v-model="filters.tags"
+            placeholder="输入标签搜索"
+            clearable
+            @change="loadEvidence"
+          />
         </el-form-item>
         <el-form-item label="文件类型">
-          <el-select v-model="filters.fileType" placeholder="全部类型" clearable @change="loadEvidence">
+          <el-select
+            v-model="filters.fileType"
+            placeholder="全部类型"
+            clearable
+            @change="loadEvidence"
+          >
             <el-option label="全部" value="" />
             <el-option label="图片" value="image" />
             <el-option label="PDF" value="pdf" />
@@ -62,14 +98,14 @@
             <div class="thumbnail" @click="handlePreview(row)">
               <el-image
                 v-if="isImage(row.fileType)"
-                :src="getFileUrl(row.storagePath)"
+                :src="row.storagePath"
                 fit="cover"
-                style="width: 60px; height: 60px; cursor: pointer;"
+                style="width: 60px; height: 60px; cursor: pointer"
               >
                 <template #error>
                   <div class="image-error">
                     <el-icon :size="30"><Picture /></el-icon>
-                    <span style="font-size: 10px;">加载失败</span>
+                    <span style="font-size: 10px">加载失败</span>
                   </div>
                 </template>
               </el-image>
@@ -82,12 +118,13 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="fileName" label="文件名" min-width="200" show-overflow-tooltip />
-        <el-table-column label="文件大小" width="120">
-          <template #default="{ row }">
-            {{ formatFileSize(row.fileSize) }}
-          </template>
-        </el-table-column>
+        <el-table-column
+          prop="fileName"
+          label="文件名"
+          min-width="200"
+          show-overflow-tooltip
+        />
+       
         <el-table-column prop="category" label="分类" width="120">
           <template #default="{ row }">
             <el-tag v-if="row.category" size="small">{{ row.category }}</el-tag>
@@ -99,7 +136,7 @@
               v-for="tag in parseTags(row.tags)"
               :key="tag"
               size="small"
-              style="margin-right: 5px;"
+              style="margin-right: 5px"
             >
               {{ tag }}
             </el-tag>
@@ -113,10 +150,30 @@
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" :icon="View" @click="handlePreview(row)">预览</el-button>
-            <el-button link type="primary" :icon="Download" @click="handleDownload(row)">下载</el-button>
-            <el-button link type="primary" :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" :icon="Delete" @click="handleDelete(row)">删除</el-button>
+            <el-button
+              link
+              type="primary"
+              :icon="View"
+              @click="handlePreview(row)"
+              >预览</el-button
+            >
+            <el-button
+              link
+              type="primary"
+              :icon="Download"
+              @click="handleDownload(row)"
+              >下载</el-button
+            >
+            <el-button link type="primary" :icon="Edit" @click="handleEdit(row)"
+              >编辑</el-button
+            >
+            <el-button
+              link
+              type="danger"
+              :icon="Delete"
+              @click="handleDelete(row)"
+              >删除</el-button
+            >
           </template>
         </el-table-column>
       </el-table>
@@ -137,9 +194,9 @@
           <div class="grid-thumbnail" @click="handlePreview(item)">
             <el-image
               v-if="isImage(item.fileType)"
-              :src="getFileUrl(item.storagePath)"
+              :src="item.storagePath"
               fit="cover"
-              style="width: 100%; height: 100%;"
+              style="width: 100%; height: 100%"
             >
               <template #error>
                 <div class="image-error-large">
@@ -158,26 +215,54 @@
             </div>
           </div>
           <div class="grid-info">
-            <div class="file-name" :title="item.fileName">{{ item.fileName }}</div>
+            <div class="file-name" :title="item.fileName">
+              {{ item.fileName }}
+            </div>
             <div class="file-meta">
               <span>{{ formatFileSize(item.fileSize) }}</span>
-              <el-tag v-if="item.category" size="small">{{ item.category }}</el-tag>
+              <el-tag v-if="item.category" size="small">{{
+                item.category
+              }}</el-tag>
             </div>
             <div class="file-tags">
               <el-tag
                 v-for="tag in parseTags(item.tags)"
                 :key="tag"
                 size="small"
-                style="margin-right: 5px;"
+                style="margin-right: 5px"
               >
                 {{ tag }}
               </el-tag>
             </div>
             <div class="grid-actions">
-              <el-button link type="primary" :icon="View" @click.stop="handlePreview(item)">预览</el-button>
-              <el-button link type="primary" :icon="Download" @click.stop="handleDownload(item)">下载</el-button>
-              <el-button link type="primary" :icon="Edit" @click.stop="handleEdit(item)">编辑</el-button>
-              <el-button link type="danger" :icon="Delete" @click.stop="handleDelete(item)">删除</el-button>
+              <el-button
+                link
+                type="primary"
+                :icon="View"
+                @click.stop="handlePreview(item)"
+                >预览</el-button
+              >
+              <el-button
+                link
+                type="primary"
+                :icon="Download"
+                @click.stop="handleDownload(item)"
+                >下载</el-button
+              >
+              <el-button
+                link
+                type="primary"
+                :icon="Edit"
+                @click.stop="handleEdit(item)"
+                >编辑</el-button
+              >
+              <el-button
+                link
+                type="danger"
+                :icon="Delete"
+                @click.stop="handleDelete(item)"
+                >删除</el-button
+              >
             </div>
           </div>
         </div>
@@ -220,7 +305,12 @@
         </el-form-item>
         <el-form-item label="分类">
           <el-select v-model="uploadForm.category" placeholder="请选择分类">
-            <el-option v-for="cat in categories" :key="cat" :label="cat" :value="cat" />
+            <el-option
+              v-for="cat in categories"
+              :key="cat"
+              :label="cat"
+              :value="cat"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="标签">
@@ -241,28 +331,26 @@
       <template #footer>
         <el-button @click="showUploadDialog = false">取消</el-button>
         <el-button type="primary" @click="handleUpload" :loading="uploading">
-          {{ uploading ? `上传中 ${uploadProgress}%` : '确定上传' }}
+          {{ uploading ? `上传中 ${uploadProgress}%` : "确定上传" }}
         </el-button>
       </template>
     </el-dialog>
 
     <!-- Edit Dialog -->
-    <el-dialog
-      v-model="showEditDialog"
-      title="编辑证据信息"
-      width="500px"
-    >
+    <el-dialog v-model="showEditDialog" title="编辑证据信息" width="500px">
       <el-form :model="editForm" label-width="80px">
         <el-form-item label="分类">
           <el-select v-model="editForm.category" placeholder="请选择分类">
-            <el-option v-for="cat in categories" :key="cat" :label="cat" :value="cat" />
+            <el-option
+              v-for="cat in categories"
+              :key="cat"
+              :label="cat"
+              :value="cat"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="标签">
-          <el-input
-            v-model="editForm.tags"
-            placeholder="多个标签用逗号分隔"
-          />
+          <el-input v-model="editForm.tags" placeholder="多个标签用逗号分隔" />
         </el-form-item>
         <el-form-item label="描述">
           <el-input
@@ -294,22 +382,26 @@
           type="error"
           :closable="false"
           show-icon
-          style="margin-bottom: 20px;"
+          style="margin-bottom: 20px"
         >
           <template #default>
             <p>{{ previewError }}</p>
-            <el-button type="primary" size="small" @click="handleDownload(previewFile!)">
+            <el-button
+              type="primary"
+              size="small"
+              @click="previewFile && handleDownload(previewFile)"
+            >
               尝试下载文件
             </el-button>
           </template>
         </el-alert>
 
         <!-- Image Preview -->
-        <el-image
-          v-if="previewFile && isImage(previewFile.fileType) && !previewError"
-          :src="getFileUrl(previewFile.storagePath)"
+          <el-image
+            v-if="previewFile && isImage(previewFile.fileType) && !previewError"
+            :src="previewFile.storagePath"
           fit="contain"
-          style="width: 100%; max-height: 70vh;"
+          style="width: 100%; max-height: 70vh"
           @load="handlePreviewLoad"
           @error="handlePreviewError"
         >
@@ -317,82 +409,101 @@
             <div class="preview-error">
               <el-icon :size="80"><Picture /></el-icon>
               <p>图片加载失败</p>
-              <el-button type="primary" @click="handleDownload(previewFile!)">
+              <el-button type="primary" @click="previewFile && handleDownload(previewFile)">
                 下载查看
               </el-button>
             </div>
           </template>
         </el-image>
-        
+
         <!-- PDF Preview -->
-        <div v-else-if="previewFile && isPdf(previewFile.fileType) && !previewError" class="pdf-preview-wrapper">
+          <div
+          v-else-if="
+            previewFile && isPdf(previewFile.fileType) && !previewError
+          "
+          class="pdf-preview-wrapper"
+        >
           <iframe
-            :src="getFileUrl(previewFile.storagePath)"
-            style="width: 100%; height: 70vh; border: none;"
+            :src="previewFile.storagePath"
+            style="width: 100%; height: 70vh; border: none"
             @load="handlePreviewLoad"
             @error="handlePreviewError"
           />
           <div class="pdf-fallback">
             <p>如果PDF未正确显示，请</p>
-            <el-button type="primary" @click="handleDownload(previewFile!)">
+            <el-button type="primary" @click="previewFile && handleDownload(previewFile)">
               下载后查看
             </el-button>
           </div>
         </div>
-        
+
         <!-- Audio Preview -->
-        <div v-else-if="previewFile && isAudio(previewFile.fileType) && !previewError" class="audio-preview">
-          <audio 
-            controls 
-            style="width: 100%;"
+        <div
+          v-else-if="
+            previewFile && isAudio(previewFile.fileType) && !previewError
+          "
+          class="audio-preview"
+        >
+          <audio
+            controls
+            style="width: 100%"
             @loadeddata="handlePreviewLoad"
             @error="handleAudioVideoError"
           >
-            <source :src="getFileUrl(previewFile.storagePath)" />
+            <source :src="previewFile.storagePath" />
             您的浏览器不支持音频播放
           </audio>
           <div class="media-fallback">
             <p>如果音频无法播放，请</p>
-            <el-button type="primary" @click="handleDownload(previewFile!)">
+            <el-button type="primary" @click="previewFile && handleDownload(previewFile)">
               下载后播放
             </el-button>
           </div>
         </div>
-        
+
         <!-- Video Preview -->
-        <div v-else-if="previewFile && isVideo(previewFile.fileType) && !previewError" class="video-preview">
-          <video 
-            controls 
-            style="width: 100%; max-height: 70vh;"
+        <div
+          v-else-if="
+            previewFile && isVideo(previewFile.fileType) && !previewError
+          "
+          class="video-preview"
+        >
+          <video
+            controls
+            style="width: 100%; max-height: 70vh"
             @loadeddata="handlePreviewLoad"
             @error="handleAudioVideoError"
           >
-            <source :src="getFileUrl(previewFile.storagePath)" />
+            <source :src="previewFile.storagePath" />
             您的浏览器不支持视频播放
           </video>
           <div class="media-fallback">
             <p>如果视频无法播放，请</p>
-            <el-button type="primary" @click="handleDownload(previewFile!)">
+            <el-button type="primary" @click="previewFile && handleDownload(previewFile)">
               下载后播放
             </el-button>
           </div>
         </div>
-        
+
         <!-- Unsupported Format -->
-        <TableEmpty 
-          v-else-if="previewFile && !previewError" 
+        <TableEmpty
+          v-else-if="previewFile && !previewError"
           description="该文件格式不支持预览，请下载后查看"
         >
-          <el-button type="primary" @click="handleDownload(previewFile!)">
+          <el-button type="primary" @click="previewFile && handleDownload(previewFile)">
             立即下载
           </el-button>
         </TableEmpty>
       </div>
       <template #footer>
         <el-button @click="previewFullscreen = !previewFullscreen">
-          {{ previewFullscreen ? '退出全屏' : '全屏' }}
+          {{ previewFullscreen ? "退出全屏" : "全屏" }}
         </el-button>
-        <el-button type="primary" :icon="Download" @click="handleDownload(previewFile!)">
+        <el-button
+          type="primary"
+          :icon="Download"
+          @click="previewFile && handleDownload(previewFile)"
+        >
           下载
         </el-button>
       </template>
@@ -401,9 +512,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, computed, onMounted } from "vue";
+import { useRoute } from "vue-router";
+import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Upload,
   Download,
@@ -417,120 +528,144 @@ import {
   VideoCamera,
   Files,
   UploadFilled,
-  Picture
-} from '@element-plus/icons-vue'
-import { evidenceApi } from '@/api/evidence'
-import TableEmpty from '@/components/common/TableEmpty.vue'
-import type { Evidence, EvidenceCategory, ViewMode } from '@/types'
+  Picture,
+} from "@element-plus/icons-vue";
+import { evidenceApi } from "@/api/evidence";
+import TableEmpty from "@/components/common/TableEmpty.vue";
+import type { Evidence, EvidenceCategory, ViewMode } from "@/types";
+import request from "@/api/request";
+import axios from "axios";
 
-const route = useRoute()
-const caseId = ref(Number(route.params.id))
+const route = useRoute();
+const caseId = ref(Number(route.params.id));
 
 // State
-const loading = ref(false)
-const evidenceList = ref<Evidence[]>([])
-const selectedEvidence = ref<Evidence[]>([])
-const viewMode = ref<ViewMode>('list')
+const loading = ref(false);
+const evidenceList = ref<Evidence[]>([]);
+const selectedEvidence = ref<Evidence[]>([]);
+const viewMode = ref<ViewMode>("list");
 
 // Filters
 const filters = ref({
-  category: '',
-  tags: '',
-  fileType: ''
-})
+  category: "",
+  tags: "",
+  fileType: "",
+});
 
 const categories: EvidenceCategory[] = [
-  '书证',
-  '物证',
-  '视听资料',
-  '电子数据',
-  '证人证言',
-  '鉴定意见',
-  '勘验笔录',
-  '其他'
-]
+  "书证",
+  "物证",
+  "视听资料",
+  "电子数据",
+  "证人证言",
+  "鉴定意见",
+  "勘验笔录",
+  "其他",
+];
 
 // Upload
-const showUploadDialog = ref(false)
-const uploading = ref(false)
-const uploadProgress = ref(0)
-const uploadRef = ref()
-const fileList = ref<any[]>([])
+const showUploadDialog = ref(false);
+const uploading = ref(false);
+const uploadProgress = ref(0);
+const uploadRef = ref();
+const fileList = ref<any[]>([]);
 const uploadForm = ref({
-  category: '',
-  tags: '',
-  description: ''
-})
+  category: "",
+  tags: "",
+  description: "",
+});
 
-const acceptedFileTypes = '.pdf,.jpg,.jpeg,.png,.gif,.mp3,.wav,.mp4,.avi,.mov,.doc,.docx'
+const acceptedFileTypes =
+  ".pdf,.jpg,.jpeg,.png,.gif,.mp3,.wav,.mp4,.avi,.mov,.doc,.docx";
 
 // Edit
-const showEditDialog = ref(false)
+const showEditDialog = ref(false);
 const editForm = ref({
   id: 0,
-  category: '',
-  tags: '',
-  description: ''
-})
+  category: "",
+  tags: "",
+  description: "",
+});
 
 // Preview
-const showPreviewDialog = ref(false)
-const previewFile = ref<Evidence | null>(null)
-const previewFullscreen = ref(false)
-const previewError = ref<string | null>(null)
-const previewLoading = ref(false)
+const showPreviewDialog = ref(false);
+const previewFile = ref<Evidence | null>(null);
+const previewFullscreen = ref(false);
+const previewError = ref<string | null>(null);
+const previewLoading = ref(false);
 
 // Computed
 const filteredEvidence = computed(() => {
-  console.log('Computing filteredEvidence, evidenceList.value:', evidenceList.value)
-  let result = evidenceList.value
+  console.log(
+    "Computing filteredEvidence, evidenceList.value:",
+    evidenceList.value
+  );
+  let result = evidenceList.value;
 
   if (filters.value.category) {
-    result = result.filter(e => e.category === filters.value.category)
+    result = result.filter((e) => e.category === filters.value.category);
   }
 
   if (filters.value.tags) {
-    result = result.filter(e => 
+    result = result.filter((e) =>
       e.tags?.toLowerCase().includes(filters.value.tags.toLowerCase())
-    )
+    );
   }
 
   if (filters.value.fileType) {
-    const type = filters.value.fileType
-    result = result.filter(e => {
-      if (type === 'image') return isImage(e.fileType)
-      if (type === 'pdf') return isPdf(e.fileType)
-      if (type === 'audio') return isAudio(e.fileType)
-      if (type === 'video') return isVideo(e.fileType)
-      return true
-    })
+    const type = filters.value.fileType;
+    result = result.filter((e) => {
+      if (type === "image") return isImage(e.fileType);
+      if (type === "pdf") return isPdf(e.fileType);
+      if (type === "audio") return isAudio(e.fileType);
+      if (type === "video") return isVideo(e.fileType);
+      return true;
+    });
   }
 
-  console.log('Filtered evidence result:', result)
-  return result
-})
+  console.log("Filtered evidence result:", result);
+  return result;
+});
 
 // Methods
 const loadEvidence = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    const params: any = {}
-    if (filters.value.category) params.category = filters.value.category
-    if (filters.value.tags) params.tags = filters.value.tags
+    const params: any = {};
+    if (filters.value.category) params.category = filters.value.category;
+    if (filters.value.tags) params.tags = filters.value.tags;
 
-    const response = await evidenceApi.getEvidenceByCaseId(caseId.value, params)
-    
-    // axios 拦截器已经返回了 response.data，所以 response 就是后端返回的数据
-    // 后端返回 { count: X, evidence: [...] }
-    if (response && response.evidence) {
-      const list = Array.isArray(response.evidence) ? response.evidence : []
-      
+    const response = await evidenceApi.getEvidenceByCaseId(
+      caseId.value,
+      params
+    );
+
+    // 兼容两种后端返回格式：
+    // 旧格式：{ count, evidence: [...] }
+    // 新格式：{ success, code, message, data: { items, meta } }
+    let list: any[] = [];
+    if (response) {
+      if (Array.isArray(response.evidence)) {
+        list = response.evidence;
+      } else if (Array.isArray(response.items)) {
+        list = response.items;
+      } else if (Array.isArray(response.data?.items)) {
+        list = response.data.items;
+      } else if (Array.isArray(response.data?.evidence)) {
+        list = response.data.evidence;
+      }
+    }
+
+    if (list.length === 0) {
+      evidenceList.value = [];
+    } else {
       // 转换字段名从下划线到驼峰
       evidenceList.value = list.map((item: any) => ({
         id: item.id,
         caseId: item.case_id,
         fileName: item.file_name,
-        fileType: item.file_type,
+        // 如果后端没有返回 file_type，则根据 storage_path 推断
+        fileType: item.file_type || inferFileTypeFromPath(item.storage_path),
         fileSize: item.file_size,
         storagePath: item.storage_path,
         category: item.category,
@@ -539,281 +674,324 @@ const loadEvidence = async () => {
         uploadedBy: item.uploaded_by,
         uploadedAt: item.uploaded_at,
         version: item.version,
-        checked: false
-      }))
-    } else {
-      evidenceList.value = []
+        checked: false,
+      }));
     }
   } catch (error: any) {
-    console.error('加载证据列表失败:', error)
-    ElMessage.error(error.message || '加载证据列表失败')
-    evidenceList.value = []
+    console.error("加载证据列表失败:", error);
+    ElMessage.error(error.message || "加载证据列表失败");
+    evidenceList.value = [];
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
-const handleFileChange = (file: any, files: any[]) => {
-  fileList.value = files
-}
+const handleFileChange = async (file: any, files: any[]) => {
+  console.log("file:", file, files);
+  const response = await request.post(
+    "https://x-fat.zhixinzg.com/code-app/file/getUploadSign",
+    {
+      fileName: file.name,
+      contentType: file.raw.type,
+      openFlag: "1",
+    }
+  );
+  const { serviceUrl, uploadHeaders, fileUrl, requestMethod } =
+    response.data ?? {};
+  try {
+    // 在浏览器环境中，直接使用文件对象
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(file.raw as Blob);
+    let fileData;
+    reader.onload = (e) => {
+      // 在文件读取结束后执行的操作
+      fileData = e.target?.result;
+      axios({
+        url: serviceUrl,
+        method: "put",
+        data: fileData,
+        headers: {
+          ...(uploadHeaders || {}),
+          "Content-Type": file.raw.type,
+        },
+      });
+    };
+
+    // 更新文件列表，设置上传成功文件的URL
+    fileList.value = files.map((item) => {
+      return {
+        ...item,
+        url: fileUrl,
+      };
+    });
+  } catch (error) {
+    console.error("上传失败", error);
+    // 上传失败时移除对应文件
+    fileList.value = files.filter(
+      (item) => item.name !== file.name
+    );
+  }
+};
 
 const handleFileRemove = (file: any, files: any[]) => {
-  fileList.value = files
-}
+  console.log("file:", file, files);
+  fileList.value = files;
+};
 
 const handleUpload = async () => {
   if (fileList.value.length === 0) {
-    ElMessage.warning('请选择要上传的文件')
-    return
+    ElMessage.warning("请选择要上传的文件");
+    return;
   }
 
-  uploading.value = true
-  uploadProgress.value = 0
+  uploading.value = true;
+  uploadProgress.value = 0;
 
   try {
     for (let i = 0; i < fileList.value.length; i++) {
-      const file = fileList.value[i]
-      const formData = new FormData()
-      formData.append('file', file.raw)
-      formData.append('case_id', caseId.value.toString()) // 后端期望 case_id
-      formData.append('category', uploadForm.value.category)
-      formData.append('tags', uploadForm.value.tags)
-      formData.append('description', uploadForm.value.description)
+      const file = fileList.value[i];
+      const formData = new FormData();
+      formData.append("storage_path", file.url);
+      formData.append("file_name", file.name);
+      formData.append("case_id", caseId.value.toString()); // 后端期望 case_id
+      formData.append("category", uploadForm.value.category);
+      formData.append("tags", uploadForm.value.tags);
+      formData.append("description", uploadForm.value.description);
 
-      await evidenceApi.uploadEvidence(formData)
-      uploadProgress.value = Math.round(((i + 1) / fileList.value.length) * 100)
+      await evidenceApi.uploadEvidence(formData);
+      uploadProgress.value = Math.round(
+        ((i + 1) / fileList.value.length) * 100
+      );
     }
 
-    ElMessage.success('上传成功')
-    showUploadDialog.value = false
-    resetUploadForm()
-    loadEvidence()
+    ElMessage.success("上传成功");
+    showUploadDialog.value = false;
+    resetUploadForm();
+    loadEvidence();
   } catch (error: any) {
-    ElMessage.error(error.message || '上传失败')
+    ElMessage.error(error.message || "上传失败");
   } finally {
-    uploading.value = false
-    uploadProgress.value = 0
+    uploading.value = false;
+    uploadProgress.value = 0;
   }
-}
+};
 
 const resetUploadForm = () => {
-  fileList.value = []
+  fileList.value = [];
   uploadForm.value = {
-    category: '',
-    tags: '',
-    description: ''
-  }
-}
+    category: "",
+    tags: "",
+    description: "",
+  };
+};
 
 const handleSelectionChange = (selection: Evidence[]) => {
-  selectedEvidence.value = selection
-}
+  selectedEvidence.value = selection;
+};
 
 const handleGridSelection = (item: Evidence) => {
-  const index = selectedEvidence.value.findIndex(e => e.id === item.id)
+  const index = selectedEvidence.value.findIndex((e) => e.id === item.id);
   if (item.checked && index === -1) {
-    selectedEvidence.value.push(item)
+    selectedEvidence.value.push(item);
   } else if (!item.checked && index !== -1) {
-    selectedEvidence.value.splice(index, 1)
+    selectedEvidence.value.splice(index, 1);
   }
-}
+};
 
 const isSelected = (item: Evidence) => {
-  return selectedEvidence.value.some(e => e.id === item.id)
-}
+  return selectedEvidence.value.some((e) => e.id === item.id);
+};
 
 const handlePreview = (evidence: Evidence) => {
-  previewFile.value = evidence
-  showPreviewDialog.value = true
-  previewFullscreen.value = false
-  previewError.value = null
-  previewLoading.value = true
-}
+  previewFile.value = evidence;
+  showPreviewDialog.value = true;
+  previewFullscreen.value = false;
+  previewError.value = null;
+  previewLoading.value = true;
+};
 
 const handlePreviewLoad = () => {
-  previewLoading.value = false
-  previewError.value = null
-}
+  previewLoading.value = false;
+  previewError.value = null;
+};
 
 const handlePreviewError = () => {
-  previewLoading.value = false
-  previewError.value = '文件加载失败，可能文件不存在或已被删除'
-}
+  previewLoading.value = false;
+  previewError.value = "文件加载失败，可能文件不存在或已被删除";
+};
 
 const handleAudioVideoError = () => {
-  previewLoading.value = false
-  previewError.value = '媒体文件加载失败，可能格式不支持或文件损坏'
-}
+  previewLoading.value = false;
+  previewError.value = "媒体文件加载失败，可能格式不支持或文件损坏";
+};
 
 const handleDownload = async (evidence: Evidence) => {
   try {
-    const response = await evidenceApi.downloadEvidence(evidence.id)
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', evidence.fileName)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-    ElMessage.success('下载成功')
+    const response = await evidenceApi.downloadEvidence(evidence.id);
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", evidence.fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    ElMessage.success("下载成功");
   } catch (error: any) {
-    console.error('下载失败:', error)
-    
+    console.error("下载失败:", error);
+
     // 根据错误状态码显示具体错误信息
     if (error.response) {
-      const status = error.response.status
+      const status = error.response.status;
       if (status === 404) {
-        ElMessage.error('文件不存在，可能已被删除')
+        ElMessage.error("文件不存在，可能已被删除");
       } else if (status === 403) {
-        ElMessage.error('没有权限访问该文件')
+        ElMessage.error("没有权限访问该文件");
       } else if (status === 500) {
-        ElMessage.error('服务器错误，请稍后重试')
+        ElMessage.error("服务器错误，请稍后重试");
       } else {
-        ElMessage.error(error.response.data?.error || error.message || '下载失败')
+        ElMessage.error(
+          error.response.data?.error || error.message || "下载失败"
+        );
       }
     } else if (error.request) {
-      ElMessage.error('网络连接失败，请检查网络设置')
+      ElMessage.error("网络连接失败，请检查网络设置");
     } else {
-      ElMessage.error(error.message || '下载失败，请重试')
+      ElMessage.error(error.message || "下载失败，请重试");
     }
   }
-}
+};
 
 const handleBatchDownload = async () => {
   if (selectedEvidence.value.length === 0) {
-    ElMessage.warning('请选择要下载的证据')
-    return
+    ElMessage.warning("请选择要下载的证据");
+    return;
   }
 
   try {
     for (const evidence of selectedEvidence.value) {
-      await handleDownload(evidence)
+      await handleDownload(evidence);
     }
   } catch (error: any) {
-    ElMessage.error(error.message || '批量下载失败')
+    ElMessage.error(error.message || "批量下载失败");
   }
-}
+};
 
 const handleEdit = (evidence: Evidence) => {
   editForm.value = {
     id: evidence.id,
-    category: evidence.category || '',
-    tags: evidence.tags || '',
-    description: evidence.description || ''
-  }
-  showEditDialog.value = true
-}
+    category: evidence.category || "",
+    tags: evidence.tags || "",
+    description: evidence.description || "",
+  };
+  showEditDialog.value = true;
+};
 
 const handleSaveEdit = async () => {
   try {
     await evidenceApi.updateEvidence(editForm.value.id, {
       category: editForm.value.category,
       tags: editForm.value.tags,
-      description: editForm.value.description
-    })
-    ElMessage.success('更新成功')
-    showEditDialog.value = false
-    loadEvidence()
+      description: editForm.value.description,
+    });
+    ElMessage.success("更新成功");
+    showEditDialog.value = false;
+    loadEvidence();
   } catch (error: any) {
-    ElMessage.error(error.message || '更新失败')
+    ElMessage.error(error.message || "更新失败");
   }
-}
+};
 
 const handleDelete = async (evidence: Evidence) => {
   try {
     await ElMessageBox.confirm(
       `确定要删除证据 "${evidence.fileName}" 吗？此操作不可恢复。`,
-      '删除确认',
+      "删除确认",
       {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
       }
-    )
+    );
 
-    await evidenceApi.deleteEvidence(evidence.id)
-    ElMessage.success('删除成功')
-    loadEvidence()
+    await evidenceApi.deleteEvidence(evidence.id);
+    ElMessage.success("删除成功");
+    loadEvidence();
   } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.message || '删除失败')
+    if (error !== "cancel") {
+      ElMessage.error(error.message || "删除失败");
     }
   }
-}
+};
 
 // Utility functions
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
-}
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+};
 
 const formatDate = (dateString: string): string => {
-  const date = new Date(dateString)
-  return date.toLocaleString('zh-CN')
-}
+  const date = new Date(dateString);
+  return date.toLocaleString("zh-CN");
+};
 
 const parseTags = (tags?: string): string[] => {
-  if (!tags) return []
-  return tags.split(',').map(t => t.trim()).filter(t => t)
-}
+  if (!tags) return [];
+  return tags
+    .split(",")
+    .map((t) => t.trim())
+    .filter((t) => t);
+};
+
+// 根据 storage_path 推断文件的 MIME 类型（尽量返回标准的 type/subtype，例如 image/png）
+const inferFileTypeFromPath = (storagePath?: string): string | null => {
+  if (!storagePath) return null;
+  const lower = storagePath.toLowerCase();
+
+  // 如果是完整 URL，尝试从 extension 推断
+  const extMatch = lower.match(/\.([a-z0-9]+)(?:[?#]|$)/);
+  const ext = extMatch ? extMatch[1] : null;
+  if (!ext) return null;
+
+  const imageExt = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+  const audioExt = ['mp3', 'wav', 'ogg', 'm4a', 'aac'];
+  const videoExt = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'];
+
+  if (imageExt.includes(ext)) return `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+  if (ext === 'pdf') return 'application/pdf';
+  if (audioExt.includes(ext)) return `audio/${ext}`;
+  if (videoExt.includes(ext)) return `video/${ext}`;
+
+  return null;
+};
 
 const isImage = (fileType: string): boolean => {
-  return /^image\/(jpeg|jpg|png|gif|bmp|webp)$/i.test(fileType)
-}
+  return /^image\/(jpeg|jpg|png|gif|bmp|webp)$/i.test(fileType);
+};
 
 const isPdf = (fileType: string): boolean => {
-  return fileType === 'application/pdf'
-}
+  return fileType === "application/pdf";
+};
 
 const isAudio = (fileType: string): boolean => {
-  return /^audio\/(mpeg|mp3|wav|ogg)$/i.test(fileType)
-}
+  return /^audio\/(mpeg|mp3|wav|ogg)$/i.test(fileType);
+};
 
 const isVideo = (fileType: string): boolean => {
-  return /^video\/(mp4|avi|mov|wmv|flv|webm)$/i.test(fileType)
-}
+  return /^video\/(mp4|avi|mov|wmv|flv|webm)$/i.test(fileType);
+};
 
-const getFileUrl = (storagePath: string): string => {
-  if (!storagePath) return ''
-  
-  // Get base URL from environment variable
-  // In development: /api, In production: http://localhost:3000/api
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-  
-  // Remove /api suffix to get the server base URL
-  const serverBaseUrl = apiBaseUrl.replace(/\/api$/, '')
-  
-  // Backward compatibility: handle old format (full file system paths)
-  // If storagePath contains 'uploads', extract the relative path
-  if (storagePath.includes('uploads')) {
-    const uploadsIndex = storagePath.indexOf('/uploads')
-    if (uploadsIndex === -1) {
-      // Windows path format: C:\path\to\backend\uploads\evidence\file.pdf
-      const match = storagePath.match(/uploads[\\\/](.+)$/)
-      if (match) {
-        const relativePath = `/uploads/${match[1].replace(/\\/g, '/')}`
-        return `${serverBaseUrl}${relativePath}`
-      }
-    } else {
-      // Already has /uploads in the path
-      const relativePath = storagePath.substring(uploadsIndex)
-      return `${serverBaseUrl}${relativePath}`
-    }
-  }
-  
-  // New format: storagePath is already a relative path like /uploads/evidence/file.pdf
-  // Just concatenate with server base URL
-  return `${serverBaseUrl}${storagePath}`
-}
+// 使用 storagePath 字段作为文件 URL：
+// - 如果是绝对 URL（以 http/https 开头），模板会直接使用它作为 src；
+// - 如果是相对路径（例如 /uploads/...），由后端和代理处理访问。
 
 // Lifecycle
 onMounted(() => {
-  loadEvidence()
-})
+  loadEvidence();
+});
 </script>
 
 <style scoped>

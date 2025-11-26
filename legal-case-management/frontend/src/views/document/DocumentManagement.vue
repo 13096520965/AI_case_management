@@ -53,7 +53,7 @@
             <el-option v-for="type in documentTypes" :key="type" :label="type" :value="type" />
           </el-select>
         </el-form-item>
-        <el-form-item label="文书文件" prop="file">
+        <el-form-item label="文书文件" prop="fileUrl">
           <el-upload
             ref="uploadRef"
             :auto-upload="false"
@@ -103,6 +103,8 @@ import { Upload, Refresh } from '@element-plus/icons-vue'
 import { documentApi } from '@/api/document'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DocumentList from './components/DocumentList.vue'
+import request from "@/api/request";
+import axios from "axios";
 
 const route = useRoute()
 const caseId = Number(route.params.id)
@@ -138,14 +140,15 @@ const searchForm = reactive({
 // Upload form
 const uploadForm = reactive({
   documentType: '',
-  file: null as File | null,
+  fileUrl: null as string | null,
+  fileName: null as string | null,
   description: ''
 })
 
 const uploadFormRef = ref<FormInstance>()
 const uploadRules: FormRules = {
   documentType: [{ required: true, message: '请选择文书类型', trigger: 'change' }],
-  file: [{ required: true, message: '请选择文件', trigger: 'change' }]
+  fileUrl: [{ required: true, message: '请选择文件', trigger: 'change' }]
 }
 
 // Computed
@@ -219,12 +222,50 @@ const handleTabChange = (tabName: string) => {
   }
 }
 
-const handleFileChange = (file: any) => {
-  uploadForm.file = file.raw
+const handleFileChange = async (file: any) => {
+  const response = await request.post(
+    "https://x-fat.zhixinzg.com/code-app/file/getUploadSign",
+    {
+      fileName: file.name,
+      contentType: file.raw.type,
+      openFlag: "1",
+    }
+  );
+  const { serviceUrl, uploadHeaders, fileUrl, requestMethod } =
+    response.data ?? {};
+  try {
+    // 在浏览器环境中，直接使用文件对象
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(file.raw as Blob);
+    let fileData;
+    reader.onload = (e) => {
+      // 在文件读取结束后执行的操作
+      fileData = e.target?.result;
+      axios({
+        url: serviceUrl,
+        method: "put",
+        data: fileData,
+        headers: {
+          ...(uploadHeaders || {}),
+          "Content-Type": file.raw.type,
+        },
+      });
+    };
+
+    // 更新文件列表，设置上传成功文件的URL
+    uploadForm.fileUrl = fileUrl
+    uploadForm.fileName = file.name
+  } catch (error) {
+    console.error("上传失败", error);
+    // 上传失败时移除对应文件
+    uploadForm.fileUrl = null
+    uploadForm.fileName = null
+  }
 }
 
 const handleFileRemove = () => {
-  uploadForm.file = null
+  uploadForm.fileUrl = null
+  uploadForm.fileName = null
 }
 
 const handleUpload = async () => {
@@ -236,7 +277,8 @@ const handleUpload = async () => {
     uploading.value = true
     try {
       const formData = new FormData()
-      formData.append('file', uploadForm.file!)
+      formData.append('file', uploadForm.fileUrl!)
+      formData.append('file_name', uploadForm.fileName!)
       formData.append('case_id', String(caseId)) // 后端期望 case_id
       formData.append('document_type', uploadForm.documentType) // 后端期望 document_type
       if (uploadForm.description) {

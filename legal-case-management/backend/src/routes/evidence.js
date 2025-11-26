@@ -20,7 +20,8 @@ const {
  * @desc    上传证据文件（接收线上文件URL）
  * @access  Private
  */
-router.post('/upload', authenticate, uploadEvidence);
+// 使用 upload.any() 以兼容前端只传 form 字段(storage_path)且不上传文件的场景
+router.post('/upload', authenticate, upload.any(), uploadEvidence);
 
 /**
  * @route   GET /api/evidence/:id
@@ -55,7 +56,8 @@ router.delete('/:id', authenticate, logEvidenceOperation('delete'), deleteEviden
  * @desc    上传证据新版本
  * @access  Private
  */
-router.post('/:id/version', authenticate, upload.single('file'), logEvidenceOperation('upload_version'), uploadNewVersion);
+// 使用 upload.any() 以兼容没有文件字段但仍能解析表单的情况
+router.post('/:id/version', authenticate, upload.any(), logEvidenceOperation('upload_version'), uploadNewVersion);
 
 /**
  * @route   GET /api/evidence/:id/versions

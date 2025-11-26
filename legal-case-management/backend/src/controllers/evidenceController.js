@@ -4,6 +4,7 @@ const EvidenceOperationLog = require('../models/EvidenceOperationLog');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const resp = require('../utils/response');
 
 // 配置 Multer 文件上传
 const storage = multer.diskStorage({
@@ -74,52 +75,74 @@ const upload = multer({
  * @route   POST /api/evidence/upload
  * @access  Private
  */
+// ...existing code...
 const uploadEvidence = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: '请选择要上传的文件' });
-    }
+    // 支持前端两种字段名：storage_path 或 file_url
+    const storagePathFromBody = ((req.body && (req.body.storage_path || req.body.file_url)) || '').trim();
+    const { case_id, category, tags, file_name } = req.body || {};
 
-    const { case_id, category, tags } = req.body;
+    // multer 使用 upload.any() 时，文件会放在 req.files（数组）。保持兼容性：优先使用 req.file，再回退到 req.files[0]
+    const uploadedFile = req.file || (Array.isArray(req.files) && req.files.length > 0 ? req.files[0] : null);
+
+    // 如果既没有上传文件，也没有传 storage_path，则报错
+    if (!uploadedFile && !storagePathFromBody) {
+      return resp.fail(res, 1, '请选择要上传的文件', 400);
+    }
 
     if (!case_id) {
-      // 删除已上传的文件
-      fs.unlinkSync(req.file.path);
-      return res.status(400).json({ error: '案件 ID 不能为空' });
+      // 若上传了本地文件，删除临时文件
+      if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return resp.fail(res, 1, '案件 ID 不能为空', 400);
     }
 
-    // 创建证据记录
-    // 转换为相对URL路径格式，便于HTTP访问
-    const relativePath = `/uploads/evidence/${req.file.filename}`;
-    
+    let storage_path;
+    let finalFileName;
+    let file_type = null;
+    let file_size = null;
+
+    if (uploadedFile) {
+      // 本地上传走 multer 存储逻辑，保存相对访问路径
+      storage_path = `/uploads/evidence/${uploadedFile.filename}`;
+      finalFileName = uploadedFile.originalname || uploadedFile.filename;
+      file_type = uploadedFile.mimetype;
+      file_size = uploadedFile.size;
+    } else {
+      // 前端只传了远程 URL (storage_pathFromBody)，不在服务器保存文件
+      storage_path = storagePathFromBody;
+      finalFileName = (file_name && file_name.trim()) ? file_name.trim() : path.basename(storage_path);
+      // file_type/size 保留 null 或可在前端传入
+    }
+
     const evidenceData = {
       case_id: parseInt(case_id),
-      file_name: req.file.originalname,
-      file_type: req.file.mimetype,
-      file_size: req.file.size,
-      storage_path: relativePath,
+      file_name: finalFileName,
+      storage_path: storage_path,
       category: category || '未分类',
       tags: tags || '',
-      uploaded_by: req.username,
-      version: 1
+      uploaded_by: req.username || null,
+      version: 1,
+      file_type: file_type,
+      file_size: file_size
     };
 
     const evidenceId = await Evidence.create(evidenceData);
     const evidence = await Evidence.findById(evidenceId);
 
-    res.status(201).json({
-      message: '证据上传成功',
-      evidence: evidence
-    });
-  } catch (error) {
+    return resp.ok(res, { evidence: evidence }, '证据上传成功', 201);
+    } catch (error) {
     console.error('上传证据失败:', error);
-    // 如果创建记录失败，删除已上传的文件
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    // 如果创建记录失败并且有本地文件，删除该文件
+    const failedFile = req.file || (Array.isArray(req.files) && req.files.length > 0 ? req.files[0] : null);
+    if (failedFile && failedFile.path && fs.existsSync(failedFile.path)) {
+      fs.unlinkSync(failedFile.path);
     }
-    res.status(500).json({ error: '上传证据失败: ' + error.message });
+    return resp.fail(res, 1, '上传证据失败: ' + error.message, 500, error.message);
   }
 };
+// ...existing code...
 
 module.exports = {
   upload,
@@ -142,13 +165,10 @@ const getEvidenceByCaseId = async (req, res) => {
 
     const evidenceList = await Evidence.findByCaseId(parseInt(caseId), filters);
 
-    res.json({
-      count: evidenceList.length,
-      evidence: evidenceList
-    });
+    return resp.list(res, evidenceList, { total: evidenceList.length }, '获取证据列表成功');
   } catch (error) {
     console.error('获取证据列表失败:', error);
-    res.status(500).json({ error: '获取证据列表失败: ' + error.message });
+    return resp.fail(res, 1, '获取证据列表失败: ' + error.message, 500, error.message);
   }
 };
 
@@ -163,13 +183,13 @@ const getEvidenceById = async (req, res) => {
     const evidence = await Evidence.findById(parseInt(id));
 
     if (!evidence) {
-      return res.status(404).json({ error: '证据不存在' });
+      return resp.fail(res, 1, '证据不存在', 404);
     }
 
-    res.json({ evidence });
+    return resp.ok(res, { evidence }, '获取证据详情成功');
   } catch (error) {
     console.error('获取证据详情失败:', error);
-    res.status(500).json({ error: '获取证据详情失败: ' + error.message });
+    return resp.fail(res, 1, '获取证据详情失败: ' + error.message, 500, error.message);
   }
 };
 
@@ -184,7 +204,7 @@ const downloadEvidence = async (req, res) => {
     const evidence = await Evidence.findById(parseInt(id));
 
     if (!evidence) {
-      return res.status(404).json({ error: '证据不存在' });
+      return resp.fail(res, 1, '证据不存在', 404);
     }
 
     // 将相对路径转换为绝对路径用于文件系统操作
@@ -192,7 +212,7 @@ const downloadEvidence = async (req, res) => {
 
     // 检查文件是否存在
     if (!fs.existsSync(absolutePath)) {
-      return res.status(404).json({ error: '证据文件不存在' });
+      return resp.fail(res, 1, '证据文件不存在', 404);
     }
 
     // 设置响应头
@@ -205,7 +225,7 @@ const downloadEvidence = async (req, res) => {
     fileStream.pipe(res);
   } catch (error) {
     console.error('下载证据失败:', error);
-    res.status(500).json({ error: '下载证据失败: ' + error.message });
+    return resp.fail(res, 1, '下载证据失败: ' + error.message, 500, error.message);
   }
 };
 
@@ -221,7 +241,7 @@ const updateEvidence = async (req, res) => {
 
     const evidence = await Evidence.findById(parseInt(id));
     if (!evidence) {
-      return res.status(404).json({ error: '证据不存在' });
+      return resp.fail(res, 1, '证据不存在', 404);
     }
 
     const updateData = {};
@@ -229,19 +249,16 @@ const updateEvidence = async (req, res) => {
     if (tags !== undefined) updateData.tags = tags;
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ error: '没有提供要更新的字段' });
+      return resp.fail(res, 1, '没有提供要更新的字段', 400);
     }
 
     await Evidence.update(parseInt(id), updateData);
     const updatedEvidence = await Evidence.findById(parseInt(id));
 
-    res.json({
-      message: '证据信息更新成功',
-      evidence: updatedEvidence
-    });
+    return resp.ok(res, { evidence: updatedEvidence }, '证据信息更新成功');
   } catch (error) {
     console.error('更新证据信息失败:', error);
-    res.status(500).json({ error: '更新证据信息失败: ' + error.message });
+    return resp.fail(res, 1, '更新证据信息失败: ' + error.message, 500, error.message);
   }
 };
 
@@ -256,7 +273,7 @@ const deleteEvidence = async (req, res) => {
     const evidence = await Evidence.findById(parseInt(id));
 
     if (!evidence) {
-      return res.status(404).json({ error: '证据不存在' });
+      return resp.fail(res, 1, '证据不存在', 404);
     }
 
     // 将相对路径转换为绝对路径用于文件系统操作
@@ -270,10 +287,10 @@ const deleteEvidence = async (req, res) => {
     // 删除数据库记录
     await Evidence.delete(parseInt(id));
 
-    res.json({ message: '证据删除成功' });
+    return resp.ok(res, {}, '证据删除成功');
   } catch (error) {
     console.error('删除证据失败:', error);
-    res.status(500).json({ error: '删除证据失败: ' + error.message });
+    return resp.fail(res, 1, '删除证据失败: ' + error.message, 500, error.message);
   }
 };
 
@@ -294,8 +311,11 @@ module.exports = {
  */
 const uploadNewVersion = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: '请选择要上传的文件' });
+    // 支持 upload.any() 场景
+    const uploadedFile = req.file || (Array.isArray(req.files) && req.files.length > 0 ? req.files[0] : null);
+
+    if (!uploadedFile) {
+      return resp.fail(res, 1, '请选择要上传的文件', 400);
     }
 
     const { id } = req.params;
@@ -303,8 +323,10 @@ const uploadNewVersion = async (req, res) => {
 
     if (!evidence) {
       // 删除已上传的文件
-      fs.unlinkSync(req.file.path);
-      return res.status(404).json({ error: '证据不存在' });
+      if (uploadedFile && uploadedFile.path && fs.existsSync(uploadedFile.path)) {
+        fs.unlinkSync(uploadedFile.path);
+      }
+      return resp.fail(res, 1, '证据不存在', 404);
     }
 
     // 保存当前版本到历史记录
@@ -321,14 +343,14 @@ const uploadNewVersion = async (req, res) => {
     });
 
     // 转换为相对URL路径格式，便于HTTP访问
-    const relativePath = `/uploads/evidence/${req.file.filename}`;
+  const relativePath = `/uploads/evidence/${uploadedFile.filename}`;
 
     // 更新主记录为新版本
     const newVersion = evidence.version + 1;
     await Evidence.update(parseInt(id), {
-      file_name: req.file.originalname,
-      file_type: req.file.mimetype,
-      file_size: req.file.size,
+      file_name: uploadedFile.originalname,
+      file_type: uploadedFile.mimetype,
+      file_size: uploadedFile.size,
       storage_path: relativePath,
       version: newVersion,
       uploaded_by: req.username
@@ -336,17 +358,14 @@ const uploadNewVersion = async (req, res) => {
 
     const updatedEvidence = await Evidence.findById(parseInt(id));
 
-    res.status(201).json({
-      message: '证据新版本上传成功',
-      evidence: updatedEvidence
-    });
+    return resp.ok(res, { evidence: updatedEvidence }, '证据新版本上传成功', 201);
   } catch (error) {
     console.error('上传证据新版本失败:', error);
     // 如果失败，删除已上传的文件
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    res.status(500).json({ error: '上传证据新版本失败: ' + error.message });
+    return resp.fail(res, 1, '上传证据新版本失败: ' + error.message, 500, error.message);
   }
 };
 
@@ -382,14 +401,10 @@ const getVersionHistory = async (req, res) => {
       is_current: true
     };
 
-    res.json({
-      current: currentVersion,
-      history: versions,
-      total_versions: versions.length + 1
-    });
+    return resp.ok(res, { current: currentVersion, history: versions, total_versions: versions.length + 1 }, '获取版本历史成功');
   } catch (error) {
     console.error('获取版本历史失败:', error);
-    res.status(500).json({ error: '获取版本历史失败: ' + error.message });
+    return resp.fail(res, 1, '获取版本历史失败: ' + error.message, 500, error.message);
   }
 };
 
@@ -404,7 +419,7 @@ const downloadVersion = async (req, res) => {
     const versionData = await EvidenceVersion.findByVersion(parseInt(id), parseInt(version));
 
     if (!versionData) {
-      return res.status(404).json({ error: '指定版本不存在' });
+      return resp.fail(res, 1, '指定版本不存在', 404);
     }
 
     // 将相对路径转换为绝对路径用于文件系统操作
@@ -412,7 +427,7 @@ const downloadVersion = async (req, res) => {
 
     // 检查文件是否存在
     if (!fs.existsSync(absolutePath)) {
-      return res.status(404).json({ error: '版本文件不存在' });
+      return resp.fail(res, 1, '版本文件不存在', 404);
     }
 
     // 设置响应头
@@ -425,7 +440,7 @@ const downloadVersion = async (req, res) => {
     fileStream.pipe(res);
   } catch (error) {
     console.error('下载版本失败:', error);
-    res.status(500).json({ error: '下载版本失败: ' + error.message });
+    return resp.fail(res, 1, '下载版本失败: ' + error.message, 500, error.message);
   }
 };
 
@@ -454,7 +469,7 @@ const getOperationLogs = async (req, res) => {
 
     const evidence = await Evidence.findById(parseInt(id));
     if (!evidence) {
-      return res.status(404).json({ error: '证据不存在' });
+      return resp.fail(res, 1, '证据不存在', 404);
     }
 
     const logs = await EvidenceOperationLog.findByEvidenceId(
@@ -464,15 +479,10 @@ const getOperationLogs = async (req, res) => {
 
     const stats = await EvidenceOperationLog.getOperationStats(parseInt(id));
 
-    res.json({
-      evidence_id: parseInt(id),
-      logs: logs,
-      stats: stats,
-      count: logs.length
-    });
+    return resp.ok(res, { logs, meta: { evidence_id: parseInt(id), stats, count: logs.length } }, '获取操作日志成功');
   } catch (error) {
     console.error('获取操作日志失败:', error);
-    res.status(500).json({ error: '获取操作日志失败: ' + error.message });
+    return resp.fail(res, 1, '获取操作日志失败: ' + error.message, 500, error.message);
   }
 };
 
@@ -491,14 +501,10 @@ const getCaseEvidenceLogs = async (req, res) => {
       { limit: parseInt(limit), offset: parseInt(offset) }
     );
 
-    res.json({
-      case_id: parseInt(caseId),
-      logs: logs,
-      count: logs.length
-    });
+    return resp.ok(res, { logs, meta: { case_id: parseInt(caseId), count: logs.length } }, '获取案件证据日志成功');
   } catch (error) {
     console.error('获取案件证据日志失败:', error);
-    res.status(500).json({ error: '获取案件证据日志失败: ' + error.message });
+    return resp.fail(res, 1, '获取案件证据日志失败: ' + error.message, 500, error.message);
   }
 };
 
