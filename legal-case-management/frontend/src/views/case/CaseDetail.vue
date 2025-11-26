@@ -221,7 +221,6 @@
             min-width="200"
             show-overflow-tooltip
           />
-          <el-table-column prop="fileType" label="文件类型" width="100" />
           <el-table-column prop="category" label="分类" width="120" />
           <el-table-column prop="uploadedAt" label="上传时间" width="180">
             <template #default="{ row }">
@@ -483,17 +482,32 @@ const fetchProcessNodes = async () => {
 // Fetch evidence
 const fetchEvidence = async () => {
   try {
-    const response = await evidenceApi.getEvidenceByCaseId(caseId);
+  const response: any = await evidenceApi.getEvidenceByCaseId(caseId);
     if (response) {
-      // 后端返回 { count: ..., evidence: [...] }
-      const data = response.evidence || [];
-      // 转换字段名从下划线到驼峰
+      // 兼容后端不同返回格式：
+      // 1) 旧格式: { count: ..., evidence: [...] }
+      // 2) 新格式: { success, code, message, data: { items: [...] } }
+      // 3) 直接返回数组: [ {...}, {...} ]
+      let data: any[] = [];
+      if (Array.isArray(response)) {
+        data = response;
+      } else if (Array.isArray(response.evidence)) {
+        data = response.evidence;
+      } else if (Array.isArray(response.items)) {
+        data = response.items;
+      } else if (Array.isArray(response.data?.items)) {
+        data = response.data.items;
+      } else if (Array.isArray(response.data?.evidence)) {
+        data = response.data.evidence;
+      }
+
+      // 转换字段名从下划线到驼峰，并在 file_type 缺失时根据 storage_path 推断
       const evidence = Array.isArray(data)
         ? data.map((item: any) => ({
             id: item.id,
             caseId: item.case_id,
             fileName: item.file_name,
-            fileType: item.file_type,
+            fileType: item.file_type || inferFileTypeFromPath(item.storage_path),
             filePath: item.storage_path,
             fileSize: item.file_size,
             category: item.category,
@@ -507,6 +521,23 @@ const fetchEvidence = async () => {
   } catch (error: any) {
     console.error('获取证据材料失败:', error);
   }
+};
+
+// 根据 storage_path 推断文件的 MIME 类型（尽量返回标准的 type/subtype，例如 image/png）
+const inferFileTypeFromPath = (storagePath?: string): string | null => {
+  if (!storagePath) return null;
+  const lower = storagePath.toLowerCase();
+  const extMatch = lower.match(/\.([a-z0-9]+)(?:[?#]|$)/);
+  const ext = extMatch ? extMatch[1] : null;
+  if (!ext) return null;
+  const imageExt = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+  const audioExt = ['mp3', 'wav', 'ogg', 'm4a', 'aac'];
+  const videoExt = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'];
+  if (imageExt.includes(ext)) return `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+  if (ext === 'pdf') return 'application/pdf';
+  if (audioExt.includes(ext)) return `audio/${ext}`;
+  if (videoExt.includes(ext)) return `video/${ext}`;
+  return null;
 };
 
 // Fetch documents

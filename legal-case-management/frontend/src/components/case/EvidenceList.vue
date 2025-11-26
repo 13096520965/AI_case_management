@@ -7,11 +7,6 @@
           <el-tag v-if="row.category" size="small">{{ row.category }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="文件大小" width="120">
-        <template #default="{ row }">
-          {{ formatFileSize(row.file_size) }}
-        </template>
-      </el-table-column>
       <el-table-column prop="uploaded_at" label="上传时间" width="180" />
       <template #empty>
         <TableEmpty description="暂无证据材料" />
@@ -46,10 +41,21 @@ const formatFileSize = (bytes: number): string => {
 const loadEvidence = async () => {
   loading.value = true
   try {
-    const response = await evidenceApi.getEvidenceByCaseId(props.caseId)
-    // 响应拦截器已经返回了 response.data，所以这里直接使用
+    const response: any = await evidenceApi.getEvidenceByCaseId(props.caseId)
+    // 响应拦截器已经返回了 response.data。
+    // 兼容后端返回多种格式：直接数组 或 { evidence: [...] } 或 { data: { items: [...] } }
     if (response) {
-      evidenceList.value = response.evidence || []
+      if (Array.isArray(response)) {
+        evidenceList.value = response
+      } else if (Array.isArray(response.evidence)) {
+        evidenceList.value = response.evidence
+      } else if (Array.isArray(response.items)) {
+        evidenceList.value = response.items
+      } else if (Array.isArray(response.data?.items)) {
+        evidenceList.value = response.data.items
+      } else {
+        evidenceList.value = []
+      }
     } else {
       evidenceList.value = []
     }
