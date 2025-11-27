@@ -221,7 +221,7 @@ import {
   Download,
 } from "@element-plus/icons-vue";
 import { caseApi } from "@/api/case";
-import { documentApi } from "@/api/document";
+import { partyApi } from "@/api/party";
 import { ocrApi } from "@/api/ocr";
 import request from "@/api/request";
 import axios from "axios";
@@ -460,14 +460,49 @@ const handleRecognize = async () => {
     ElMessage.success("文件上传成功，开始识别...");
 
     // 2. 调用 OCR parse 接口
-    const parseResponse = await ocrApi.batchParse([fileUrl]);
+    let parseResponse;
+    try {
+      ElMessage.info("正在连接 OCR 服务，请稍候...");
+      parseResponse = await ocrApi.batchParse([fileUrl]);
+    } catch (error: any) {
+      console.error("OCR 解析接口错误:", error);
+      // 如果错误消息已经包含详细说明（来自重试机制），直接使用
+      if (error.message && error.message.includes("已重试")) {
+        throw error;
+      }
+      if (error.response?.status === 503) {
+        throw new Error(
+          "OCR 服务暂时不可用（503错误）。可能原因：服务器过载、维护中或网络问题。系统已自动重试，请稍后再试。"
+        );
+      } else if (error.response?.status === 404) {
+        throw new Error(
+          "OCR 接口地址不存在（404错误），请联系管理员检查接口配置"
+        );
+      } else if (error.response?.status >= 500) {
+        throw new Error(
+          `OCR 服务器错误（${error.response?.status}），请稍后重试或联系管理员`
+        );
+      } else if (
+        error.response?.status === 401 ||
+        error.response?.status === 403
+      ) {
+        throw new Error("OCR 服务认证失败，请联系管理员检查接口权限");
+      } else if (
+        error.code === "ECONNABORTED" ||
+        error.message?.includes("timeout")
+      ) {
+        throw new Error("OCR 服务请求超时，请检查网络连接后重试");
+      } else {
+        throw new Error(error.message || "提交 OCR 解析失败，请稍后重试");
+      }
+    }
 
     if (
       !parseResponse.success ||
       !parseResponse.data ||
       parseResponse.data.length === 0
     ) {
-      throw new Error("提交 OCR 解析失败");
+      throw new Error("提交 OCR 解析失败，未返回文件ID");
     }
 
     const fileId = parseResponse.data[0];
@@ -516,143 +551,164 @@ const handleFillToCase = async () => {
 
 const handleConfirmFill = async () => {
   if (fillAction.value === "new") {
-    // Navigate to case creation form with pre-filled data
-    router.push({
-      path: "/cases/create",
-      query: {
-        caseNumber: extractedData.caseNumber,
-        caseCause: extractedData.caseCause,
-        court: extractedData.court,
-        targetAmount: extractedData.targetAmount,
-        filingDate: extractedData.filingDate,
-        plaintiff: extractedData.plaintiff,
-        defendant: extractedData.defendant,
-      },
-    });
-    ElMessage.success("已跳转到案件创建页面");
-  } else if (fillAction.value === "existing" && selectedCaseId.value) {
-    // 将案件数据填充到提取字段
+    // 使用识别到的信息创建新案件
     try {
-      // 1. 获取案件详细信息
-      const caseResponse = await caseApi.getCaseById(selectedCaseId.value);
-      const caseData = caseResponse.data?.case || caseResponse.data || {};
+      // 1. 创建案件
+      // 验证必填字段
+      if (!extractedData.caseCause) {
+        ElMessage.warning("案由为必填项，请先完成OCR识别或手动填写");
+        return;
+      }
 
-      // 2. 获取案件的诉讼参与人
-      let plaintiffName = "";
-      let defendantName = "";
+      const caseData: any = {
+        caseType: "民事", // 默认类型，用户可后续修改
+        caseCause: extractedData.caseCause,
+        court: extractedData.court || "未指定法院", // 如果没有识别到法院，使用默认值
+        industrySegment: "新奥新智", // 默认产业板块，用户可后续修改
+      };
+
+      if (extractedData.caseNumber) {
+        caseData.caseNumber = extractedData.caseNumber;
+      }
+      if (extractedData.targetAmount) {
+        const amount = parseFloat(extractedData.targetAmount);
+        if (!isNaN(amount)) {
+          caseData.targetAmount = amount;
+        }
+      }
+      if (extractedData.filingDate) {
+        caseData.filingDate = extractedData.filingDate;
+      }
+
+      const createResponse = await caseApi.createCase(caseData);
+      const newCaseId =
+        createResponse.data?.case?.id ||
+        createResponse.data?.id ||
+        createResponse.data?.caseId;
+
+      if (!newCaseId) {
+        console.error("创建案件响应:", createResponse);
+        throw new Error("创建案件失败，未返回案件ID");
+      }
+
+      // 2. 添加诉讼参与人（原告和被告）
       try {
+        if (extractedData.plaintiff) {
+          await partyApi.addParty(newCaseId, {
+            partyType: "原告",
+            entityType: "个人", // 默认个人，用户后续可以修改
+            name: extractedData.plaintiff,
+          });
+        }
+
+        if (extractedData.defendant) {
+          await partyApi.addParty(newCaseId, {
+            partyType: "被告",
+            entityType: "个人", // 默认个人，用户后续可以修改
+            name: extractedData.defendant,
+          });
+        }
+      } catch (partyError) {
+        console.error("添加诉讼参与人失败:", partyError);
+        // 不阻止整个流程，只记录错误
+      }
+
+      ElMessage.success("案件创建成功，已填充识别信息");
+      showFillDialog.value = false;
+
+      // 跳转到案件详情页
+      router.push(`/cases/${newCaseId}`);
+    } catch (error: any) {
+      console.error("创建案件失败:", error);
+      ElMessage.error(error.message || "创建案件失败，请稍后重试");
+    }
+  } else if (fillAction.value === "existing" && selectedCaseId.value) {
+    // 将识别到的信息填充到现有案件
+    try {
+      // 1. 更新案件基本信息
+      const updateData: any = {};
+
+      if (extractedData.caseNumber) {
+        updateData.caseNumber = extractedData.caseNumber;
+      }
+      if (extractedData.caseCause) {
+        updateData.caseCause = extractedData.caseCause;
+      }
+      if (extractedData.court) {
+        updateData.court = extractedData.court;
+      }
+      if (extractedData.targetAmount) {
+        // 将字符串转换为数字
+        const amount = parseFloat(extractedData.targetAmount);
+        if (!isNaN(amount)) {
+          updateData.targetAmount = amount;
+        }
+      }
+      if (extractedData.filingDate) {
+        updateData.filingDate = extractedData.filingDate;
+      }
+
+      // 更新案件信息
+      if (Object.keys(updateData).length > 0) {
+        await caseApi.updateCase(selectedCaseId.value, updateData);
+      }
+
+      // 2. 处理诉讼参与人（原告和被告）
+      try {
+        // 获取案件现有的诉讼参与人
         const partiesResponse = await caseApi.getCaseParties(
           selectedCaseId.value
         );
-        // 处理不同的返回结构
-        const parties =
+        const existingParties =
           partiesResponse.data?.parties ||
           partiesResponse.data?.data?.parties ||
           partiesResponse.data ||
           [];
 
-        // 查找原告（兼容不同的字段名）
-        const plaintiff = parties.find(
-          (p: any) =>
-            (p.party_type === "原告" || p.partyType === "原告") && p.name
-        );
-        if (plaintiff) {
-          plaintiffName = plaintiff.name || "";
+        // 检查并添加原告
+        if (extractedData.plaintiff) {
+          const hasPlaintiff = existingParties.some(
+            (p: any) =>
+              (p.party_type === "原告" || p.partyType === "原告") &&
+              p.name === extractedData.plaintiff
+          );
+          if (!hasPlaintiff) {
+            await partyApi.addParty(selectedCaseId.value, {
+              partyType: "原告",
+              entityType: "个人", // 默认个人，用户后续可以修改
+              name: extractedData.plaintiff,
+            });
+          }
         }
 
-        // 查找被告（兼容不同的字段名）
-        const defendant = parties.find(
-          (p: any) =>
-            (p.party_type === "被告" || p.partyType === "被告") && p.name
-        );
-        if (defendant) {
-          defendantName = defendant.name || "";
+        // 检查并添加被告
+        if (extractedData.defendant) {
+          const hasDefendant = existingParties.some(
+            (p: any) =>
+              (p.party_type === "被告" || p.partyType === "被告") &&
+              p.name === extractedData.defendant
+          );
+          if (!hasDefendant) {
+            await partyApi.addParty(selectedCaseId.value, {
+              partyType: "被告",
+              entityType: "个人", // 默认个人，用户后续可以修改
+              name: extractedData.defendant,
+            });
+          }
         }
       } catch (partyError) {
-        console.error("获取诉讼参与人失败:", partyError);
+        console.error("添加诉讼参与人失败:", partyError);
         // 不阻止整个流程，只记录错误
       }
 
-      // 3. 获取案件的文书类型（从最新文档中获取）
-      let documentType = "";
-      try {
-        const documentsResponse: any = await documentApi.getDocumentsByCaseId(
-          selectedCaseId.value
-        );
-        // 处理不同的返回结构
-        const documents =
-          documentsResponse?.documents ||
-          documentsResponse?.data?.documents ||
-          (Array.isArray(documentsResponse?.data)
-            ? documentsResponse.data
-            : Array.isArray(documentsResponse)
-            ? documentsResponse
-            : []);
-        // 取最新的文档类型
-        if (documents.length > 0) {
-          const latestDoc = documents[0];
-          documentType =
-            latestDoc.document_type || latestDoc.documentType || "";
-        }
-      } catch (docError) {
-        console.error("获取文书类型失败:", docError);
-        // 不阻止整个流程，只记录错误
-      }
-
-      // 4. 将案件数据填充到提取字段
-      // 如果提取字段已有值，则保留；如果为空，则用案件数据填充
-      if (!extractedData.documentType && documentType) {
-        extractedData.documentType = documentType;
-      }
-      if (
-        !extractedData.caseNumber &&
-        (caseData.case_number || caseData.caseNumber)
-      ) {
-        extractedData.caseNumber =
-          caseData.case_number || caseData.caseNumber || "";
-      }
-      if (
-        !extractedData.caseCause &&
-        (caseData.case_cause || caseData.caseCause)
-      ) {
-        extractedData.caseCause =
-          caseData.case_cause || caseData.caseCause || "";
-      }
-      if (!extractedData.court && caseData.court) {
-        extractedData.court = caseData.court || "";
-      }
-      if (
-        !extractedData.targetAmount &&
-        (caseData.target_amount || caseData.targetAmount)
-      ) {
-        extractedData.targetAmount = String(
-          caseData.target_amount || caseData.targetAmount || ""
-        );
-      }
-      if (
-        !extractedData.filingDate &&
-        (caseData.filing_date || caseData.filingDate)
-      ) {
-        extractedData.filingDate =
-          caseData.filing_date || caseData.filingDate || "";
-      }
-      if (!extractedData.plaintiff && plaintiffName) {
-        extractedData.plaintiff = plaintiffName;
-      }
-      if (!extractedData.defendant && defendantName) {
-        extractedData.defendant = defendantName;
-      }
-
-      // 4. 如果识别结果存在，更新识别结果中的提取字段
-      if (recognitionResult.value) {
-        recognitionResult.value.extractedFields = { ...extractedData };
-      }
-
-      ElMessage.success("案件数据已填充到提取字段");
+      ElMessage.success("识别信息已成功填充到案件");
       showFillDialog.value = false;
+
+      // 跳转到案件详情页
+      router.push(`/cases/${selectedCaseId.value}`);
     } catch (error: any) {
-      console.error("获取案件数据失败:", error);
-      ElMessage.error(error.message || "获取案件数据失败，请稍后重试");
+      console.error("填充数据失败:", error);
+      ElMessage.error(error.message || "填充数据失败，请稍后重试");
     }
   } else {
     ElMessage.warning("请选择案件");

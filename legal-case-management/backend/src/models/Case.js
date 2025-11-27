@@ -1,4 +1,4 @@
-const { query, run, get } = require('../config/database');
+const { query, run, get } = require("../config/database");
 
 /**
  * Case 模型 - 案件管理
@@ -18,17 +18,17 @@ class Case {
       court,
       target_amount,
       filing_date,
-      status = 'active',
+      status = "active",
       team_id,
       industry_segment,
       handler,
       is_external_agent,
       law_firm_name,
       agent_lawyer,
-      agent_contact
+      agent_contact,
     } = caseData;
 
-    const { beijingNow } = require('../utils/time');
+    const { beijingNow } = require("../utils/time");
     const sql = `
       INSERT INTO cases (
         case_number, internal_number, case_type, case_cause, 
@@ -48,7 +48,7 @@ class Case {
       court ?? null,
       target_amount ?? null,
       filing_date ?? null,
-      status ?? 'active',
+      status ?? "active",
       team_id ?? null,
       industry_segment ?? null,
       handler ?? null,
@@ -57,7 +57,7 @@ class Case {
       agent_lawyer ?? null,
       agent_contact ?? null,
       now,
-      now
+      now,
     ]);
 
     return result.lastID;
@@ -69,7 +69,7 @@ class Case {
    * @returns {Promise<Object|null>} 案件对象
    */
   static async findById(id) {
-    const sql = 'SELECT * FROM cases WHERE id = ?';
+    const sql = "SELECT * FROM cases WHERE id = ?";
     return await get(sql, [id]);
   }
 
@@ -87,59 +87,60 @@ class Case {
       search,
       party_name,
       handler,
-      industry_segment
+      industry_segment,
     } = options;
 
-    let sql = 'SELECT DISTINCT c.* FROM cases c';
+    let sql = "SELECT DISTINCT c.* FROM cases c";
     const params = [];
-    
+
     // 如果搜索当事人，需要 JOIN litigation_parties 表
     if (party_name) {
-      sql += ' LEFT JOIN litigation_parties lp ON c.id = lp.case_id';
+      sql += " LEFT JOIN litigation_parties lp ON c.id = lp.case_id";
     }
-    
+
     // 如果搜索承接人，需要 JOIN users 表
     if (handler) {
-      sql += ' LEFT JOIN users u ON c.team_id = u.id';
+      sql += " LEFT JOIN users u ON c.team_id = u.id";
     }
-    
-    sql += ' WHERE 1=1';
+
+    sql += " WHERE 1=1";
 
     if (status) {
-      sql += ' AND c.status = ?';
+      sql += " AND c.status = ?";
       params.push(status);
     }
 
     if (case_type) {
-      sql += ' AND c.case_type = ?';
+      sql += " AND c.case_type = ?";
       params.push(case_type);
     }
 
     if (industry_segment) {
-      sql += ' AND c.industry_segment = ?';
+      sql += " AND c.industry_segment = ?";
       params.push(industry_segment);
     }
 
     if (search) {
-      sql += ' AND (c.internal_number LIKE ? OR c.case_number LIKE ? OR c.case_cause LIKE ? OR c.court LIKE ?)';
+      sql +=
+        " AND (c.internal_number LIKE ? OR c.case_number LIKE ? OR c.case_cause LIKE ? OR c.court LIKE ?)";
       const searchPattern = `%${search}%`;
       params.push(searchPattern, searchPattern, searchPattern, searchPattern);
     }
-    
+
     // 按当事人姓名/名称搜索
     if (party_name) {
-      sql += ' AND lp.name LIKE ?';
+      sql += " AND lp.name LIKE ?";
       params.push(`%${party_name}%`);
     }
-    
+
     // 按承接人姓名搜索
     if (handler) {
-      sql += ' AND (u.username LIKE ? OR u.real_name LIKE ?)';
+      sql += " AND (u.username LIKE ? OR u.real_name LIKE ?)";
       const handlerPattern = `%${handler}%`;
       params.push(handlerPattern, handlerPattern);
     }
 
-    sql += ' ORDER BY c.created_at DESC LIMIT ? OFFSET ?';
+    sql += " ORDER BY c.created_at DESC LIMIT ? OFFSET ?";
     params.push(limit, (page - 1) * limit);
 
     return await query(sql, params);
@@ -155,19 +156,19 @@ class Case {
     const fields = [];
     const params = [];
 
-    Object.keys(updateData).forEach(key => {
+    Object.keys(updateData).forEach((key) => {
       if (updateData[key] !== undefined) {
         fields.push(`${key} = ?`);
         params.push(updateData[key]);
       }
     });
 
-  const { beijingNow } = require('../utils/time');
-  fields.push('updated_at = ?');
-  params.push(beijingNow());
-  params.push(id);
+    const { beijingNow } = require("../utils/time");
+    fields.push("updated_at = ?");
+    params.push(beijingNow());
+    params.push(id);
 
-    const sql = `UPDATE cases SET ${fields.join(', ')} WHERE id = ?`;
+    const sql = `UPDATE cases SET ${fields.join(", ")} WHERE id = ?`;
     const result = await run(sql, params);
     return result.changes;
   }
@@ -178,7 +179,7 @@ class Case {
    * @returns {Promise<number>} 影响的行数
    */
   static async delete(id) {
-    const sql = 'DELETE FROM cases WHERE id = ?';
+    const sql = "DELETE FROM cases WHERE id = ?";
     const result = await run(sql, [id]);
     return result.changes;
   }
@@ -189,51 +190,52 @@ class Case {
    * @returns {Promise<number>} 案件数量
    */
   static async count(filters = {}) {
-    let sql = 'SELECT COUNT(DISTINCT c.id) as count FROM cases c';
+    let sql = "SELECT COUNT(DISTINCT c.id) as count FROM cases c";
     const params = [];
-    
+
     // 如果搜索当事人，需要 JOIN litigation_parties 表
     if (filters.party_name) {
-      sql += ' LEFT JOIN litigation_parties lp ON c.id = lp.case_id';
+      sql += " LEFT JOIN litigation_parties lp ON c.id = lp.case_id";
     }
-    
+
     // 如果搜索承接人，需要 JOIN users 表
     if (filters.handler) {
-      sql += ' LEFT JOIN users u ON c.team_id = u.id';
+      sql += " LEFT JOIN users u ON c.team_id = u.id";
     }
-    
-    sql += ' WHERE 1=1';
+
+    sql += " WHERE 1=1";
 
     if (filters.status) {
-      sql += ' AND c.status = ?';
+      sql += " AND c.status = ?";
       params.push(filters.status);
     }
 
     if (filters.case_type) {
-      sql += ' AND c.case_type = ?';
+      sql += " AND c.case_type = ?";
       params.push(filters.case_type);
     }
 
     if (filters.industry_segment) {
-      sql += ' AND c.industry_segment = ?';
+      sql += " AND c.industry_segment = ?";
       params.push(filters.industry_segment);
     }
 
     if (filters.search) {
-      sql += ' AND (c.internal_number LIKE ? OR c.case_number LIKE ? OR c.case_cause LIKE ? OR c.court LIKE ?)';
+      sql +=
+        " AND (c.internal_number LIKE ? OR c.case_number LIKE ? OR c.case_cause LIKE ? OR c.court LIKE ?)";
       const searchPattern = `%${filters.search}%`;
       params.push(searchPattern, searchPattern, searchPattern, searchPattern);
     }
-    
+
     // 按当事人姓名/名称搜索
     if (filters.party_name) {
-      sql += ' AND lp.name LIKE ?';
+      sql += " AND lp.name LIKE ?";
       params.push(`%${filters.party_name}%`);
     }
-    
+
     // 按承接人姓名搜索
     if (filters.handler) {
-      sql += ' AND (u.username LIKE ? OR u.real_name LIKE ?)';
+      sql += " AND (u.username LIKE ? OR u.real_name LIKE ?)";
       const handlerPattern = `%${filters.handler}%`;
       params.push(handlerPattern, handlerPattern);
     }
@@ -248,7 +250,7 @@ class Case {
    * @returns {Promise<Object|null>} 案件对象
    */
   static async findByCaseNumber(caseNumber) {
-    const sql = 'SELECT * FROM cases WHERE case_number = ?';
+    const sql = "SELECT * FROM cases WHERE case_number = ?";
     return await get(sql, [caseNumber]);
   }
 
@@ -258,7 +260,7 @@ class Case {
    * @returns {Promise<Object|null>} 案件对象
    */
   static async findByInternalNumber(internalNumber) {
-    const sql = 'SELECT * FROM cases WHERE internal_number = ?';
+    const sql = "SELECT * FROM cases WHERE internal_number = ?";
     return await get(sql, [internalNumber]);
   }
 
@@ -282,16 +284,23 @@ class Case {
    * @param {number} caseId - 案件 ID
    * @param {string} operator - 操作人
    * @param {string} action - 操作内容
+   * @param {string} actionType - 操作类型（可选，默认为 'MANUAL_ACTION'）
    * @returns {Promise<number>} 日志 ID
    */
-  static async addLog(caseId, operator, action) {
-    const { beijingNow } = require('../utils/time');
+  static async addLog(caseId, operator, action, actionType = "MANUAL_ACTION") {
+    const { beijingNow } = require("../utils/time");
     const timestamp = beijingNow();
     const sql = `
-      INSERT INTO case_logs (case_id, operator, action, created_at)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO case_logs (case_id, action_type, action_description, operator_name, created_at)
+      VALUES (?, ?, ?, ?, ?)
     `;
-    const result = await run(sql, [caseId, operator, action, timestamp]);
+    const result = await run(sql, [
+      caseId,
+      actionType,
+      action,
+      operator,
+      timestamp,
+    ]);
     return result.lastID;
   }
 
@@ -308,8 +317,8 @@ class Case {
     const sql = `
       SELECT 
         id,
-        operator,
-        action,
+        operator_name as operator,
+        action_description as action,
         created_at
       FROM case_logs
       WHERE case_id = ?
@@ -326,7 +335,7 @@ class Case {
    * @returns {Promise<number>} 日志数量
    */
   static async countLogs(caseId) {
-    const sql = 'SELECT COUNT(*) as count FROM case_logs WHERE case_id = ?';
+    const sql = "SELECT COUNT(*) as count FROM case_logs WHERE case_id = ?";
     const result = await get(sql, [caseId]);
     return result ? result.count : 0;
   }

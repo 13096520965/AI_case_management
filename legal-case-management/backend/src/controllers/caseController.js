@@ -54,7 +54,8 @@ exports.createCase = async (req, res) => {
     await Case.addLog(
       caseId,
       operator,
-      `进行了案件创建操作：${newCase.internal_number || newCase.case_number || '新案件'}`
+      `进行了案件创建操作：${newCase.internal_number || newCase.case_number || '新案件'}`,
+      'CREATE_CASE'
     );
 
     res.status(201).json({
@@ -245,7 +246,8 @@ exports.updateCase = async (req, res) => {
       await Case.addLog(
         id,
         operator,
-        `进行了案件编辑操作：${logActions.join('、')}`
+        `进行了案件编辑操作：${logActions.join('、')}`,
+        'UPDATE_CASE'
       );
     }
 
@@ -289,7 +291,8 @@ exports.deleteCase = async (req, res) => {
     await Case.addLog(
       id,
       operator,
-      `进行了案件删除操作：${existingCase.internal_number || existingCase.case_number || '案件'}`
+      `进行了案件删除操作：${existingCase.internal_number || existingCase.case_number || '案件'}`,
+      'DELETE_CASE'
     );
 
     const changes = await Case.delete(id);
