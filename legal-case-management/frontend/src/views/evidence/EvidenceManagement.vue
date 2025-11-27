@@ -4,6 +4,7 @@
     <el-card class="header-card">
       <div class="header-content">
         <div class="title-section">
+          <i @click="goBack" class="el-icon-upload">&lt;</i>
           <h2>证据管理</h2>
           <el-tag>案件ID: {{ caseId }}</el-tag>
         </div>
@@ -539,6 +540,7 @@ import TableEmpty from "@/components/common/TableEmpty.vue";
 import type { Evidence, EvidenceCategory, ViewMode } from "@/types";
 import request from "@/api/request";
 import axios from "axios";
+import { goBack } from "@/router/utils";
 
 const route = useRoute();
 const caseId = ref(Number(route.params.id));
@@ -1001,6 +1003,9 @@ onMounted(() => {
 <style scoped>
 .evidence-management {
   padding: 20px;
+}
+.el-icon-upload{
+  cursor: pointer;
 }
 
 .header-card {

@@ -150,6 +150,12 @@
           min-width="150"
           show-overflow-tooltip
         />
+         <el-table-column
+          prop="handler"
+          label="案件承接人"
+          width="120"
+          show-overflow-tooltip
+        />
         <el-table-column
           prop="court"
           label="法院"
@@ -194,12 +200,7 @@
           width="120"
           show-overflow-tooltip
         />
-        <el-table-column
-          prop="handler"
-          label="案件承接人"
-          width="120"
-          show-overflow-tooltip
-        />
+       
         <el-table-column
           prop="is_external_agent"
           label="外部代理"

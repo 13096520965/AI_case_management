@@ -103,9 +103,6 @@
           <el-descriptions-item label="受理法院">
             {{ caseData.court || '-' }}
           </el-descriptions-item>
-          <el-descriptions-item label="承办人员">
-            {{ caseData.handler || '-' }}
-          </el-descriptions-item>
           <el-descriptions-item label="标的额">
             {{ formatAmount(caseData.targetAmount) }}
           </el-descriptions-item>

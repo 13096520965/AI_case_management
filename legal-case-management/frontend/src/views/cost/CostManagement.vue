@@ -1,6 +1,6 @@
 <template>
   <div class="cost-management-container">
-    <PageHeader title="成本管理" :breadcrumb="breadcrumb" />
+    <PageHeader title="成本管理" :breadcrumb="breadcrumb"  :show-back="true" />
     
     <el-card class="filter-card">
       <el-form :inline="true" :model="filterForm">

@@ -117,19 +117,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          
-          <el-col :span="12">
-            <el-form-item label="承办人员" prop="handler">
-              <el-input
-                v-model="formData.handler"
-                placeholder="请输入承办人员姓名"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
+           <el-col :span="12">
             <el-form-item label="团队ID" prop="teamId">
               <el-input-number
                 v-model="formData.teamId"
@@ -405,7 +393,11 @@ const fetchCaseData = async () => {
       formData.teamId = caseData.team_id ?? undefined
       formData.handler = caseData.handler ?? ''
       formData.industrySegment = caseData.industry_segment ?? ''
-      formData.isExternalAgent = caseData.is_external_agent ?? false
+      // 规范化后端可能返回的多种格式（boolean / number 0|1 / string '0'|'1'|'true'|'false'）
+      const externalAgentRaw = caseData.is_external_agent
+      formData.isExternalAgent = (
+        externalAgentRaw === 1 
+      )
       formData.lawFirmName = caseData.law_firm_name ?? ''
       formData.agentLawyer = caseData.agent_lawyer ?? ''
       formData.agentContact = caseData.agent_contact ?? ''
