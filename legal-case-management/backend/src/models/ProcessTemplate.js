@@ -156,7 +156,7 @@ class ProcessTemplateNode {
       node_name,
       deadline_days,
       node_order,
-      description
+      description || null
     ]);
 
     return result.lastID;

@@ -365,7 +365,6 @@ CREATE INDEX IF NOT EXISTS idx_case_knowledge_case_cause ON case_knowledge(case_
 CREATE INDEX IF NOT EXISTS idx_case_knowledge_case_id ON case_knowledge(case_id);
 CREATE INDEX IF NOT EXISTS idx_case_knowledge_archive_package_id ON case_knowledge(archive_package_id);
 CREATE INDEX IF NOT EXISTS idx_case_logs_case_id ON case_logs(case_id);
-CREATE INDEX IF NOT EXISTS idx_case_logs_action_type ON case_logs(action_type);
 `;
 
 // 将所有 SQL 中的 DEFAULT CURRENT_TIMESTAMP 替换为 北京时间的默认值

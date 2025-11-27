@@ -308,7 +308,6 @@ const formRules: FormRules = {
     }
   ],
   contactEmail: [
-    { required: true, message: '请输入电子邮箱', trigger: 'blur' },
     {
       type: 'email',
       message: '请输入有效的电子邮箱',

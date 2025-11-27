@@ -262,6 +262,28 @@
         :rules="formRules"
         label-width="120px"
       >
+        <!-- 上传案例按钮 -->
+        <el-form-item v-if="!isEdit" label="上传案例">
+          <el-upload
+            ref="uploadRef"
+            :auto-upload="false"
+            :limit="1"
+            :on-change="handleCaseFileChange"
+            :on-remove="handleCaseFileRemove"
+            :file-list="uploadFileList"
+            accept=".pdf,.doc,.docx"
+            :disabled="uploadingCase"
+          >
+            <el-button type="primary" :loading="uploadingCase">
+              <el-icon v-if="!uploadingCase"><Upload /></el-icon>
+              {{ uploadingCase ? '识别中...' : '选择文件' }}
+            </el-button>
+            <template #tip>
+              <div class="el-upload__tip">支持 PDF、Word 格式，上传后自动识别并填充表单</div>
+            </template>
+          </el-upload>
+        </el-form-item>
+
         <el-form-item label="案件ID">
           <el-input
             v-model.number="formData.case_id"
@@ -376,11 +398,17 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Upload } from '@element-plus/icons-vue'
 import { knowledgeApi } from '@/api/knowledge'
+import { ocrApi } from '@/api/ocr'
 import TableEmpty from '@/components/common/TableEmpty.vue'
+import request from '@/api/request'
+import axios from 'axios'
 
 const loading = ref(false)
+const uploadingCase = ref(false)
+const uploadFileList = ref<any[]>([])
+const uploadRef = ref<any>(null)
 const statsLoading = ref(false)
 const submitting = ref(false)
 const detailDialogVisible = ref(false)
@@ -606,6 +634,217 @@ const resetForm = () => {
     tags: '',
     win_rate_reference: ''
   })
+  uploadFileList.value = []
+}
+
+/**
+ * 轮询查询 OCR 结果
+ */
+const pollOCRResult = async (fileId: string, maxAttempts = 30, interval = 2000): Promise<string> => {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const response = await ocrApi.query([fileId])
+      
+      if (response.success && response.data && response.data.length > 0) {
+        const fileData = response.data[0]
+        // 如果已经有 fileContent，说明解析完成
+        if (fileData.fileContent) {
+          return fileData.fileContent
+        }
+      }
+      
+      // 如果还没完成，等待后继续轮询
+      if (attempt < maxAttempts - 1) {
+        await new Promise(resolve => setTimeout(resolve, interval))
+      }
+    } catch (error) {
+      console.error('查询 OCR 结果失败:', error)
+      // 继续重试
+      if (attempt < maxAttempts - 1) {
+        await new Promise(resolve => setTimeout(resolve, interval))
+      }
+    }
+  }
+  
+  throw new Error('OCR 解析超时，请稍后重试')
+}
+
+/**
+ * 从 OCR 文本中提取案例知识字段
+ */
+const extractKnowledgeFromText = (text: string) => {
+  const fields: any = {
+    case_cause: '',
+    dispute_focus: '',
+    legal_issues: '',
+    case_result: '',
+    key_evidence: '',
+    legal_basis: '',
+    case_analysis: '',
+    practical_significance: '',
+    keywords: '',
+    tags: '',
+    win_rate_reference: ''
+  }
+  
+  // 提取案由
+  const caseCauseMatch = text.match(/案由[：:]\s*([^\n]+)/)
+  if (caseCauseMatch) {
+    fields.case_cause = caseCauseMatch[1].trim()
+  } else {
+    // 尝试从文本中识别常见案由
+    if (text.includes('买卖合同')) fields.case_cause = '买卖合同纠纷'
+    else if (text.includes('借款') || text.includes('借贷')) fields.case_cause = '借款合同纠纷'
+    else if (text.includes('劳动') || text.includes('工资')) fields.case_cause = '劳动争议'
+    else if (text.includes('房屋') && text.includes('买卖')) fields.case_cause = '房屋买卖合同纠纷'
+    else if (text.includes('租赁')) fields.case_cause = '租赁合同纠纷'
+    else if (text.includes('建设工程')) fields.case_cause = '建设工程施工合同纠纷'
+    else if (text.includes('股权')) fields.case_cause = '股权转让纠纷'
+    else if (text.includes('侵权')) fields.case_cause = '侵权责任纠纷'
+    else if (text.includes('离婚') || text.includes('婚姻')) fields.case_cause = '婚姻家庭纠纷'
+    else if (text.includes('继承') || text.includes('遗产')) fields.case_cause = '继承纠纷'
+  }
+  
+  // 提取争议焦点
+  const disputeMatch = text.match(/争议焦点[：:]\s*([\s\S]*?)(?=法律问题|法律依据|判决|裁定|$)/)
+  if (disputeMatch) {
+    fields.dispute_focus = disputeMatch[1].trim().substring(0, 500)
+  }
+  
+  // 提取法律问题
+  const legalIssuesMatch = text.match(/法律问题[：:]\s*([\s\S]*?)(?=法律依据|判决|裁定|$)/)
+  if (legalIssuesMatch) {
+    fields.legal_issues = legalIssuesMatch[1].trim().substring(0, 500)
+  }
+  
+  // 提取案件结果
+  if (text.includes('胜诉') || text.includes('支持原告')) {
+    fields.case_result = '胜诉'
+  } else if (text.includes('部分支持') || text.includes('部分胜诉')) {
+    fields.case_result = '部分胜诉'
+  } else if (text.includes('败诉') || text.includes('驳回')) {
+    fields.case_result = '败诉'
+  } else if (text.includes('调解')) {
+    fields.case_result = '调解'
+  } else if (text.includes('撤诉')) {
+    fields.case_result = '撤诉'
+  }
+  
+  // 提取关键证据
+  const evidenceMatch = text.match(/(?:关键证据|主要证据|证据)[：:]\s*([\s\S]*?)(?=法律依据|判决|裁定|$)/)
+  if (evidenceMatch) {
+    fields.key_evidence = evidenceMatch[1].trim().substring(0, 500)
+  }
+  
+  // 提取法律依据
+  const legalBasisMatch = text.match(/(?:法律依据|依据|适用法律)[：:]\s*([\s\S]*?)(?=判决|裁定|$)/)
+  if (legalBasisMatch) {
+    fields.legal_basis = legalBasisMatch[1].trim().substring(0, 500)
+  }
+  
+  // 提取关键词（从案由中提取）
+  if (fields.case_cause) {
+    fields.keywords = fields.case_cause.replace('纠纷', '')
+  }
+  
+  return fields
+}
+
+// 处理案例文件上传
+const handleCaseFileChange = async (file: any) => {
+  uploadingCase.value = true
+  
+  try {
+    // 1. 获取上传签名
+    ElMessage.info('正在上传文件...')
+    const signResponse = await request.post(
+      'https://x-fat.zhixinzg.com/code-app/file/getUploadSign',
+      {
+        fileName: file.name,
+        contentType: file.raw.type,
+        openFlag: '1'
+      }
+    )
+    
+    const { serviceUrl, uploadHeaders, fileUrl } = signResponse.data ?? {}
+    
+    if (!serviceUrl || !fileUrl) {
+      throw new Error('获取上传签名失败')
+    }
+    
+    // 2. 上传文件到OSS
+    const reader = new FileReader()
+    reader.readAsArrayBuffer(file.raw as Blob)
+    
+    reader.onload = async (e) => {
+      try {
+        const fileData = e.target?.result
+        
+        await axios({
+          url: serviceUrl,
+          method: 'put',
+          data: fileData,
+          headers: {
+            ...(uploadHeaders || {}),
+            'Content-Type': file.raw.type
+          }
+        })
+        
+        ElMessage.success('文件上传成功，开始识别...')
+        
+        // 3. 调用 OCR parse 接口
+        const parseResponse = await ocrApi.batchParse([fileUrl])
+        
+        if (!parseResponse.success || !parseResponse.data || parseResponse.data.length === 0) {
+          throw new Error('提交 OCR 解析失败')
+        }
+        
+        const fileId = parseResponse.data[0]
+        ElMessage.info('正在识别中，请稍候...')
+        
+        // 4. 轮询查询 OCR 结果
+        const fileContent = await pollOCRResult(fileId)
+        
+        // 5. 从 OCR 文本中提取字段
+        const extractedFields = extractKnowledgeFromText(fileContent)
+        
+        // 6. 用解析结果填充表单
+        if (extractedFields.case_cause) formData.case_cause = extractedFields.case_cause
+        if (extractedFields.dispute_focus) formData.dispute_focus = extractedFields.dispute_focus
+        if (extractedFields.legal_issues) formData.legal_issues = extractedFields.legal_issues
+        if (extractedFields.case_result) formData.case_result = extractedFields.case_result
+        if (extractedFields.key_evidence) formData.key_evidence = extractedFields.key_evidence
+        if (extractedFields.legal_basis) formData.legal_basis = extractedFields.legal_basis
+        if (extractedFields.case_analysis) formData.case_analysis = extractedFields.case_analysis
+        if (extractedFields.practical_significance) formData.practical_significance = extractedFields.practical_significance
+        if (extractedFields.keywords) formData.keywords = extractedFields.keywords
+        if (extractedFields.tags) formData.tags = extractedFields.tags
+        if (extractedFields.win_rate_reference) formData.win_rate_reference = extractedFields.win_rate_reference
+        
+        ElMessage.success('案例文件识别成功，已自动填充表单')
+        uploadingCase.value = false
+      } catch (parseError: any) {
+        console.error('解析案例文件失败:', parseError)
+        ElMessage.warning(parseError.message || '文件上传成功，但自动识别失败，请手动填写表单')
+        uploadingCase.value = false
+      }
+    }
+    
+    reader.onerror = () => {
+      ElMessage.error('文件读取失败')
+      uploadingCase.value = false
+    }
+  } catch (error: any) {
+    console.error('上传失败:', error)
+    ElMessage.error(error.message || '文件上传失败')
+    uploadingCase.value = false
+    uploadFileList.value = []
+  }
+}
+
+// 处理文件移除
+const handleCaseFileRemove = () => {
+  uploadFileList.value = []
 }
 
 onMounted(async () => {

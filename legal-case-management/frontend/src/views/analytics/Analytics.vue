@@ -25,6 +25,23 @@
           </el-select>
         </el-form-item>
         
+        <el-form-item label="产业板块">
+          <el-select v-model="filterForm.industrySegment" placeholder="全部板块" clearable style="width: 150px">
+            <el-option label="全部" value="" />
+            <el-option label="制造业" value="制造业" />
+            <el-option label="金融业" value="金融业" />
+            <el-option label="房地产" value="房地产" />
+            <el-option label="互联网" value="互联网" />
+            <el-option label="零售业" value="零售业" />
+            <el-option label="建筑业" value="建筑业" />
+            <el-option label="医疗健康" value="医疗健康" />
+            <el-option label="教育培训" value="教育培训" />
+            <el-option label="交通运输" value="交通运输" />
+            <el-option label="能源化工" value="能源化工" />
+            <el-option label="其他" value="其他" />
+          </el-select>
+        </el-form-item>
+        
         <el-form-item label="时间范围">
           <el-date-picker
             v-model="dateRange"
@@ -411,7 +428,6 @@ interface FilterForm {
   endDate: string
   caseType: string
   industrySegment: string
-  partyName: string
 }
 
 interface MetricsData {
@@ -430,7 +446,8 @@ const filterForm = ref<FilterForm>({
   partyName: '',
   startDate: '',
   endDate: '',
-  caseType: ''
+  caseType: '',
+  industrySegment: ''
 })
 
 const metricsData = ref<MetricsData>({
@@ -512,7 +529,8 @@ const resetFilter = () => {
     partyName: '',
     startDate: '',
     endDate: '',
-    caseType: ''
+    caseType: '',
+    industrySegment: ''
   }
   loadData()
 }
