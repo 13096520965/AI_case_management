@@ -111,6 +111,10 @@
         <el-icon><Plus /></el-icon>
         新建案件
       </el-button>
+      <el-button style="margin-left:8px" @click="handleImportClick">
+        导入案件
+      </el-button>
+      <input ref="importFile" type="file" accept=".xls,.xlsx" style="display:none" @change="handleFileChange" />
     </div>
 
     <!-- Case List Table -->
@@ -429,6 +433,69 @@ const handleCreate = () => {
   router.push('/cases/create')
 }
 
+// 导入相关
+const importFile = ref<HTMLInputElement | null>(null)
+const handleImportClick = () => {
+  importFile.value = (document.querySelector('input[ref]') as HTMLInputElement) || null
+  // Prefer using the local ref - Vue template ref would be better, but this is a simple fallback
+  const el = document.querySelector('input[type="file"]') as HTMLInputElement
+  if (el) el.click()
+}
+
+const handleFileChange = async (e: Event) => {
+  const input = e.target as HTMLInputElement
+  if (!input || !input.files || input.files.length === 0) return
+  const file = input.files[0]
+  const form = new FormData()
+  form.append('file', file)
+
+  try {
+    loading.value = true
+    const response = await caseApi.importCases(form)
+    if (response && response.data && response.data.results) {
+      const r = response.data.results
+      ElMessage.success(`导入完成：共 ${r.total} 行，成功 ${r.success} 行，失败 ${r.failures.length} 行`)
+      if (r.failures.length > 0) {
+        console.error('导入失败详情：', r.failures)
+        // 显示失败详情弹窗（包含行号与原因），并在必要时可复制或查看
+        const listHtml = `<div style="max-height:300px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #ebeef5">行号</th><th style="text-align:left;padding:6px;border-bottom:1px solid #ebeef5">原因</th></tr></thead><tbody>${r.failures.map(f=>`<tr><td style="padding:6px;border-bottom:1px solid #f2f6fc">${f.row}</td><td style="padding:6px;border-bottom:1px solid #f2f6fc">${f.reason}</td></tr>`).join('')}</tbody></table></div>`
+        ElMessageBox.alert(listHtml, '导入失败详情', { dangerouslyUseHTMLString: true, confirmButtonText: '关闭' })
+        // 生成 CSV 并触发下载，供用户离线查看和修正
+        try {
+          const csvHeader = 'row,reason\n'
+          const csvBody = r.failures.map((f: any) => `${f.row},"${(f.reason||'').replace(/"/g, '""')}"`).join('\n')
+          const csvContent = csvHeader + csvBody
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          const ts = new Date().toISOString().replace(/[:.]/g, '-')
+          a.href = url
+          a.download = `case-import-failures-${ts}.csv`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+        } catch (e) {
+          console.error('生成失败 CSV 失败', e)
+        }
+      }
+      // 如果有成功则刷新列表
+      if (r.success > 0) fetchCaseList()
+    } else {
+      ElMessage.success('导入已完成')
+      fetchCaseList()
+    }
+  } catch (err: any) {
+    console.error('导入失败：', err)
+    ElMessage.error(err?.message || '导入失败')
+  } finally {
+    loading.value = false
+    // 清空 input
+    const el = document.querySelector('input[type="file"]') as HTMLInputElement
+    if (el) el.value = ''
+  }
+}
+
 const handleView = (id: number) => {
   router.push(`/cases/${id}`)
 }
@@ -490,9 +557,33 @@ const formatAmount = (amount: number) => {
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const formatDate = (date: string) => {
-  if (!date) return '-'
-  return date.split('T')[0]
+const formatDate = (date: any) => {
+  if (date === null || date === undefined || date === '') return '-'
+
+  // Excel 导入时可能得到序列号（数字），将其转换为日期
+  if (typeof date === 'number') {
+    try {
+      // Excel 序列号转换（基于 1899-12-30 起算）
+      const timestamp = Math.round((date - 25569) * 86400 * 1000)
+      const d = new Date(timestamp)
+      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+    } catch (e) {
+      return '-'
+    }
+  }
+
+  if (typeof date === 'string') {
+    // ISO 字符串
+    if (date.includes('T')) return date.split('T')[0]
+    // 已是 YYYY-MM-DD 格式
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date
+    // 尝试解析其他字符串格式
+    const parsed = Date.parse(date)
+    if (!isNaN(parsed)) return new Date(parsed).toISOString().split('T')[0]
+    return date
+  }
+
+  return '-'
 }
 
 // Lifecycle
