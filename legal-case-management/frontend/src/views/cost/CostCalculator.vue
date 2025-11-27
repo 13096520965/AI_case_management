@@ -39,14 +39,20 @@
           
           <el-form :model="litigationForm" label-width="120px">
             <el-form-item label="案件类型">
-              <el-select v-model="litigationForm.caseType" placeholder="请选择案件类型">
-                <el-option label="财产案件" value="财产案件" />
-                <el-option label="非财产案件" value="非财产案件" />
-                <el-option label="知识产权案件" value="知识产权案件" />
-                <el-option label="劳动争议案件" value="劳动争议案件" />
+              <el-select 
+                v-model="litigationForm.caseType" 
+                placeholder="请选择案件类型"
+                @change="handleCaseTypeChange"
+              >
+                <el-option 
+                  v-for="caseType in caseTypes" 
+                  :key="caseType.value"
+                  :label="caseType.label" 
+                  :value="caseType.value" 
+                />
               </el-select>
             </el-form-item>
-            <el-form-item label="标的额（元）" v-if="litigationForm.caseType === '财产案件'">
+            <el-form-item label="标的额（元）" v-if="requiresTargetAmount">
               <el-input-number 
                 v-model="litigationForm.targetAmount" 
                 :min="0" 
@@ -295,6 +301,26 @@ const breadcrumb = [
 
 const activeCalculator = ref('litigation')
 
+// Case Type Configuration
+interface CaseTypeConfig {
+  value: string
+  label: string
+  requiresAmount: boolean
+  calculationMethod: string
+}
+
+const caseTypes: CaseTypeConfig[] = [
+  { value: '财产案件', label: '财产案件', requiresAmount: true, calculationMethod: 'property' },
+  { value: '其他非财产案件', label: '其他非财产案件', requiresAmount: false, calculationMethod: 'nonProperty' },
+  { value: '知识产权民事案件', label: '知识产权民事案件', requiresAmount: true, calculationMethod: 'ip' },
+  { value: '劳动争议案件', label: '劳动争议案件', requiresAmount: false, calculationMethod: 'labor' },
+  { value: '商标、专利、海事行政案件', label: '商标、专利、海事行政案件', requiresAmount: false, calculationMethod: 'specialAdmin' },
+  { value: '其他行政案件', label: '其他行政案件', requiresAmount: false, calculationMethod: 'admin' },
+  { value: '管辖权异议不成立案件', label: '管辖权异议不成立案件', requiresAmount: false, calculationMethod: 'jurisdiction' },
+  { value: '离婚案件', label: '离婚案件', requiresAmount: true, calculationMethod: 'divorce' },
+  { value: '人格权案件', label: '人格权案件', requiresAmount: true, calculationMethod: 'personalityRights' }
+]
+
 // Litigation Fee Form
 const litigationForm = reactive({
   caseType: '财产案件',
@@ -302,6 +328,9 @@ const litigationForm = reactive({
 })
 
 const litigationResult = ref<any>(null)
+
+// Computed property to check if current case type requires amount
+const requiresTargetAmount = ref(true)
 
 // Lawyer Fee Form
 const lawyerForm = reactive({
@@ -337,14 +366,334 @@ const handleCalculatorChange = (index: string) => {
   activeCalculator.value = index
 }
 
-const calculateLitigationFee = async () => {
+// Handle case type change
+const handleCaseTypeChange = (caseType: string) => {
+  const config = caseTypes.find(ct => ct.value === caseType)
+  if (config) {
+    requiresTargetAmount.value = config.requiresAmount
+    // Clear target amount when field is hidden
+    if (!config.requiresAmount) {
+      litigationForm.targetAmount = 0
+    }
+  }
+}
+
+// Fee Tier Interface
+interface FeeTier {
+  min: number
+  max: number | null
+  rate: number
+  baseFee: number
+}
+
+// Property case fee tiers (10-tier system)
+const propertyTiers: FeeTier[] = [
+  { min: 0, max: 10000, rate: 0, baseFee: 50 },
+  { min: 10000, max: 100000, rate: 2.5, baseFee: 50 },
+  { min: 100000, max: 200000, rate: 2.0, baseFee: 2300 },
+  { min: 200000, max: 500000, rate: 1.5, baseFee: 4300 },
+  { min: 500000, max: 1000000, rate: 1.0, baseFee: 8800 },
+  { min: 1000000, max: 2000000, rate: 0.9, baseFee: 13800 },
+  { min: 2000000, max: 5000000, rate: 0.8, baseFee: 22800 },
+  { min: 5000000, max: 10000000, rate: 0.7, baseFee: 46800 },
+  { min: 10000000, max: 20000000, rate: 0.6, baseFee: 81800 },
+  { min: 20000000, max: null, rate: 0.5, baseFee: 141800 }
+]
+
+// Calculate property case litigation fee
+const calculatePropertyCase = (targetAmount: number): { fee: number; description: string } => {
+  // Handle amounts not exceeding 10,000 yuan
+  if (targetAmount <= 10000) {
+    return {
+      fee: 50,
+      description: '标的额不超过1万元，收取固定费用50元'
+    }
+  }
+
+  // For amounts exceeding 10,000, use tiered calculation
+  let totalFee = 0
+  let description = '按分段累计计算：'
+  
+  for (let i = 0; i < propertyTiers.length; i++) {
+    const tier = propertyTiers[i]
+    
+    // Skip if target amount hasn't reached this tier
+    if (targetAmount <= tier.min) {
+      break
+    }
+    
+    // Calculate the amount in this tier
+    let amountInTier = 0
+    if (tier.max === null) {
+      // Last tier (no upper limit)
+      amountInTier = targetAmount - tier.min
+    } else if (targetAmount > tier.max) {
+      // Amount exceeds this tier's max
+      amountInTier = tier.max - tier.min
+    } else {
+      // Amount falls within this tier
+      amountInTier = targetAmount - tier.min
+    }
+    
+    // Calculate fee for this tier
+    if (tier.rate === 0) {
+      // First tier: fixed fee
+      totalFee = tier.baseFee
+    } else {
+      // Other tiers: percentage-based
+      const tierFee = amountInTier * (tier.rate / 100)
+      totalFee += tierFee
+    }
+    
+    // Stop if we've reached the tier containing the target amount
+    if (tier.max === null || targetAmount <= tier.max) {
+      break
+    }
+  }
+  
+  // Round to 2 decimal places
+  totalFee = Math.round(totalFee * 100) / 100
+  
+  return {
+    fee: totalFee,
+    description: description + `标的额${targetAmount.toLocaleString()}元，诉讼费${totalFee.toLocaleString()}元`
+  }
+}
+
+// Calculate non-property case litigation fee
+const calculateNonPropertyCase = (): { fee: number; description: string } => {
+  // Fixed fee between 50-100 yuan for non-property cases
+  // Using midpoint of the range as the standard fee
+  const fee = 75
+  
+  return {
+    fee: fee,
+    description: '其他非财产案件，收取固定费用50元至100元'
+  }
+}
+
+// Calculate IP (Intellectual Property) case litigation fee
+const calculateIPCase = (targetAmount: number): { fee: number; description: string } => {
+  // When target amount is zero or not provided, return fixed fee between 500-1000 yuan
+  if (targetAmount === 0 || targetAmount === null || targetAmount === undefined) {
+    const fee = 750 // Using midpoint of the range as the standard fee
+    return {
+      fee: fee,
+      description: '知识产权民事案件，没有争议金额的，收取固定费用500元至1000元'
+    }
+  }
+  
+  // When target amount is greater than zero, use property case calculation
+  const propertyResult = calculatePropertyCase(targetAmount)
+  return {
+    fee: propertyResult.fee,
+    description: `知识产权民事案件，有争议金额的，按照财产案件标准计算：${propertyResult.description}`
+  }
+}
+
+// Calculate labor dispute case litigation fee
+const calculateLaborCase = (): { fee: number; description: string } => {
+  // Fixed fee of 10 yuan for labor dispute cases
+  return {
+    fee: 10,
+    description: '劳动争议案件，收取固定费用10元'
+  }
+}
+
+// Calculate special administrative case litigation fee (trademark, patent, maritime)
+const calculateSpecialAdminCase = (): { fee: number; description: string } => {
+  // Fixed fee of 100 yuan for special administrative cases
+  return {
+    fee: 100,
+    description: '商标、专利、海事行政案件，收取固定费用100元'
+  }
+}
+
+// Calculate other administrative case litigation fee
+const calculateAdminCase = (): { fee: number; description: string } => {
+  // Fixed fee of 50 yuan for other administrative cases
+  return {
+    fee: 50,
+    description: '其他行政案件，收取固定费用50元'
+  }
+}
+
+// Calculate jurisdiction objection case litigation fee
+const calculateJurisdictionCase = (): { fee: number; description: string } => {
+  // Fixed fee between 50-100 yuan for jurisdiction objection cases
+  // Using midpoint of the range as the standard fee
+  const fee = 75
+  
+  return {
+    fee: fee,
+    description: '管辖权异议不成立案件，收取固定费用50元至100元'
+  }
+}
+
+// Calculate divorce case litigation fee
+const calculateDivorceCase = (targetAmount: number): { fee: number; description: string } => {
+  const threshold = 200000 // 20万元
+  const baseFeeMin = 50
+  const baseFeeMax = 300
+  const rate = 0.5 // 0.5%
+  
+  // When target amount is zero or not exceeding 200,000 yuan, return fixed fee between 50-300 yuan
+  if (targetAmount === 0 || targetAmount === null || targetAmount === undefined || targetAmount <= threshold) {
+    // Using midpoint of the range as the standard fee
+    const fee = (baseFeeMin + baseFeeMax) / 2
+    return {
+      fee: fee,
+      description: '离婚案件，标的额不超过20万元，收取固定费用50元至300元'
+    }
+  }
+  
+  // When target amount exceeds 200,000 yuan, add 0.5% of the excess amount to the base fee
+  const baseFee = (baseFeeMin + baseFeeMax) / 2
+  const excessAmount = targetAmount - threshold
+  const additionalFee = excessAmount * (rate / 100)
+  const totalFee = baseFee + additionalFee
+  
+  // Round to 2 decimal places
+  const roundedFee = Math.round(totalFee * 100) / 100
+  
+  return {
+    fee: roundedFee,
+    description: `离婚案件，标的额${targetAmount.toLocaleString()}元，超过20万元部分按0.5%加收，诉讼费${roundedFee.toLocaleString()}元`
+  }
+}
+
+// Calculate personality rights case litigation fee
+const calculatePersonalityRightsCase = (targetAmount: number): { fee: number; description: string } => {
+  const baseFeeMin = 100
+  const baseFeeMax = 500
+  const tier1Threshold = 50000 // 5万元
+  const tier2Threshold = 100000 // 10万元
+  const tier1Rate = 1.0 // 1%
+  const tier2Rate = 0.5 // 0.5%
+  
+  // When target amount is zero or not exceeding 50,000 yuan, return fixed fee between 100-500 yuan
+  if (targetAmount === 0 || targetAmount === null || targetAmount === undefined || targetAmount <= tier1Threshold) {
+    // Using midpoint of the range as the standard fee
+    const fee = (baseFeeMin + baseFeeMax) / 2
+    return {
+      fee: fee,
+      description: '人格权案件，标的额不超过5万元，收取固定费用100元至500元'
+    }
+  }
+  
+  // Calculate base fee (midpoint of the range)
+  const baseFee = (baseFeeMin + baseFeeMax) / 2
+  
+  // When target amount exceeds 50,000 but not exceeding 100,000 yuan
+  if (targetAmount > tier1Threshold && targetAmount <= tier2Threshold) {
+    const excessAmount = targetAmount - tier1Threshold
+    const additionalFee = excessAmount * (tier1Rate / 100)
+    const totalFee = baseFee + additionalFee
+    
+    // Round to 2 decimal places
+    const roundedFee = Math.round(totalFee * 100) / 100
+    
+    return {
+      fee: roundedFee,
+      description: `人格权案件，标的额${targetAmount.toLocaleString()}元，超过5万元部分按1%加收，诉讼费${roundedFee.toLocaleString()}元`
+    }
+  }
+  
+  // When target amount exceeds 100,000 yuan
+  if (targetAmount > tier2Threshold) {
+    // Calculate fee for tier 1 (50,000 to 100,000)
+    const tier1Amount = tier2Threshold - tier1Threshold
+    const tier1Fee = tier1Amount * (tier1Rate / 100)
+    
+    // Calculate fee for tier 2 (above 100,000)
+    const tier2Amount = targetAmount - tier2Threshold
+    const tier2Fee = tier2Amount * (tier2Rate / 100)
+    
+    const totalFee = baseFee + tier1Fee + tier2Fee
+    
+    // Round to 2 decimal places
+    const roundedFee = Math.round(totalFee * 100) / 100
+    
+    return {
+      fee: roundedFee,
+      description: `人格权案件，标的额${targetAmount.toLocaleString()}元，超过5万元至10万元部分按1%加收，超过10万元部分按0.5%加收，诉讼费${roundedFee.toLocaleString()}元`
+    }
+  }
+  
+  // Fallback (should not reach here)
+  return {
+    fee: baseFee,
+    description: '人格权案件，收取固定费用100元至500元'
+  }
+}
+
+const calculateLitigationFee = () => {
   try {
-    const response = await costApi.calculateCost({
-      calculationType: 'litigation',
-      caseType: litigationForm.caseType,
-      targetAmount: litigationForm.targetAmount
-    })
-    litigationResult.value = response.data
+    // Validate case type is selected
+    if (!litigationForm.caseType) {
+      ElMessage.error('请选择案件类型')
+      return
+    }
+
+    // Find case type configuration
+    const config = caseTypes.find(ct => ct.value === litigationForm.caseType)
+    if (!config) {
+      ElMessage.error('无效的案件类型')
+      return
+    }
+
+    // Validate target amount if required by case type
+    if (config.requiresAmount) {
+      // Check if target amount is provided
+      if (litigationForm.targetAmount === null || litigationForm.targetAmount === undefined) {
+        ElMessage.error('请输入标的额')
+        return
+      }
+      
+      // Check if target amount is negative
+      if (litigationForm.targetAmount < 0) {
+        ElMessage.error('标的额不能为负数')
+        return
+      }
+    }
+
+    // Route to appropriate calculation function
+    let result: { fee: number; description: string }
+    
+    switch (config.calculationMethod) {
+      case 'property':
+        result = calculatePropertyCase(litigationForm.targetAmount)
+        break
+      case 'nonProperty':
+        result = calculateNonPropertyCase()
+        break
+      case 'ip':
+        result = calculateIPCase(litigationForm.targetAmount)
+        break
+      case 'labor':
+        result = calculateLaborCase()
+        break
+      case 'specialAdmin':
+        result = calculateSpecialAdminCase()
+        break
+      case 'admin':
+        result = calculateAdminCase()
+        break
+      case 'jurisdiction':
+        result = calculateJurisdictionCase()
+        break
+      case 'divorce':
+        result = calculateDivorceCase(litigationForm.targetAmount)
+        break
+      case 'personalityRights':
+        result = calculatePersonalityRightsCase(litigationForm.targetAmount)
+        break
+      default:
+        ElMessage.error('该案件类型的计算功能尚未实现')
+        return
+    }
+
+    litigationResult.value = result
     ElMessage.success('计算完成')
   } catch (error) {
     ElMessage.error('计算失败')
