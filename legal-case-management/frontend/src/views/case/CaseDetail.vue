@@ -619,7 +619,7 @@ const fetchCaseNotifications = async () => {
     const nodes = nodesResponse?.data?.nodes || [];
 
     // 过滤出与该案件相关的通知（后端已返回 caseId）
-    const relevantNotifications: any[] = [];
+    const nodeNotificationMap = new Map<number, any>(); // 用于去重，每个节点只保留一条
 
     for (const notification of allNotifications) {
       // 检查通知是否属于当前案件
@@ -627,15 +627,30 @@ const fetchCaseNotifications = async () => {
         // 获取对应的节点信息
         const node = nodes.find((n: any) => n.id === notification.relatedId);
 
-        relevantNotifications.push({
+        const notificationWithNode = {
           ...notification,
           nodeName: node?.node_name || node?.nodeName || '未知节点',
           nodeDeadline: node?.deadline,
-        });
+        };
+
+        // 每个节点只保留一条提醒（保留最新的）
+        const relatedId = notification.relatedId;
+        if (!nodeNotificationMap.has(relatedId)) {
+          nodeNotificationMap.set(relatedId, notificationWithNode);
+        } else {
+          // 比较时间，保留更新的提醒
+          const existing = nodeNotificationMap.get(relatedId);
+          const existingTime = new Date(existing.createdAt).getTime();
+          const newTime = new Date(notification.createdAt).getTime();
+          if (newTime > existingTime) {
+            nodeNotificationMap.set(relatedId, notificationWithNode);
+          }
+        }
       }
     }
 
-    caseNotifications.value = relevantNotifications;
+    // 将 Map 转换为数组
+    caseNotifications.value = Array.from(nodeNotificationMap.values());
   } catch (error: any) {
     console.error('获取案件通知失败:', error);
   }

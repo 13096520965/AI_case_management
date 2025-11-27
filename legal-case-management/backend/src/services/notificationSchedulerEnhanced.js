@@ -102,19 +102,22 @@ class NotificationSchedulerEnhanced {
       console.log(`处理规则: 提前 ${daysAhead} 天提醒，频率: ${frequency}`);
 
       // 查询符合条件的节点
-      // 截止日期在 daysAhead 天后，且还未完成
+      // 截止日期在 daysAhead 天后，且还未完成，且必须有关联的案件
       const nodes = await query(`
         SELECT 
           pn.*,
           c.case_number,
           c.internal_number,
-          c.handler
+          c.handler,
+          c.id as caseId
         FROM process_nodes pn
         LEFT JOIN cases c ON pn.case_id = c.id
         WHERE pn.status IN ('待处理', '进行中', 'pending', 'in_progress')
         AND pn.deadline IS NOT NULL
         AND julianday(pn.deadline) - julianday('now') <= ?
         AND julianday(pn.deadline) - julianday('now') > 0
+        AND pn.case_id IS NOT NULL
+        AND c.id IS NOT NULL
       `, [daysAhead]);
 
       console.log(`找到 ${nodes.length} 个即将到期的节点`);
@@ -173,18 +176,21 @@ class NotificationSchedulerEnhanced {
 
       const frequency = overdueRules.length > 0 ? overdueRules[0].frequency : 'daily';
 
-      // 查询已超期的节点
+      // 查询已超期的节点，且必须有关联的案件
       const nodes = await query(`
         SELECT 
           pn.*,
           c.case_number,
           c.internal_number,
-          c.handler
+          c.handler,
+          c.id as caseId
         FROM process_nodes pn
         LEFT JOIN cases c ON pn.case_id = c.id
         WHERE pn.status IN ('待处理', '进行中', 'pending', 'in_progress')
         AND pn.deadline IS NOT NULL
         AND julianday('now') > julianday(pn.deadline)
+        AND pn.case_id IS NOT NULL
+        AND c.id IS NOT NULL
       `);
 
       console.log(`找到 ${nodes.length} 个超期节点，频率: ${frequency}`);
@@ -242,18 +248,21 @@ class NotificationSchedulerEnhanced {
 
       const frequency = paymentRules.length > 0 ? paymentRules[0].frequency : 'daily';
 
-      // 查询7天内到期的未支付费用
+      // 查询7天内到期的未支付费用，且必须有关联的案件
       const costs = await query(`
         SELECT 
           cr.*,
           c.case_number,
-          c.internal_number
+          c.internal_number,
+          c.id as caseId
         FROM cost_records cr
         LEFT JOIN cases c ON cr.case_id = c.id
         WHERE cr.status = '未支付'
         AND cr.due_date IS NOT NULL
         AND julianday(cr.due_date) - julianday('now') <= 7
         AND julianday(cr.due_date) - julianday('now') >= 0
+        AND cr.case_id IS NOT NULL
+        AND c.id IS NOT NULL
       `);
 
       console.log(`找到 ${costs.length} 笔即将到期的费用，频率: ${frequency}`);
@@ -326,54 +335,61 @@ class NotificationSchedulerEnhanced {
    */
   async shouldCreateNotification(relatedId, relatedType, taskType, frequency = 'once') {
     try {
-      let hoursWindow = 24; // 默认24小时
-      
-      switch (frequency) {
-        case 'once':
-          // 仅一次：检查是否已存在任何提醒
-          hoursWindow = 24 * 365; // 一年内
-          break;
-        case 'daily':
-          // 每天：检查今天是否已发送过
-          hoursWindow = 24;
-          break;
-        case 'weekly':
-          // 每周：检查本周是否已发送过
-          hoursWindow = 24 * 7;
-          break;
-        case 'monthly':
-          // 每月：检查本月是否已发送过
-          hoursWindow = 24 * 30;
-          break;
-        default:
-          hoursWindow = 24;
-      }
-
-  const cutoffTime = beijingFromMs(Date.now() - hoursWindow * 60 * 60 * 1000);
-      
+      // 获取所有相关的提醒
       const existing = await query(`
         SELECT * FROM notification_tasks
         WHERE related_id = ?
         AND related_type = ?
         AND task_type = ?
-        AND created_at > ?
-      `, [relatedId, relatedType, taskType, cutoffTime]);
+        ORDER BY created_at DESC
+      `, [relatedId, relatedType, taskType]);
 
-      // 如果是"每天"频率，需要检查是否是同一天
-      if (frequency === 'daily' && existing.length > 0) {
-        // 检查最近的提醒是否是今天创建的
-        const today = beijingNow(new Date()).split(' ')[0];
-        const recentNotification = existing.find(n => {
-          const notificationDate = beijingNow(new Date(n.created_at)).split(' ')[0];
-          return notificationDate === today;
-        });
-        
-        // 如果今天已经发送过，则不创建；否则创建
-        return !recentNotification;
+      // 如果没有任何提醒，则创建
+      if (existing.length === 0) {
+        return true;
       }
 
-      // 对于其他频率，如果存在提醒则不创建
-      return existing.length === 0;
+      // 获取最近的提醒
+      const latestNotification = existing[0];
+      const latestCreatedAt = new Date(latestNotification.created_at);
+      const now = new Date();
+
+      // 根据频率判断是否应该创建新的提醒
+      switch (frequency) {
+        case 'once':
+          // 仅一次：如果已存在任何提醒，则不创建
+          return false;
+
+        case 'daily': {
+          // 每天：检查最近的提醒是否是今天创建的
+          // 使用北京时间进行日期比较
+          const todayBeijing = beijingNow().split(' ')[0]; // YYYY-MM-DD
+          const latestDateBeijing = formatToBeijing(latestCreatedAt).split(' ')[0]; // YYYY-MM-DD
+          
+          // 如果最近的提醒是今天创建的，则不创建；否则创建
+          return todayBeijing !== latestDateBeijing;
+        }
+
+        case 'weekly': {
+          // 每周：检查最近的提醒是否是本周创建的
+          const now = new Date();
+          const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return latestCreatedAt < oneWeekAgo;
+        }
+
+        case 'monthly': {
+          // 每月：检查最近的提醒是否是本月创建的
+          const now = new Date();
+          const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          return latestCreatedAt < oneMonthAgo;
+        }
+
+        default:
+          // 默认按每天处理
+          const todayBeijing = beijingNow().split(' ')[0];
+          const latestDateBeijing = formatToBeijing(latestCreatedAt).split(' ')[0];
+          return todayBeijing !== latestDateBeijing;
+      }
     } catch (error) {
       console.error('检查是否应该创建提醒失败:', error);
       return true; // 出错时允许创建
@@ -393,23 +409,27 @@ class NotificationSchedulerEnhanced {
 
   /**
    * 为特定节点创建提醒（流程流转时调用）
+   * 只有节点有关联案件时才创建提醒
    */
   async createNodeNotification(nodeId, notificationType = 'task') {
     try {
-      // 获取节点信息
+      // 获取节点信息，且必须有关联的案件
       const nodes = await query(`
         SELECT 
           pn.*,
           c.case_number,
           c.internal_number,
-          c.handler
+          c.handler,
+          c.id as caseId
         FROM process_nodes pn
         LEFT JOIN cases c ON pn.case_id = c.id
         WHERE pn.id = ?
+        AND pn.case_id IS NOT NULL
+        AND c.id IS NOT NULL
       `, [nodeId]);
 
       if (nodes.length === 0) {
-        console.log(`节点 ${nodeId} 不存在`);
+        console.log(`节点 ${nodeId} 不存在或没有关联案件，跳过创建提醒`);
         return;
       }
 
