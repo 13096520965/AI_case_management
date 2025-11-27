@@ -14,6 +14,9 @@ router.use(authenticate);
 // 搜索路由必须在 /:id 之前定义，避免 'search' 被当作 id
 router.get('/search', knowledgeController.search);
 
+// 解析案例文件路由
+router.post('/parse', knowledgeController.parseCase);
+
 // 知识库 CRUD 路由
 router.get('/', knowledgeController.getList);
 router.post('/', knowledgeController.create);

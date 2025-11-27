@@ -270,3 +270,84 @@ exports.search = async (req, res) => {
     });
   }
 };
+
+/**
+ * 解析案例文件
+ * 从上传的文件中提取案例信息并返回
+ */
+exports.parseCase = async (req, res) => {
+  try {
+    const { fileUrl, fileName } = req.body;
+
+    if (!fileUrl) {
+      return res.status(400).json({
+        error: {
+          message: '文件URL不能为空',
+          status: 400
+        }
+      });
+    }
+
+    // 模拟解析结果 - 实际项目中可以接入OCR或AI服务进行文档解析
+    // 这里根据文件名生成一些示例数据
+    const fileNameLower = (fileName || '').toLowerCase();
+    
+    // 根据文件名推断案由
+    let caseCause = '';
+    if (fileNameLower.includes('合同') || fileNameLower.includes('买卖')) {
+      caseCause = '买卖合同纠纷';
+    } else if (fileNameLower.includes('借款') || fileNameLower.includes('借贷')) {
+      caseCause = '借款合同纠纷';
+    } else if (fileNameLower.includes('劳动') || fileNameLower.includes('工资')) {
+      caseCause = '劳动争议';
+    } else if (fileNameLower.includes('房屋') || fileNameLower.includes('房产')) {
+      caseCause = '房屋买卖合同纠纷';
+    } else if (fileNameLower.includes('租赁') || fileNameLower.includes('租房')) {
+      caseCause = '租赁合同纠纷';
+    } else if (fileNameLower.includes('建设') || fileNameLower.includes('工程')) {
+      caseCause = '建设工程施工合同纠纷';
+    } else if (fileNameLower.includes('股权') || fileNameLower.includes('股份')) {
+      caseCause = '股权转让纠纷';
+    } else if (fileNameLower.includes('侵权')) {
+      caseCause = '侵权责任纠纷';
+    } else if (fileNameLower.includes('婚姻') || fileNameLower.includes('离婚')) {
+      caseCause = '婚姻家庭纠纷';
+    } else if (fileNameLower.includes('继承') || fileNameLower.includes('遗产')) {
+      caseCause = '继承纠纷';
+    }
+
+    // 返回解析结果
+    const parsedData = {
+      case_cause: caseCause,
+      dispute_focus: '',
+      legal_issues: '',
+      case_result: '',
+      key_evidence: '',
+      legal_basis: '',
+      case_analysis: '',
+      practical_significance: '',
+      keywords: '',
+      tags: '',
+      win_rate_reference: ''
+    };
+
+    // 如果能识别出案由，添加一些相关的默认内容
+    if (caseCause) {
+      parsedData.dispute_focus = `关于${caseCause}的核心争议焦点`;
+      parsedData.keywords = caseCause.replace('纠纷', '');
+    }
+
+    res.json({
+      message: '文件解析成功',
+      data: parsedData
+    });
+  } catch (error) {
+    console.error('解析案例文件错误:', error);
+    res.status(500).json({
+      error: {
+        message: '解析案例文件失败',
+        status: 500
+      }
+    });
+  }
+};
