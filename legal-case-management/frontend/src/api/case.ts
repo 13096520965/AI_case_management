@@ -78,6 +78,13 @@ export const caseApi = {
     return request.delete(`/cases/${id}`)
   },
 
+  // 导入案件（Excel）
+  importCases: (formData: FormData) => {
+    return request.post('/cases/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+
   // Get case operation logs
   getCaseLogs: (id: number, params?: { page?: number; limit?: number }) => {
     return request.get(`/cases/${id}/logs`, { params })

@@ -8,6 +8,7 @@ const { getDocumentsByCaseId, getDocumentStatistics } = require('../controllers/
 const costController = require('../controllers/costController');
 const { authenticate } = require('../middleware/auth');
 const { logCaseAction } = require('../middleware/caseLogger');
+const caseImportController = require('../controllers/caseImportController');
 
 // 案件基础 CRUD 接口
 
@@ -17,6 +18,13 @@ const { logCaseAction } = require('../middleware/caseLogger');
  * @access  Private
  */
 router.post('/', authenticate, logCaseAction('CREATE_CASE', '创建案件'), caseController.createCase);
+
+/**
+ * @route   POST /api/cases/import
+ * @desc    批量导入案件（Excel）
+ * @access  Private
+ */
+router.post('/import', authenticate, logCaseAction('IMPORT_CASES', '导入案件'), caseImportController.upload.single('file'), caseImportController.importCases);
 
 /**
  * @route   GET /api/cases

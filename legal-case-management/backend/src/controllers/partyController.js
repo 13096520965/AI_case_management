@@ -38,7 +38,8 @@ exports.createParty = async (req, res) => {
     await Case.addLog(
       caseId,
       operator,
-      `进行了诉讼主体添加操作：${newParty.name}（${newParty.party_type}）`
+      `进行了诉讼主体添加操作：${newParty.name}（${newParty.party_type}）`,
+      'CREATE_PARTY'
     );
 
     res.status(201).json({
@@ -131,7 +132,8 @@ exports.updateParty = async (req, res) => {
     await Case.addLog(
       existingParty.case_id,
       operator,
-      `进行了诉讼主体编辑操作：${existingParty.name}（${existingParty.party_type}）`
+      `进行了诉讼主体编辑操作：${existingParty.name}（${existingParty.party_type}）`,
+      'UPDATE_PARTY'
     );
 
     res.json({
@@ -174,7 +176,8 @@ exports.deleteParty = async (req, res) => {
     await Case.addLog(
       existingParty.case_id,
       operator,
-      `进行了诉讼主体删除操作：${existingParty.name}（${existingParty.party_type}）`
+      `进行了诉讼主体删除操作：${existingParty.name}（${existingParty.party_type}）`,
+      'DELETE_PARTY'
     );
 
     const changes = await LitigationParty.delete(id);

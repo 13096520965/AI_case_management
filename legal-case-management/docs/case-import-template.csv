@@ -1,0 +1,2 @@
+case_type(案件类型),case_cause(案由),industry_segment(产业板块),status(案件状态),case_number(案号),internal_number(内部编号),court(法院),target_amount(标的额),filing_date(立案日期),handler(承接人),is_external_agent(外部代理),law_firm_name(律所名称),agent_lawyer(代理律师),agent_contact(代理联系方式)
+民事,合同纠纷,新奥股份,立案,2025ABC001,AN202511000001,北京市东城区人民法院,1000000,2025-11-01,张三,0,某某律所,王律师,13800000000

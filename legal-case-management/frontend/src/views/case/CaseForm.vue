@@ -387,7 +387,27 @@ const fetchCaseData = async () => {
       formData.caseCause = caseData.case_cause ?? ''
       formData.court = caseData.court ?? ''
       formData.targetAmount = caseData.target_amount ?? undefined
-      formData.filingDate = caseData.filing_date ? caseData.filing_date.split('T')[0] : ''
+      // 兼容后端返回的多种日期格式：数字(Excel序列号)、ISO 字符串、YYYY-MM-DD
+      const parseToDateString = (d: any) => {
+        if (d === null || d === undefined || d === '') return ''
+        if (typeof d === 'number') {
+          // Excel 序列号（基于 1899-12-30）
+          const ts = Math.round((d - 25569) * 86400 * 1000)
+          const dt = new Date(ts)
+          if (!isNaN(dt.getTime())) return dt.toISOString().split('T')[0]
+          return ''
+        }
+        if (typeof d === 'string') {
+          if (d.includes('T')) return d.split('T')[0]
+          if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d
+          const parsed = Date.parse(d)
+          if (!isNaN(parsed)) return new Date(parsed).toISOString().split('T')[0]
+          return ''
+        }
+        return ''
+      }
+
+      formData.filingDate = parseToDateString(caseData.filing_date)
       formData.status = caseData.status ?? '立案'
       formData.handler = caseData.handler ?? ''
       formData.teamId = caseData.team_id ?? undefined

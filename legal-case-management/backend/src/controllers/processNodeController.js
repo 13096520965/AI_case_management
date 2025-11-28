@@ -39,7 +39,8 @@ exports.createNode = async (req, res) => {
     await Case.addLog(
       caseId,
       operator,
-      `进行了流程节点添加操作：${newNode.node_name}`
+      `进行了流程节点添加操作：${newNode.node_name}`,
+      'CREATE_PROCESS_NODE'
     );
 
     res.status(201).json({
@@ -166,7 +167,8 @@ exports.updateNode = async (req, res) => {
       await Case.addLog(
         existingNode.case_id,
         operator,
-        `进行了流程节点编辑操作："${existingNode.node_name}"，${logActions.join('、')}`
+        `进行了流程节点编辑操作："${existingNode.node_name}"，${logActions.join('、')}`,
+        'UPDATE_PROCESS_NODE'
       );
     }
 
@@ -210,7 +212,8 @@ exports.deleteNode = async (req, res) => {
     await Case.addLog(
       existingNode.case_id,
       operator,
-      `进行了流程节点删除操作：${existingNode.node_name}`
+      `进行了流程节点删除操作：${existingNode.node_name}`,
+      'DELETE_PROCESS_NODE'
     );
 
     const changes = await ProcessNode.delete(id);
