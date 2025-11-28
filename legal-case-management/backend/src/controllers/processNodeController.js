@@ -183,22 +183,16 @@ exports.updateNode = async (req, res) => {
       );
     }
 
-    // 如果修改了截止时间或状态，触发提醒检查
-    const shouldTriggerNotification = 
-      (updateData.deadline && updateData.deadline !== existingNode.deadline) ||
-      (updateData.status && updateData.status !== existingNode.status);
-    
-    if (shouldTriggerNotification) {
-      setImmediate(async () => {
-        try {
-          console.log(`[提醒触发] 节点 ${existingNode.node_name} 更新，触发提醒检查...`);
-          await enhancedScheduler.checkNodeDeadlines();
-          await enhancedScheduler.checkOverdueNodes();
-        } catch (err) {
-          console.error('[提醒触发] 检查失败:', err);
-        }
-      });
-    }
+    // 节点编辑后触发提醒检查（任何编辑操作都触发）
+    setImmediate(async () => {
+      try {
+        console.log(`[提醒触发] 节点 ${existingNode.node_name} 更新，触发提醒检查...`);
+        await enhancedScheduler.checkNodeDeadlines();
+        await enhancedScheduler.checkOverdueNodes();
+      } catch (err) {
+        console.error('[提醒触发] 检查失败:', err);
+      }
+    });
 
     res.json({
       message: '流程节点更新成功',
