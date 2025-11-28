@@ -26,6 +26,7 @@ class Case {
       law_firm_name,
       agent_lawyer,
       agent_contact,
+      case_background
     } = caseData;
 
     const { beijingNow } = require("../utils/time");
@@ -34,8 +35,8 @@ class Case {
         case_number, internal_number, case_type, case_cause, 
         court, target_amount, filing_date, status, team_id, industry_segment,
         handler, is_external_agent, law_firm_name, agent_lawyer, agent_contact,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        case_background, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // 将 undefined 转换为 null，避免 SQL 绑定错误
@@ -56,6 +57,7 @@ class Case {
       law_firm_name ?? null,
       agent_lawyer ?? null,
       agent_contact ?? null,
+      case_background ?? null,
       now,
       now,
     ]);

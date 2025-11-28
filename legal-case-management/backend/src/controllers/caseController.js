@@ -8,10 +8,10 @@ exports.createCase = async (req, res) => {
     const caseData = req.body;
 
     // 验证必填字段
-    if (!caseData.case_type || !caseData.case_cause || !caseData.industry_segment) {
+    if (!caseData.case_type || !caseData.case_cause || !caseData.industry_segment || !caseData.case_background) {
       return res.status(400).json({
         error: {
-          message: '案件类型、案由和产业板块为必填项',
+          message: '案件类型、案由、产业板块和案件背景为必填项',
           status: 400
         }
       });

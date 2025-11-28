@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS cases (
   law_firm_name VARCHAR(200),
   agent_lawyer VARCHAR(100),
   agent_contact VARCHAR(100),
+  case_background TEXT,
   created_at DATETIME DEFAULT (datetime('now', '+8 hours')),
   updated_at DATETIME DEFAULT (datetime('now', '+8 hours'))
 );

@@ -305,6 +305,14 @@
               <div class="el-upload__tip">
                 支持 PDF、图片、音频、视频格式，单个文件不超过 100MB
               </div>
+              <div v-if="fileList.length > 0" class="el-upload__tip" style="color: #409eff; margin-top: 8px;">
+                <span v-if="fileList.some(f => !f.url || f.status !== 'success')">
+                  正在上传文件到存储服务，请稍候...
+                </span>
+                <span v-else style="color: #67c23a;">
+                  ✓ 所有文件已准备就绪
+                </span>
+              </div>
             </template>
           </el-upload>
         </el-form-item>
@@ -694,48 +702,65 @@ const loadEvidence = async () => {
 
 const handleFileChange = async (file: any, files: any[]) => {
   console.log("file:", file, files);
-  const response = await request.post(
-    "https://x-fat.zhixinzg.com/code-app/file/getUploadSign",
-    {
-      fileName: file.name,
-      contentType: file.raw.type,
-      openFlag: "1",
-    }
-  );
-  const { serviceUrl, uploadHeaders, fileUrl, requestMethod } =
-    response.data ?? {};
   try {
+    const response = await request.post(
+      "https://x-fat.zhixinzg.com/code-app/file/getUploadSign",
+      {
+        fileName: file.name,
+        contentType: file.raw.type,
+        openFlag: "1",
+      }
+    );
+    const { serviceUrl, uploadHeaders, fileUrl, requestMethod } =
+      response.data ?? {};
+    
     // 在浏览器环境中，直接使用文件对象
     const reader = new FileReader();
     reader.readAsArrayBuffer(file.raw as Blob);
-    let fileData;
-    reader.onload = (e) => {
-      // 在文件读取结束后执行的操作
-      fileData = e.target?.result;
-      axios({
-        url: serviceUrl,
-        method: "put",
-        data: fileData,
-        headers: {
-          ...(uploadHeaders || {}),
-          "Content-Type": file.raw.type,
-        },
-      });
+    
+    reader.onload = async (e) => {
+      try {
+        // 在文件读取结束后执行的操作
+        const fileData = e.target?.result;
+        await axios({
+          url: serviceUrl,
+          method: "put",
+          data: fileData,
+          headers: {
+            ...(uploadHeaders || {}),
+            "Content-Type": file.raw.type,
+          },
+        });
+        
+        // 上传成功后更新文件列表
+        fileList.value = files.map((item) => {
+          if (item.uid === file.uid) {
+            return {
+              ...item,
+              url: fileUrl,
+              status: 'success'
+            };
+          }
+          return item;
+        });
+      } catch (uploadError) {
+        console.error("文件上传到存储服务失败", uploadError);
+        ElMessage.error(`文件 ${file.name} 上传失败`);
+        // 上传失败时移除对应文件
+        fileList.value = files.filter((item) => item.uid !== file.uid);
+      }
     };
-
-    // 更新文件列表，设置上传成功文件的URL
-    fileList.value = files.map((item) => {
-      return {
-        ...item,
-        url: fileUrl,
-      };
-    });
+    
+    reader.onerror = () => {
+      console.error("文件读取失败");
+      ElMessage.error(`文件 ${file.name} 读取失败`);
+      fileList.value = files.filter((item) => item.uid !== file.uid);
+    };
   } catch (error) {
-    console.error("上传失败", error);
-    // 上传失败时移除对应文件
-    fileList.value = files.filter(
-      (item) => item.name !== file.name
-    );
+    console.error("获取上传签名失败", error);
+    ElMessage.error(`获取上传签名失败: ${file.name}`);
+    // 获取签名失败时移除对应文件
+    fileList.value = files.filter((item) => item.uid !== file.uid);
   }
 };
 
@@ -750,12 +775,25 @@ const handleUpload = async () => {
     return;
   }
 
+  // 检查是否所有文件都已上传成功
+  const pendingFiles = fileList.value.filter(file => !file.url || file.status !== 'success');
+  if (pendingFiles.length > 0) {
+    ElMessage.warning("请等待文件上传完成");
+    return;
+  }
+
   uploading.value = true;
   uploadProgress.value = 0;
 
   try {
     for (let i = 0; i < fileList.value.length; i++) {
       const file = fileList.value[i];
+      
+      if (!file.url) {
+        console.error("文件URL不存在:", file);
+        continue;
+      }
+      
       const formData = new FormData();
       formData.append("storage_path", file.url);
       formData.append("file_name", file.name);
@@ -775,6 +813,7 @@ const handleUpload = async () => {
     resetUploadForm();
     loadEvidence();
   } catch (error: any) {
+    console.error("上传证据失败:", error);
     ElMessage.error(error.message || "上传失败");
   } finally {
     uploading.value = false;

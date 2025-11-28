@@ -212,6 +212,21 @@
           </el-row>
         </template>
 
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="案件背景" prop="caseBackground">
+              <el-input
+                v-model="formData.caseBackground"
+                type="textarea"
+                :rows="4"
+                placeholder="请输入案件背景"
+                maxlength="1000"
+                show-word-limit
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
         <el-divider />
 
       </el-form>
@@ -336,7 +351,8 @@ const formData = reactive({
   isExternalAgent: false,
   lawFirmName: '',
   agentLawyer: '',
-  agentContact: ''
+  agentContact: '',
+  caseBackground: ''
 })
 
 // Form validation rules
@@ -363,6 +379,10 @@ const formRules: FormRules = {
   ],  
   industrySegment: [
     { required: true, message: '请选择产业板块', trigger: 'change' }
+  ],
+  caseBackground: [
+    { required: true, message: '请输入案件背景', trigger: 'blur' },
+    { min: 10, max: 1000, message: '案件背景长度在 10 到 1000 个字符', trigger: 'blur' }
   ]
 }
 
@@ -421,6 +441,7 @@ const fetchCaseData = async () => {
       formData.lawFirmName = caseData.law_firm_name ?? ''
       formData.agentLawyer = caseData.agent_lawyer ?? ''
       formData.agentContact = caseData.agent_contact ?? ''
+      formData.caseBackground = caseData.case_background ?? ''
       
       console.log('Form data after mapping:', {
         caseNumber: formData.caseNumber,
@@ -494,6 +515,9 @@ const handleSubmit = async () => {
         submitData.lawFirmName = formData.lawFirmName
         submitData.agentLawyer = formData.agentLawyer
         submitData.agentContact = formData.agentContact
+      }
+      if (formData.caseBackground) {
+        submitData.caseBackground = formData.caseBackground
       }
       
       if (isEdit.value) {
