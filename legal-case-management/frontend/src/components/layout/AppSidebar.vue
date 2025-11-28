@@ -53,10 +53,13 @@
         <el-menu-item index="/analytics">数据驾驶舱</el-menu-item>
       </el-sub-menu>
 
-      <el-menu-item index="/knowledge">
-        <el-icon><Reading /></el-icon>
-        <template #title>案例知识库</template>
-      </el-menu-item>
+      <el-sub-menu index="/knowledge">
+        <template #title>
+          <el-icon><Reading /></el-icon>
+          <span>案例知识库</span>
+        </template>
+        <el-menu-item index="/knowledge">案例知识库</el-menu-item>
+      </el-sub-menu>
 
       <el-sub-menu index="/archive">
         <template #title>
@@ -123,6 +126,9 @@ const defaultOpeneds = computed(() => {
   }
   if (path.startsWith("/analytics")) {
     openeds.push("/analytics");
+  }
+  if (path.startsWith("/knowledge")) {
+    openeds.push("/knowledge");
   }
   if (path.startsWith("/archive")) {
     openeds.push("/archive");
