@@ -489,10 +489,14 @@ const loadKnowledgeList = async () => {
   try {
     loading.value = true
 
+    // 对搜索项进行 trim() 处理
     const params = {
       page: pagination.page,
       limit: pagination.limit,
-      ...searchForm
+      keywords: searchForm.keywords?.trim() || '',
+      case_cause: searchForm.case_cause,
+      dispute_focus: searchForm.dispute_focus?.trim() || '',
+      case_result: searchForm.case_result
     }
 
     const response = await knowledgeApi.getList(params)

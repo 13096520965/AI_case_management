@@ -1,5 +1,10 @@
 const multer = require('multer');
-const XLSX = require('xlsx');
+let XLSX;
+try {
+  XLSX = require('xlsx');
+} catch (e) {
+  console.warn('xlsx 模块未安装，Excel 导入功能将不可用');
+}
 const Case = require('../models/Case');
 
 // 生成唯一的内部案件编号（与 caseController.generateInternalNumber 保持一致）
@@ -44,6 +49,11 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
  */
 const importCases = async (req, res) => {
   try {
+    // 检查 xlsx 模块是否可用
+    if (!XLSX) {
+      return res.status(500).json({ error: 'Excel 导入功能不可用，请安装 xlsx 模块' });
+    }
+    
     // multer 会把文件放在 req.file
     const file = req.file;
     if (!file) return res.status(400).json({ error: '请上传 Excel 文件（字段名为 file）' });

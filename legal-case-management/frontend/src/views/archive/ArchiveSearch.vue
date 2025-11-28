@@ -328,10 +328,16 @@ const loadArchiveList = async () => {
   try {
     loading.value = true
 
+    // 对搜索项进行 trim() 处理
     const params = {
       page: pagination.page,
       limit: pagination.limit,
-      ...searchForm
+      archive_number: searchForm.archive_number?.trim() || '',
+      case_number: searchForm.case_number?.trim() || '',
+      case_cause: searchForm.case_cause?.trim() || '',
+      archive_date_from: searchForm.archive_date_from,
+      archive_date_to: searchForm.archive_date_to,
+      archived_by: searchForm.archived_by?.trim() || ''
     }
 
     const response = await archiveApi.searchArchive(params)

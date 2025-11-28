@@ -356,7 +356,7 @@ const getResultType = (result: string): string => {
 }
 
 const handleSearch = async () => {
-  if (!searchForm.value.caseType || !searchForm.value.caseCause) {
+  if (!searchForm.value.caseType || !searchForm.value.caseCause?.trim()) {
     ElMessage.warning('请填写案件类型和案由')
     return
   }
@@ -367,7 +367,7 @@ const handleSearch = async () => {
   try {
     const params = {
       caseType: searchForm.value.caseType,
-      caseCause: searchForm.value.caseCause,
+      caseCause: searchForm.value.caseCause?.trim() || '',
       keywords: searchForm.value.keywords,
       targetAmount: searchForm.value.targetAmount || undefined
     }
