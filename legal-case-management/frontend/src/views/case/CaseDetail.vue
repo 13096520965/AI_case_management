@@ -147,6 +147,11 @@
           <el-descriptions-item label="更新时间">
             {{ formatDateTime(caseData.updatedAt) }}
           </el-descriptions-item>
+          <el-descriptions-item label="案件背景" :span="2">
+            <div class="case-background">
+              {{ caseData.caseBackground || '-' }}
+            </div>
+          </el-descriptions-item>
         </el-descriptions>
       </el-card>
 
@@ -446,6 +451,7 @@ const fetchCaseData = async () => {
         lawFirmName: data.law_firm_name,
         agentLawyer: data.agent_lawyer,
         agentContact: data.agent_contact,
+        caseBackground: data.case_background,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       });
@@ -976,5 +982,13 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.case-background {
+  max-height: 120px;
+  overflow-y: auto;
+  line-height: 1.6;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 </style>

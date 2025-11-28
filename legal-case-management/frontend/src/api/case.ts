@@ -25,6 +25,7 @@ export interface CreateCaseData {
   lawFirmName?: string
   agentLawyer?: string
   agentContact?: string
+  caseBackground?: string
 }
 
 // 转换驼峰命名到下划线命名
@@ -46,6 +47,7 @@ const toSnakeCase = (data: any) => {
   if (data.lawFirmName !== undefined) result.law_firm_name = data.lawFirmName
   if (data.agentLawyer !== undefined) result.agent_lawyer = data.agentLawyer
   if (data.agentContact !== undefined) result.agent_contact = data.agentContact
+  if (data.caseBackground !== undefined) result.case_background = data.caseBackground
   
   return result
 }

@@ -490,7 +490,8 @@ const handleSubmit = async () => {
         court: formData.court,
         status: formData.status,
         industrySegment: formData.industrySegment,
-        isExternalAgent: formData.isExternalAgent
+        isExternalAgent: formData.isExternalAgent,
+        caseBackground: formData.caseBackground
       }
       
       if (formData.caseNumber) {
@@ -508,16 +509,10 @@ const handleSubmit = async () => {
       if (formData.teamId !== undefined) {
         submitData.teamId = formData.teamId
       }
-      if (formData.handler) {
-        submitData.handler = formData.handler
-      }
       if (formData.isExternalAgent) {
         submitData.lawFirmName = formData.lawFirmName
         submitData.agentLawyer = formData.agentLawyer
         submitData.agentContact = formData.agentContact
-      }
-      if (formData.caseBackground) {
-        submitData.caseBackground = formData.caseBackground
       }
       
       if (isEdit.value) {

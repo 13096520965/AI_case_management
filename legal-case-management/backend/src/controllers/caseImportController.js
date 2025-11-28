@@ -46,6 +46,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
  * law_firm_name / 律所名称
  * agent_lawyer / 代理律师
  * agent_contact / 代理联系方式
+ * case_background / 案件背景
  */
 const importCases = async (req, res) => {
   try {
@@ -84,6 +85,7 @@ const importCases = async (req, res) => {
         else if (/^(industry[_ ]?segment|产业板块)$/i.test(lower)) mapped.industry_segment = row[key];
         else if (/^(handler|承接人)$/i.test(lower)) mapped.handler = row[key];
         else if (/^(is[_ ]?external[_ ]?agent|外部代理)$/i.test(lower)) mapped.is_external_agent = row[key];
+        else if (/^(case[_ ]?background|案件背景)$/i.test(lower)) mapped.case_background = row[key];
   else if (/^(status|案件状态)$/i.test(lower)) mapped.status = row[key];
   else if (/^(law[_ ]?firm[_ ]?name|律所名称)$/i.test(lower)) mapped.law_firm_name = row[key];
   else if (/^(agent[_ ]?lawyer|代理律师)$/i.test(lower)) mapped.agent_lawyer = row[key];
@@ -142,7 +144,8 @@ const importCases = async (req, res) => {
         is_external_agent: mapped.is_external_agent ? (['1','true','是','y','yes'].includes(String(mapped.is_external_agent).toLowerCase()) ? 1 : 0) : 0,
         law_firm_name: mapped.law_firm_name || null,
         agent_lawyer: mapped.agent_lawyer || null,
-        agent_contact: mapped.agent_contact || null
+        agent_contact: mapped.agent_contact || null,
+        case_background: mapped.case_background || null
       };
 
       // 唯一性校验：案号/内部编号
