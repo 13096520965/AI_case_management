@@ -1,6 +1,7 @@
 const ProcessNode = require('../models/ProcessNode');
 const Case = require('../models/Case');
 const ProcessNodeService = require('../services/processNodeService');
+const enhancedScheduler = require('../services/notificationSchedulerEnhanced');
 
 /**
  * 创建流程节点
@@ -42,6 +43,16 @@ exports.createNode = async (req, res) => {
       `进行了流程节点添加操作：${newNode.node_name}`,
       'CREATE_PROCESS_NODE'
     );
+
+    // 触发提醒检查（异步执行，不阻塞响应）
+    setImmediate(async () => {
+      try {
+        console.log(`[提醒触发] 新建节点 ${newNode.node_name}，触发提醒检查...`);
+        await enhancedScheduler.checkNodeDeadlines();
+      } catch (err) {
+        console.error('[提醒触发] 检查失败:', err);
+      }
+    });
 
     res.status(201).json({
       message: '流程节点创建成功',
@@ -171,6 +182,17 @@ exports.updateNode = async (req, res) => {
         'UPDATE_PROCESS_NODE'
       );
     }
+
+    // 节点编辑后触发提醒检查（任何编辑操作都触发）
+    setImmediate(async () => {
+      try {
+        console.log(`[提醒触发] 节点 ${existingNode.node_name} 更新，触发提醒检查...`);
+        await enhancedScheduler.checkNodeDeadlines();
+        await enhancedScheduler.checkOverdueNodes();
+      } catch (err) {
+        console.error('[提醒触发] 检查失败:', err);
+      }
+    });
 
     res.json({
       message: '流程节点更新成功',

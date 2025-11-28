@@ -191,8 +191,8 @@ const displayedNotifications = computed(() => {
   if (filters.value.taskType) {
     notifications = notifications.filter(n => n.taskType === filters.value.taskType)
   }
-  if (filters.value.keyword) {
-    const keyword = filters.value.keyword.toLowerCase()
+  if (filters.value.keyword?.trim()) {
+    const keyword = filters.value.keyword.trim().toLowerCase()
     notifications = notifications.filter(n => 
       n.content.toLowerCase().includes(keyword)
     )

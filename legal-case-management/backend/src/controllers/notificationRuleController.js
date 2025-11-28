@@ -1,4 +1,5 @@
 const NotificationRule = require('../models/NotificationRule');
+const enhancedScheduler = require('../services/notificationSchedulerEnhanced');
 
 /**
  * 获取提醒规则列表
@@ -93,6 +94,18 @@ exports.createRule = async (req, res) => {
 
     const rule = await NotificationRule.findById(ruleId);
 
+    // 规则创建后触发提醒检查（如果规则是启用状态）
+    if (is_enabled !== false) {
+      setImmediate(async () => {
+        try {
+          console.log(`[提醒触发] 规则 ${rule.rule_name} 创建，触发提醒检查...`);
+          await enhancedScheduler.manualCheck();
+        } catch (err) {
+          console.error('[提醒触发] 检查失败:', err);
+        }
+      });
+    }
+
     res.status(201).json({
       success: true,
       data: rule,
@@ -125,6 +138,16 @@ exports.updateRule = async (req, res) => {
     }
 
     const rule = await NotificationRule.findById(parseInt(id));
+
+    // 规则更新后触发提醒检查
+    setImmediate(async () => {
+      try {
+        console.log(`[提醒触发] 规则 ${rule.rule_name} 更新，触发提醒检查...`);
+        await enhancedScheduler.manualCheck();
+      } catch (err) {
+        console.error('[提醒触发] 检查失败:', err);
+      }
+    });
 
     res.json({
       success: true,
@@ -194,6 +217,18 @@ exports.toggleRule = async (req, res) => {
     }
 
     const rule = await NotificationRule.findById(parseInt(id));
+
+    // 规则启用/禁用后触发提醒检查
+    if (is_enabled) {
+      setImmediate(async () => {
+        try {
+          console.log(`[提醒触发] 规则 ${rule.rule_name} 已启用，触发提醒检查...`);
+          await enhancedScheduler.manualCheck();
+        } catch (err) {
+          console.error('[提醒触发] 检查失败:', err);
+        }
+      });
+    }
 
     res.json({
       success: true,

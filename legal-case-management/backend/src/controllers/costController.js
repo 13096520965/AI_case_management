@@ -1,4 +1,5 @@
 const CostRecord = require('../models/CostRecord');
+const enhancedScheduler = require('../services/notificationSchedulerEnhanced');
 
 /**
  * 创建成本记录
@@ -29,6 +30,18 @@ exports.createCost = async (req, res) => {
 
     const costId = await CostRecord.create(costData);
     const newCost = await CostRecord.findById(costId);
+
+    // 如果费用有到期日期，触发提醒检查
+    if (costData.due_date) {
+      setImmediate(async () => {
+        try {
+          console.log(`[提醒触发] 新建费用记录 ${newCost.cost_type}，触发提醒检查...`);
+          await enhancedScheduler.checkCostPayments();
+        } catch (err) {
+          console.error('[提醒触发] 检查失败:', err);
+        }
+      });
+    }
 
     res.status(201).json({
       message: '成本记录创建成功',
@@ -119,6 +132,22 @@ exports.updateCost = async (req, res) => {
     }
 
     const updatedCost = await CostRecord.findById(id);
+
+    // 如果修改了到期日期或状态，触发提醒检查
+    const shouldTriggerNotification = 
+      (updateData.due_date && updateData.due_date !== existingCost.due_date) ||
+      (updateData.status && updateData.status !== existingCost.status);
+    
+    if (shouldTriggerNotification) {
+      setImmediate(async () => {
+        try {
+          console.log(`[提醒触发] 费用记录 ${existingCost.cost_type} 更新，触发提醒检查...`);
+          await enhancedScheduler.checkCostPayments();
+        } catch (err) {
+          console.error('[提醒触发] 检查失败:', err);
+        }
+      });
+    }
 
     res.json({
       message: '成本记录更新成功',

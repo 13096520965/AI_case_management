@@ -1,5 +1,6 @@
 const { ProcessTemplate, ProcessTemplateNode } = require('../models/ProcessTemplate');
 const ProcessTemplateService = require('../services/processTemplateService');
+const enhancedScheduler = require('../services/notificationSchedulerEnhanced');
 
 /**
  * 创建流程模板
@@ -258,6 +259,19 @@ exports.applyTemplateToCase = async (req, res) => {
       case_type,
       template_id
     );
+
+    // 引入节点后触发提醒检查
+    if (nodes && nodes.length > 0) {
+      setImmediate(async () => {
+        try {
+          console.log(`[提醒触发] 应用模板到案件 ${caseId}，创建了 ${nodes.length} 个节点，触发提醒检查...`);
+          await enhancedScheduler.checkNodeDeadlines();
+          await enhancedScheduler.checkOverdueNodes();
+        } catch (err) {
+          console.error('[提醒触发] 检查失败:', err);
+        }
+      });
+    }
 
     res.status(201).json({
       message: '流程模板应用成功',

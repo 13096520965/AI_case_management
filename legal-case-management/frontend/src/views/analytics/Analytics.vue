@@ -551,12 +551,11 @@ const loadData = async () => {
 const loadMetrics = async () => {
   try {
     const params = {
-      partyName: filterForm.value.partyName,
+      partyName: filterForm.value.partyName?.trim() || '',
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
-      industrySegment: filterForm.value.industrySegment,
-      partyName: filterForm.value.partyName
+      industrySegment: filterForm.value.industrySegment
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -583,7 +582,7 @@ const initCaseTypeChart = async () => {
   
   try {
     const params = {
-      partyName: filterForm.value.partyName,
+      partyName: filterForm.value.partyName?.trim() || '',
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
@@ -651,12 +650,11 @@ const initCaseStatusChart = async () => {
   
   try {
     const params = {
-      partyName: filterForm.value.partyName,
+      partyName: filterForm.value.partyName?.trim() || '',
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
-      industrySegment: filterForm.value.industrySegment,
-      partyName: filterForm.value.partyName
+      industrySegment: filterForm.value.industrySegment
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -719,13 +717,12 @@ const initCaseTrendChart = async () => {
   
   try {
     const params = {
-      partyName: filterForm.value.partyName,
+      partyName: filterForm.value.partyName?.trim() || '',
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
       interval: 'month',
-      industrySegment: filterForm.value.industrySegment,
-      partyName: filterForm.value.partyName
+      industrySegment: filterForm.value.industrySegment
     }
     
     const response = await analyticsApi.getCaseTrend(params)
@@ -800,12 +797,11 @@ const initAmountDistChart = async () => {
   
   try {
     const params = {
-      partyName: filterForm.value.partyName,
+      partyName: filterForm.value.partyName?.trim() || '',
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
-      industrySegment: filterForm.value.industrySegment,
-      partyName: filterForm.value.partyName
+      industrySegment: filterForm.value.industrySegment
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -868,12 +864,11 @@ const initCaseCauseChart = async () => {
   
   try {
     const params = {
-      partyName: filterForm.value.partyName,
+      partyName: filterForm.value.partyName?.trim() || '',
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
-      industrySegment: filterForm.value.industrySegment,
-      partyName: filterForm.value.partyName
+      industrySegment: filterForm.value.industrySegment
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -933,7 +928,7 @@ const initMonthlyCompareChart = async () => {
   
   try {
     const params = {
-      partyName: filterForm.value.partyName,
+      partyName: filterForm.value.partyName?.trim() || '',
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
