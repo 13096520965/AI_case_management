@@ -952,6 +952,9 @@ const insertSelectedVariables = () => {
 
   insertTextAtCursor(variablesToInsert);
 
+  // 插入后清空选中状态
+  selectedVariableKeys.value = [];
+
   ElMessage.success("变量已插入到模板内容");
 };
 
