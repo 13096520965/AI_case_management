@@ -6,8 +6,11 @@ const Case = require('../models/Case');
  */
 exports.createParty = async (req, res) => {
   try {
-    const { caseId } = req.params;
-    const partyData = { ...req.body, case_id: caseId };
+  const { caseId } = req.params;
+  // 兼容前端可能发送的 camelCase 字段（birthDate）以及 snake_case（birth_date）
+  const incoming = { ...req.body };
+  if (incoming.birthDate && !incoming.birth_date) incoming.birth_date = incoming.birthDate;
+  const partyData = { ...incoming, case_id: caseId };
 
     // 验证案件是否存在
     const caseExists = await Case.findById(caseId);
@@ -28,6 +31,16 @@ exports.createParty = async (req, res) => {
           status: 400
         }
       });
+    }
+
+    // 如果是个人，出生日期为必填
+    if (partyData.entity_type === '个人' && !partyData.birth_date) {
+      return res.status(400).json({
+        error: {
+          message: '实体类型为个人时，出生日期为必填项',
+          status: 400
+        }
+      })
     }
 
     const partyId = await LitigationParty.create(partyData);
@@ -101,7 +114,10 @@ exports.getPartiesByCaseId = async (req, res) => {
 exports.updateParty = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+  // 兼容 camelCase -> snake_case 映射
+  const incomingUpdate = { ...req.body };
+  if (incomingUpdate.birthDate && !incomingUpdate.birth_date) incomingUpdate.birth_date = incomingUpdate.birthDate;
+  const updateData = incomingUpdate;
 
     // 检查主体是否存在
     const existingParty = await LitigationParty.findById(id);
@@ -112,6 +128,20 @@ exports.updateParty = async (req, res) => {
           status: 404
         }
       });
+    }
+
+    // 如果最终实体类型为个人，确保 birth_date 存在（要么在 updateData 中，要么在已有记录中）
+    const finalEntityType = updateData.entity_type || existingParty.entity_type;
+    if (finalEntityType === '个人') {
+      const hasBirth = updateData.birth_date !== undefined ? !!updateData.birth_date : !!existingParty.birth_date;
+      if (!hasBirth) {
+        return res.status(400).json({
+          error: {
+            message: '实体类型为个人时，出生日期为必填项',
+            status: 400
+          }
+        })
+      }
     }
 
     const changes = await LitigationParty.update(id, updateData);

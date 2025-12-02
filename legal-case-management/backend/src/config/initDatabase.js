@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS litigation_parties (
   unified_credit_code VARCHAR(100),
   legal_representative VARCHAR(100),
   id_number VARCHAR(50),
+  birth_date DATE,
   contact_phone VARCHAR(50),
   contact_email VARCHAR(100),
   address TEXT,

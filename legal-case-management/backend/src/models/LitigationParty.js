@@ -18,6 +18,7 @@ class LitigationParty {
       unified_credit_code,
       legal_representative,
       id_number,
+      birth_date,
       contact_phone,
       contact_email,
       address,
@@ -29,9 +30,9 @@ class LitigationParty {
     const sql = `
       INSERT INTO litigation_parties (
         case_id, party_type, entity_type, name, unified_credit_code,
-        legal_representative, id_number, contact_phone, contact_email, 
+        legal_representative, id_number, birth_date, contact_phone, contact_email, 
         address, region_code, detail_address, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // 将 undefined 转换为 null，避免 SQL 绑定错误
@@ -44,6 +45,7 @@ class LitigationParty {
       unified_credit_code ?? null,
       legal_representative ?? null,
       id_number ?? null,
+      birth_date ?? null,
       contact_phone ?? null,
       contact_email ?? null,
       address ?? null,

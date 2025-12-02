@@ -5,6 +5,7 @@ export interface PartyData {
   partyType: string
   entityType: string
   name: string
+  birthDate?: string
   unifiedCreditCode?: string
   legalRepresentative?: string
   idNumber?: string
@@ -22,6 +23,7 @@ const toSnakeCase = (data: any) => {
   if (data.unifiedCreditCode !== undefined) result.unified_credit_code = data.unifiedCreditCode
   if (data.legalRepresentative !== undefined) result.legal_representative = data.legalRepresentative
   if (data.idNumber !== undefined) result.id_number = data.idNumber
+  if (data.birthDate !== undefined) result.birth_date = data.birthDate
   if (data.contactPhone !== undefined) result.contact_phone = data.contactPhone
   if (data.contactEmail !== undefined) result.contact_email = data.contactEmail
   if (data.address !== undefined) result.address = data.address

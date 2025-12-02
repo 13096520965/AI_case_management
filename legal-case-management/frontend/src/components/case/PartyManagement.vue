@@ -119,6 +119,18 @@
             />
           </el-form-item>
 
+          <el-form-item label="出生日期" prop="birthDate">
+            <el-date-picker
+              v-model="formData.birthDate"
+              type="date"
+              placeholder="选择出生日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              default-value="1960-01-01"
+              style="width: 100%"
+            />
+          </el-form-item>
+
           <el-form-item label="身份证号" prop="idNumber">
             <el-input
               v-model="formData.idNumber"
@@ -253,6 +265,7 @@ const formData = reactive({
   partyType: '',
   entityType: '企业',
   name: '',
+  birthDate: '',
   unifiedCreditCode: '',
   legalRepresentative: '',
   idNumber: '',
@@ -298,6 +311,9 @@ const formRules: FormRules = {
       message: '请输入有效的身份证号',
       trigger: 'blur'
     }
+  ],
+  birthDate: [
+    { required: true, message: '请选择出生日期', trigger: 'blur' },
   ],
   contactPhone: [
     { required: true, message: '请输入联系电话', trigger: 'blur' },
@@ -380,6 +396,7 @@ const handleEntityTypeChange = () => {
   formData.unifiedCreditCode = ''
   formData.legalRepresentative = ''
   formData.idNumber = ''
+  formData.birthDate = ''
 }
 
 // Handle add
@@ -402,6 +419,7 @@ const handleEdit = (party: any) => {
   formData.unifiedCreditCode = party.unified_credit_code || ''
   formData.legalRepresentative = party.legal_representative || ''
   formData.idNumber = party.id_number || ''
+  formData.birthDate = party.birth_date || ''
   formData.contactPhone = party.contact_phone || ''
   formData.contactEmail = party.contact_email || ''
   
@@ -492,6 +510,7 @@ const handleSubmit = async () => {
         partyType: formData.partyType,
         entityType: formData.entityType,
         name: formData.name,
+        birthDate: formData.birthDate,
         contactPhone: formData.contactPhone,
         contactEmail: formData.contactEmail,
         address: fullAddress,
@@ -537,6 +556,7 @@ const resetForm = () => {
   formData.partyType = ''
   formData.entityType = '企业'
   formData.name = ''
+  formData.birthDate = ''
   formData.unifiedCreditCode = ''
   formData.legalRepresentative = ''
   formData.idNumber = ''
