@@ -6,7 +6,7 @@ const { query, get } = require('../config/database');
  */
 exports.getDashboardData = async (req, res) => {
   try {
-    const { startDate, endDate, caseType, partyName, caseId, costType, paymentStatus } = req.query;
+    const { startDate, endDate, caseType, partyName, caseId, costType, paymentStatus, industrySegment, status } = req.query;
     
     // 构建基础查询条件
     let whereClause = 'WHERE 1=1';
@@ -33,6 +33,18 @@ exports.getDashboardData = async (req, res) => {
     if (caseType) {
       whereClause += ' AND cases.case_type = ?';
       params.push(caseType);
+    }
+    
+    // 产业板块筛选
+    if (industrySegment) {
+      whereClause += ' AND cases.industry_segment = ?';
+      params.push(industrySegment);
+    }
+    
+    // 案件状态筛选
+    if (status) {
+      whereClause += ' AND cases.status = ?';
+      params.push(status);
     }
 
     // 1. 统计案件总量
@@ -399,26 +411,52 @@ exports.getLawyerEvaluation = async (req, res) => {
  */
 exports.getCaseTypeDistribution = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, caseType, industrySegment, status, partyName } = req.query;
     
     let sql = `
-      SELECT case_type, COUNT(*) as count 
+      SELECT cases.case_type, COUNT(DISTINCT cases.id) as count 
       FROM cases 
-      WHERE case_type IS NOT NULL
     `;
     const params = [];
     
+    // 如果有主体名称搜索，需要关联诉讼主体表
+    if (partyName) {
+      sql += ' INNER JOIN litigation_parties lp ON cases.id = lp.case_id';
+    }
+    
+    sql += ' WHERE cases.case_type IS NOT NULL';
+    
+    if (partyName) {
+      sql += ' AND lp.name LIKE ?';
+      params.push(`%${partyName}%`);
+    }
+    
     if (startDate) {
-      sql += ' AND created_at >= ?';
+      sql += ' AND cases.created_at >= ?';
       params.push(startDate);
     }
     
     if (endDate) {
-      sql += ' AND created_at <= ?';
+      sql += ' AND cases.created_at <= ?';
       params.push(endDate);
     }
     
-    sql += ' GROUP BY case_type ORDER BY count DESC';
+    if (caseType) {
+      sql += ' AND cases.case_type = ?';
+      params.push(caseType);
+    }
+    
+    if (industrySegment) {
+      sql += ' AND cases.industry_segment = ?';
+      params.push(industrySegment);
+    }
+    
+    if (status) {
+      sql += ' AND cases.status = ?';
+      params.push(status);
+    }
+    
+    sql += ' GROUP BY cases.case_type ORDER BY count DESC';
     
     const distribution = await query(sql, params);
     
@@ -440,7 +478,7 @@ exports.getCaseTypeDistribution = async (req, res) => {
  */
 exports.getCaseTrend = async (req, res) => {
   try {
-    const { startDate, endDate, interval = 'month' } = req.query;
+    const { startDate, endDate, interval = 'month', caseType, industrySegment, status, partyName } = req.query;
     
     let dateFormat = '%Y-%m';
     if (interval === 'day') {
@@ -451,22 +489,48 @@ exports.getCaseTrend = async (req, res) => {
     
     let sql = `
       SELECT 
-        strftime('${dateFormat}', created_at) as period,
-        COUNT(*) as count,
-        SUM(target_amount) as totalAmount
+        strftime('${dateFormat}', cases.created_at) as period,
+        COUNT(DISTINCT cases.id) as count,
+        SUM(DISTINCT cases.target_amount) as totalAmount
       FROM cases
-      WHERE 1=1
     `;
     const params = [];
     
+    // 如果有主体名称搜索，需要关联诉讼主体表
+    if (partyName) {
+      sql += ' INNER JOIN litigation_parties lp ON cases.id = lp.case_id';
+    }
+    
+    sql += ' WHERE 1=1';
+    
+    if (partyName) {
+      sql += ' AND lp.name LIKE ?';
+      params.push(`%${partyName}%`);
+    }
+    
     if (startDate) {
-      sql += ' AND created_at >= ?';
+      sql += ' AND cases.created_at >= ?';
       params.push(startDate);
     }
     
     if (endDate) {
-      sql += ' AND created_at <= ?';
+      sql += ' AND cases.created_at <= ?';
       params.push(endDate);
+    }
+    
+    if (caseType) {
+      sql += ' AND cases.case_type = ?';
+      params.push(caseType);
+    }
+    
+    if (industrySegment) {
+      sql += ' AND cases.industry_segment = ?';
+      params.push(industrySegment);
+    }
+    
+    if (status) {
+      sql += ' AND cases.status = ?';
+      params.push(status);
     }
     
     sql += ' GROUP BY period ORDER BY period ASC';

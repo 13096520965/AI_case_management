@@ -35,6 +35,14 @@
         <el-menu-item index="/documents/ocr">文书识别</el-menu-item>
       </el-sub-menu>
 
+      <el-sub-menu index="/archive">
+        <template #title>
+          <el-icon><FolderOpened /></el-icon>
+          <span>归档管理</span>
+        </template>
+        <el-menu-item index="/archive/search">归档检索</el-menu-item>
+      </el-sub-menu>
+
       <el-sub-menu index="/notifications">
         <template #title>
           <el-icon><Bell /></el-icon>
@@ -59,14 +67,6 @@
           <span>案例知识库</span>
         </template>
         <el-menu-item index="/knowledge">案例知识库</el-menu-item>
-      </el-sub-menu>
-
-      <el-sub-menu index="/archive">
-        <template #title>
-          <el-icon><FolderOpened /></el-icon>
-          <span>归档管理</span>
-        </template>
-        <el-menu-item index="/archive/search">归档检索</el-menu-item>
       </el-sub-menu>
       <el-sub-menu index="/tools">
         <template #title>

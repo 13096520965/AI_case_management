@@ -28,17 +28,32 @@
         <el-form-item label="产业板块">
           <el-select v-model="filterForm.industrySegment" placeholder="全部板块" clearable style="width: 150px">
             <el-option label="全部" value="" />
-            <el-option label="制造业" value="制造业" />
-            <el-option label="金融业" value="金融业" />
-            <el-option label="房地产" value="房地产" />
-            <el-option label="互联网" value="互联网" />
-            <el-option label="零售业" value="零售业" />
-            <el-option label="建筑业" value="建筑业" />
-            <el-option label="医疗健康" value="医疗健康" />
-            <el-option label="教育培训" value="教育培训" />
-            <el-option label="交通运输" value="交通运输" />
-            <el-option label="能源化工" value="能源化工" />
-            <el-option label="其他" value="其他" />
+            <el-option label="新奥新智" value="新奥新智" />
+            <el-option label="新奥股份" value="新奥股份" />
+            <el-option label="新奥能源" value="新奥能源" />
+            <el-option label="新地环保" value="新地环保" />
+            <el-option label="新奥动力" value="新奥动力" />
+            <el-option label="能源研究院" value="能源研究院" />
+            <el-option label="新绎控股" value="新绎控股" />
+            <el-option label="数能科技" value="数能科技" />
+            <el-option label="新智认知" value="新智认知" />
+            <el-option label="质信智购" value="质信智购" />
+            <el-option label="新智感知" value="新智感知" />
+            <el-option label="新智通才" value="新智通才" />
+            <el-option label="财务公司" value="财务公司" />
+            <el-option label="新奥国际" value="新奥国际" />
+            <el-option label="河北金租" value="河北金租" />
+            <el-option label="新博卓畅" value="新博卓畅" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="案件状态">
+          <el-select v-model="filterForm.status" placeholder="全部状态" clearable style="width: 120px">
+            <el-option label="全部" value="" />
+            <el-option label="立案" value="立案" />
+            <el-option label="审理中" value="审理中" />
+            <el-option label="已结案" value="已结案" />
+            <el-option label="已归档" value="已归档" />
           </el-select>
         </el-form-item>
         
@@ -428,6 +443,7 @@ interface FilterForm {
   endDate: string
   caseType: string
   industrySegment: string
+  status: string
 }
 
 interface MetricsData {
@@ -447,7 +463,8 @@ const filterForm = ref<FilterForm>({
   startDate: '',
   endDate: '',
   caseType: '',
-  industrySegment: ''
+  industrySegment: '',
+  status: ''
 })
 
 const metricsData = ref<MetricsData>({
@@ -530,7 +547,8 @@ const resetFilter = () => {
     startDate: '',
     endDate: '',
     caseType: '',
-    industrySegment: ''
+    industrySegment: '',
+    status: ''
   }
   loadData()
 }
@@ -555,7 +573,8 @@ const loadMetrics = async () => {
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
-      industrySegment: filterForm.value.industrySegment
+      industrySegment: filterForm.value.industrySegment,
+      status: filterForm.value.status
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -586,7 +605,8 @@ const initCaseTypeChart = async () => {
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
-      industrySegment: filterForm.value.industrySegment
+      industrySegment: filterForm.value.industrySegment,
+      status: filterForm.value.status
     }
     
     const response = await analyticsApi.getCaseTypeDistribution(params)
@@ -654,7 +674,8 @@ const initCaseStatusChart = async () => {
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
-      industrySegment: filterForm.value.industrySegment
+      industrySegment: filterForm.value.industrySegment,
+      status: filterForm.value.status
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -722,7 +743,8 @@ const initCaseTrendChart = async () => {
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
       interval: 'month',
-      industrySegment: filterForm.value.industrySegment
+      industrySegment: filterForm.value.industrySegment,
+      status: filterForm.value.status
     }
     
     const response = await analyticsApi.getCaseTrend(params)
@@ -801,7 +823,8 @@ const initAmountDistChart = async () => {
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
-      industrySegment: filterForm.value.industrySegment
+      industrySegment: filterForm.value.industrySegment,
+      status: filterForm.value.status
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -868,7 +891,8 @@ const initCaseCauseChart = async () => {
       startDate: filterForm.value.startDate,
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
-      industrySegment: filterForm.value.industrySegment
+      industrySegment: filterForm.value.industrySegment,
+      status: filterForm.value.status
     }
     
     const response = await analyticsApi.getDashboard(params)
@@ -933,7 +957,8 @@ const initMonthlyCompareChart = async () => {
       endDate: filterForm.value.endDate,
       caseType: filterForm.value.caseType,
       interval: 'month',
-      industrySegment: filterForm.value.industrySegment
+      industrySegment: filterForm.value.industrySegment,
+      status: filterForm.value.status
     }
     
     const response = await analyticsApi.getCaseTrend(params)
