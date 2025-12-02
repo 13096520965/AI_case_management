@@ -117,17 +117,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-           <el-col :span="12">
-            <el-form-item label="团队ID" prop="teamId">
-              <el-input-number
-                v-model="formData.teamId"
-                :min="1"
-                :controls="false"
-                placeholder="请输入团队ID（可选）"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
+         
         </el-row>
 
         <el-row :gutter="20">
@@ -227,6 +217,17 @@
           </el-col>
         </el-row>
 
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="案件结果" prop="caseResult">
+              <el-input
+                v-model="formData.caseResult"
+                 type="textarea"
+                placeholder="请输入案件结果"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-divider />
 
       </el-form>
@@ -345,7 +346,7 @@ const formData = reactive({
   targetAmount: undefined as number | undefined,
   filingDate: '',
   status: '立案',
-  teamId: undefined as number | undefined,
+  caseResult: '',
   handler: '',
   industrySegment: '',
   isExternalAgent: false,
@@ -427,11 +428,11 @@ const fetchCaseData = async () => {
         return ''
       }
 
-      formData.filingDate = parseToDateString(caseData.filing_date)
+  formData.filingDate = parseToDateString(caseData.filing_date)
       formData.status = caseData.status ?? '立案'
       formData.handler = caseData.handler ?? ''
-      formData.teamId = caseData.team_id ?? undefined
-      formData.handler = caseData.handler ?? ''
+  formData.caseResult = caseData.case_result ?? ''
+  formData.handler = caseData.handler ?? ''
       formData.industrySegment = caseData.industry_segment ?? ''
       // 规范化后端可能返回的多种格式（boolean / number 0|1 / string '0'|'1'|'true'|'false'）
       const externalAgentRaw = caseData.is_external_agent
@@ -451,7 +452,7 @@ const fetchCaseData = async () => {
         targetAmount: formData.targetAmount,
         filingDate: formData.filingDate,
         status: formData.status,
-        teamId: formData.teamId
+        caseResult: formData.caseResult
       })
       console.log('Raw case data fields:', {
         case_number: caseData.case_number,
@@ -461,7 +462,7 @@ const fetchCaseData = async () => {
         target_amount: caseData.target_amount,
         filing_date: caseData.filing_date,
         status: caseData.status,
-        team_id: caseData.team_id
+        case_result: caseData.case_result
       })
       
       // Update store
@@ -506,8 +507,8 @@ const handleSubmit = async () => {
       if (formData.handler) {
         submitData.handler = formData.handler
       }
-      if (formData.teamId !== undefined) {
-        submitData.teamId = formData.teamId
+      if (formData.caseResult) {
+        submitData.caseResult = formData.caseResult
       }
       if (formData.isExternalAgent) {
         submitData.lawFirmName = formData.lawFirmName

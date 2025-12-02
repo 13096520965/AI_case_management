@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS cases (
   filing_date DATE,
   status VARCHAR(50) DEFAULT 'active',
   team_id INTEGER,
+  case_result VARCHAR(200),
   industry_segment VARCHAR(50),
   handler VARCHAR(100),
   is_external_agent BOOLEAN DEFAULT 0,

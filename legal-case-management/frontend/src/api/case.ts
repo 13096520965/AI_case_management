@@ -18,7 +18,7 @@ export interface CreateCaseData {
   targetAmount?: number
   filingDate?: string
   status?: string
-  teamId?: number
+  caseResult?: string
   handler?: string
   industrySegment?: string
   isExternalAgent?: boolean
@@ -38,7 +38,7 @@ const toSnakeCase = (data: any) => {
     target_amount: data.targetAmount,
     filing_date: data.filingDate,
     status: data.status,
-    team_id: data.teamId
+    // team_id removed per updated requirements
   }
   
   if (data.handler !== undefined) result.handler = data.handler
@@ -48,6 +48,7 @@ const toSnakeCase = (data: any) => {
   if (data.agentLawyer !== undefined) result.agent_lawyer = data.agentLawyer
   if (data.agentContact !== undefined) result.agent_contact = data.agentContact
   if (data.caseBackground !== undefined) result.case_background = data.caseBackground
+  if (data.caseResult !== undefined) result.case_result = data.caseResult
   
   return result
 }

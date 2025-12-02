@@ -20,6 +20,7 @@ class Case {
       filing_date,
       status = "active",
       team_id,
+      case_result,
       industry_segment,
       handler,
       is_external_agent,
@@ -33,7 +34,7 @@ class Case {
     const sql = `
       INSERT INTO cases (
         case_number, internal_number, case_type, case_cause, 
-        court, target_amount, filing_date, status, team_id, industry_segment,
+        court, target_amount, filing_date, status, team_id, case_result, industry_segment,
         handler, is_external_agent, law_firm_name, agent_lawyer, agent_contact,
         case_background, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -51,6 +52,7 @@ class Case {
       filing_date ?? null,
       status ?? "active",
       team_id ?? null,
+      case_result ?? null,
       industry_segment ?? null,
       handler ?? null,
       is_external_agent ?? 0,

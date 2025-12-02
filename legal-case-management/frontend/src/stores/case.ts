@@ -11,7 +11,7 @@ export interface Case {
   targetAmount: number
   filingDate: string
   status: string
-  teamId?: number
+  caseResult?: string
   createdAt?: string
   updatedAt?: string
 }
