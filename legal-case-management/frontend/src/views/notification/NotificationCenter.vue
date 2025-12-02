@@ -178,32 +178,46 @@ const filters = ref({
   keyword: ''
 })
 
-// Computed
-const unreadCount = computed(() => notificationStore.unreadCount)
+// 搜索条件（点击搜索后才应用）
+const appliedFilters = ref({
+  status: '',
+  taskType: '',
+  keyword: ''
+})
 
-const displayedNotifications = computed(() => {
+// Computed - 根据已应用的搜索条件过滤
+const filteredNotifications = computed(() => {
   let notifications = notificationStore.notifications
 
   // Apply filters
-  if (filters.value.status) {
-    notifications = notifications.filter(n => n.status === filters.value.status)
+  if (appliedFilters.value.status) {
+    notifications = notifications.filter(n => n.status === appliedFilters.value.status)
   }
-  if (filters.value.taskType) {
-    notifications = notifications.filter(n => n.taskType === filters.value.taskType)
+  if (appliedFilters.value.taskType) {
+    notifications = notifications.filter(n => n.taskType === appliedFilters.value.taskType)
   }
-  if (filters.value.keyword?.trim()) {
-    const keyword = filters.value.keyword.trim().toLowerCase()
+  if (appliedFilters.value.keyword?.trim()) {
+    const keyword = appliedFilters.value.keyword.trim().toLowerCase()
     notifications = notifications.filter(n => 
       n.content.toLowerCase().includes(keyword)
     )
   }
 
-  total.value = notifications.length
+  return notifications
+})
+
+// 根据搜索结果计算统计数据
+const unreadCount = computed(() => {
+  return filteredNotifications.value.filter(n => n.status === 'unread').length
+})
+
+const displayedNotifications = computed(() => {
+  total.value = filteredNotifications.value.length
 
   // Pagination
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
-  return notifications.slice(start, end)
+  return filteredNotifications.value.slice(start, end)
 })
 
 // Methods
@@ -223,11 +237,19 @@ const fetchNotifications = async () => {
 }
 
 const handleSearch = () => {
+  // 应用搜索条件
+  appliedFilters.value = { ...filters.value }
   currentPage.value = 1
 }
 
 const handleReset = () => {
   filters.value = {
+    status: '',
+    taskType: '',
+    keyword: ''
+  }
+  // 重置时也应用空的搜索条件
+  appliedFilters.value = {
     status: '',
     taskType: '',
     keyword: ''
