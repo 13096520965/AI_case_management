@@ -115,6 +115,7 @@
           <el-descriptions-item label="案件承接人">
             {{ caseData.handler || '-' }}
           </el-descriptions-item>
+        
           <el-descriptions-item label="外部代理">
             <el-tag
               :type="caseData.isExternalAgent ? 'success' : 'info'"
@@ -150,6 +151,11 @@
           <el-descriptions-item label="案件背景" :span="2">
             <div class="case-background">
               {{ caseData.caseBackground || '-' }}
+            </div>
+          </el-descriptions-item>
+          <el-descriptions-item label="案件结果" :span="2">
+            <div class="case-result">
+              {{ caseData.caseResult || '-' }}
             </div>
           </el-descriptions-item>
         </el-descriptions>
@@ -445,7 +451,8 @@ const fetchCaseData = async () => {
         targetAmount: data.target_amount,
         filingDate: data.filing_date,
         status: data.status,
-        teamId: data.team_id,
+  // teamId removed per requirements
+  caseResult: data.case_result,
         industrySegment: data.industry_segment,
         isExternalAgent: data.is_external_agent,
         lawFirmName: data.law_firm_name,
