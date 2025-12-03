@@ -106,8 +106,8 @@ class KnowledgeModel {
         case_id, archive_package_id, case_cause, dispute_focus,
         legal_issues, case_result, key_evidence, legal_basis,
         case_analysis, practical_significance, keywords, tags,
-        win_rate_reference, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        win_rate_reference, created_by, ocr_content
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     const params = [
@@ -124,7 +124,8 @@ class KnowledgeModel {
       data.keywords || null,
       data.tags || null,
       data.win_rate_reference || null,
-      data.created_by || null
+      data.created_by || null,
+      data.ocr_content || null
     ];
     
     const result = await run(sql, params);
@@ -146,7 +147,7 @@ class KnowledgeModel {
       'case_id', 'archive_package_id', 'case_cause', 'dispute_focus',
       'legal_issues', 'case_result', 'key_evidence', 'legal_basis',
       'case_analysis', 'practical_significance', 'keywords', 'tags',
-      'win_rate_reference', 'created_by'
+      'win_rate_reference', 'created_by', 'ocr_content'
     ];
     
     allowedFields.forEach(field => {

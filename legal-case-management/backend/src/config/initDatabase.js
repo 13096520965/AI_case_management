@@ -422,10 +422,14 @@ function initializeDatabase() {
           if (err) console.error('升级 documents 表失败:', err.message);
           ensureColumn('evidence', 'description', 'description TEXT', (err2) => {
             if (err2) console.error('升级 evidence 表失败:', err2.message);
-            db.close();
-            console.log('数据库表创建成功');
-            console.log('数据库初始化完成');
-            resolve();
+            // 为 case_knowledge 表添加 ocr_content 字段
+            ensureColumn('case_knowledge', 'ocr_content', 'ocr_content TEXT', (err3) => {
+              if (err3) console.error('升级 case_knowledge 表失败:', err3.message);
+              db.close();
+              console.log('数据库表创建成功');
+              console.log('数据库初始化完成');
+              resolve();
+            });
           });
         });
         return;
@@ -460,10 +464,14 @@ function initializeDatabase() {
                 if (err2) console.error('为 documents 表添加 description 列失败:', err2.message);
                 ensureColumn('evidence', 'description', 'description TEXT', (err3) => {
                   if (err3) console.error('为 evidence 表添加 description 列失败:', err3.message);
-                  db.close();
-                  console.log('数据库表创建成功');
-                  console.log('数据库初始化完成');
-                  resolve();
+                  // 为 case_knowledge 表添加 ocr_content 字段
+                  ensureColumn('case_knowledge', 'ocr_content', 'ocr_content TEXT', (err4) => {
+                    if (err4) console.error('为 case_knowledge 表添加 ocr_content 列失败:', err4.message);
+                    db.close();
+                    console.log('数据库表创建成功');
+                    console.log('数据库初始化完成');
+                    resolve();
+                  });
                 });
               });
             }
@@ -486,10 +494,14 @@ function initializeDatabase() {
               if (err2) console.error('为 documents 表添加 description 列失败:', err2.message);
               ensureColumn('evidence', 'description', 'description TEXT', (err3) => {
                 if (err3) console.error('为 evidence 表添加 description 列失败:', err3.message);
-                db.close();
-                console.log('数据库表创建成功');
-                console.log('数据库初始化完成');
-                resolve();
+                // 为 case_knowledge 表添加 ocr_content 字段
+                ensureColumn('case_knowledge', 'ocr_content', 'ocr_content TEXT', (err4) => {
+                  if (err4) console.error('为 case_knowledge 表添加 ocr_content 列失败:', err4.message);
+                  db.close();
+                  console.log('数据库表创建成功');
+                  console.log('数据库初始化完成');
+                  resolve();
+                });
               });
             });
           }
