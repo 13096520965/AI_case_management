@@ -452,8 +452,8 @@ const handleFileChange = async (e: Event) => {
   try {
     loading.value = true
     const response = await caseApi.importCases(form)
-    if (response && response.data && response.data.results) {
-      const r = response.data.results
+    if (response && response.results && response.results.failures) {
+      const r = response.results
       ElMessage.success(`导入完成：共 ${r.total} 行，成功 ${r.success} 行，失败 ${r.failures.length} 行`)
       if (r.failures.length > 0) {
         console.error('导入失败详情：', r.failures)
@@ -461,23 +461,23 @@ const handleFileChange = async (e: Event) => {
         const listHtml = `<div style="max-height:300px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #ebeef5">行号</th><th style="text-align:left;padding:6px;border-bottom:1px solid #ebeef5">原因</th></tr></thead><tbody>${r.failures.map(f=>`<tr><td style="padding:6px;border-bottom:1px solid #f2f6fc">${f.row}</td><td style="padding:6px;border-bottom:1px solid #f2f6fc">${f.reason}</td></tr>`).join('')}</tbody></table></div>`
         ElMessageBox.alert(listHtml, '导入失败详情', { dangerouslyUseHTMLString: true, confirmButtonText: '关闭' })
         // 生成 CSV 并触发下载，供用户离线查看和修正
-        try {
-          const csvHeader = 'row,reason\n'
-          const csvBody = r.failures.map((f: any) => `${f.row},"${(f.reason||'').replace(/"/g, '""')}"`).join('\n')
-          const csvContent = csvHeader + csvBody
-          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          const ts = new Date().toISOString().replace(/[:.]/g, '-')
-          a.href = url
-          a.download = `case-import-failures-${ts}.csv`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-        } catch (e) {
-          console.error('生成失败 CSV 失败', e)
-        }
+        // try {
+        //   const csvHeader = 'row,reason\n'
+        //   const csvBody = r.failures.map((f: any) => `${f.row},"${(f.reason||'').replace(/"/g, '""')}"`).join('\n')
+        //   const csvContent = csvHeader + csvBody
+        //   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        //   const url = URL.createObjectURL(blob)
+        //   const a = document.createElement('a')
+        //   const ts = new Date().toISOString().replace(/[:.]/g, '-')
+        //   a.href = url
+        //   a.download = `case-import-failures-${ts}.csv`
+        //   document.body.appendChild(a)
+        //   a.click()
+        //   document.body.removeChild(a)
+        //   URL.revokeObjectURL(url)
+        // } catch (e) {
+        //   console.error('生成失败 CSV 失败', e)
+        // }
       }
       // 如果有成功则刷新列表
       if (r.success > 0) fetchCaseList()

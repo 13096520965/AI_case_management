@@ -31,18 +31,16 @@ class Case {
     } = caseData;
 
     const { beijingNow } = require("../utils/time");
-    const sql = `
-      INSERT INTO cases (
-        case_number, internal_number, case_type, case_cause, 
-        court, target_amount, filing_date, status, team_id, case_result, industry_segment,
-        handler, is_external_agent, law_firm_name, agent_lawyer, agent_contact,
-        case_background, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    // 将 undefined 转换为 null，避免 SQL 绑定错误
+    // 更鲁棒的构建列与参数，避免列/值不匹配导致的 SQLITE_ERROR
     const now = beijingNow();
-    const result = await run(sql, [
+    const columns = [
+      'case_number', 'internal_number', 'case_type', 'case_cause',
+      'court', 'target_amount', 'filing_date', 'status', 'team_id', 'case_result', 'industry_segment',
+      'handler', 'is_external_agent', 'law_firm_name', 'agent_lawyer', 'agent_contact',
+      'case_background', 'created_at', 'updated_at'
+    ];
+
+    const values = [
       case_number ?? null,
       internal_number ?? null,
       case_type ?? null,
@@ -50,7 +48,7 @@ class Case {
       court ?? null,
       target_amount ?? null,
       filing_date ?? null,
-      status ?? "active",
+      status ?? 'active',
       team_id ?? null,
       case_result ?? null,
       industry_segment ?? null,
@@ -61,10 +59,25 @@ class Case {
       agent_contact ?? null,
       case_background ?? null,
       now,
-      now,
-    ]);
+      now
+    ];
 
-    return result.lastID;
+    if (columns.length !== values.length) {
+      throw new Error(`列与值长度不匹配：columns=${columns.length}, values=${values.length}`);
+    }
+
+    const placeholders = values.map(() => '?').join(', ');
+    const sql = `INSERT INTO cases (${columns.join(', ')}) VALUES (${placeholders})`;
+
+    try {
+      const result = await run(sql, values);
+      return result.lastID;
+    } catch (err) {
+      // 带上 SQL 与参数长度以便诊断
+      err.message = `执行插入案件失败: ${err.message}`;
+      console.error(err);
+      throw err;
+    }
   }
 
   /**

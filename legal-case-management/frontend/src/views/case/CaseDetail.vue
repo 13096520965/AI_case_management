@@ -107,7 +107,7 @@
             {{ formatAmount(caseData.targetAmount) }}
           </el-descriptions-item>
           <el-descriptions-item label="立案日期">
-            {{ formatDate(caseData.filingDate) }}
+            {{ formatDate(caseData?.filingDate||'') }}
           </el-descriptions-item>
           <el-descriptions-item label="产业板块">
             {{ caseData.industrySegment || '-' }}
@@ -779,9 +779,23 @@ const formatAmount = (amount: number) => {
   });
 };
 
-const formatDate = (date: string) => {
+const formatDate = (date: string|undefined|number) => {
   if (!date) return '-';
-  return date.split('T')[0];
+  // 检查是否为数字类型，如果是则转换为Date对象
+  if (typeof date === 'number') {
+    const dateObj = new Date(date);
+    // 检查日期是否有效
+    if (isNaN(dateObj.getTime())) {
+      // 尝试作为天数处理（Excel格式等）
+      const daysSinceEpoch = date;
+      const millisecondsPerDay = 24 * 60 * 60 * 1000;
+      const dateObjFromDays = new Date(daysSinceEpoch * millisecondsPerDay);
+      return dateObjFromDays.toISOString().split('T')[0];
+    }
+    return dateObj.toISOString().split('T')[0];
+  }
+  
+  return date?.split('T')[0];
 };
 
 const formatDateTime = (datetime: string) => {

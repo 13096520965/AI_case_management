@@ -136,7 +136,7 @@ const importCases = async (req, res) => {
         case_cause: mapped.case_cause,
         court: mapped.court || null,
         target_amount: mapped.target_amount ? Number(mapped.target_amount) : null,
-        filing_date: mapped.filing_date || null,
+        filing_date: null,
         // 将中文状态转换为系统内部代码（如果是中文），否则保持原样
         status: statusChineseToInternal(mapped.status) ,
         industry_segment: mapped.industry_segment,
