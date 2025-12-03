@@ -887,4 +887,604 @@ describe('CostCalculator - Property-Based Tests', () => {
       )
     })
   })
+
+  // Feature: litigation-cost-calculator-enhancement, Property 17: Preservation fee calculation for property cases
+  // Validates: Requirements 11.1, 11.2, 11.3
+  describe('Property 17: Preservation fee calculation for property cases', () => {
+    // Helper function to calculate expected preservation fee
+    const calculateExpectedPreservationFee = (targetAmount: number): number => {
+      const MAX_PRESERVATION_FEE = 5000
+      
+      // Tier 1: Not exceeding 1000 yuan - fixed 30 yuan
+      if (targetAmount <= 1000) {
+        return 30
+      }
+      
+      let totalFee = 0
+      
+      // Tier 2: 1000 to 100,000 yuan - 1% rate
+      if (targetAmount > 1000 && targetAmount <= 100000) {
+        const tier2Amount = targetAmount - 1000
+        const tier2Fee = tier2Amount * 0.01
+        totalFee = 30 + tier2Fee
+      }
+      // Tier 3: Over 100,000 yuan - 0.5% rate for excess
+      else if (targetAmount > 100000) {
+        const tier2Amount = 100000 - 1000 // 99,000
+        const tier2Fee = tier2Amount * 0.01 // 990
+        const tier3Amount = targetAmount - 100000
+        const tier3Fee = tier3Amount * 0.005
+        totalFee = 30 + tier2Fee + tier3Fee
+      }
+      
+      // Round to 2 decimal places
+      totalFee = Math.round(totalFee * 100) / 100
+      
+      // Apply maximum limit of 5000 yuan
+      if (totalFee > MAX_PRESERVATION_FEE) {
+        totalFee = MAX_PRESERVATION_FEE
+      }
+      
+      return totalFee
+    }
+
+    it('should calculate preservation fee correctly for any target amount', () => {
+      fc.assert(
+        fc.property(
+          fc.float({ min: 0, max: 100000000, noNaN: true, noDefaultInfinity: true }),
+          (targetAmount) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true
+                }
+              }
+            })
+            
+            // Call the preservation fee calculation function
+            const result = wrapper.vm.calculatePreservationFeeForCase(targetAmount)
+            const expectedFee = calculateExpectedPreservationFee(targetAmount)
+            
+            // Verify the fee is calculated correctly
+            expect(result).toBeDefined()
+            expect(result.fee).toBe(expectedFee)
+            
+            // Verify calculation process is provided
+            expect(result.calculationProcess).toBeDefined()
+            expect(Array.isArray(result.calculationProcess)).toBe(true)
+            expect(result.calculationProcess.length).toBeGreaterThan(0)
+            
+            // Verify each step in calculation process is a string
+            result.calculationProcess.forEach((step: string) => {
+              expect(typeof step).toBe('string')
+              expect(step.length).toBeGreaterThan(0)
+            })
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should not exceed 5000 yuan maximum limit', () => {
+      fc.assert(
+        fc.property(
+          fc.float({ min: 0, max: 100000000, noNaN: true, noDefaultInfinity: true }),
+          (targetAmount) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true
+                }
+              }
+            })
+            
+            const result = wrapper.vm.calculatePreservationFeeForCase(targetAmount)
+            
+            // Verify the fee does not exceed 5000 yuan
+            expect(result.fee).toBeLessThanOrEqual(5000)
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should return fixed 30 yuan for amounts not exceeding 1000 yuan', () => {
+      fc.assert(
+        fc.property(
+          fc.float({ min: 0, max: 1000, noNaN: true, noDefaultInfinity: true }),
+          (targetAmount) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true
+                }
+              }
+            })
+            
+            const result = wrapper.vm.calculatePreservationFeeForCase(targetAmount)
+            
+            // Verify the fee is exactly 30 yuan
+            expect(result.fee).toBe(30)
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should calculate tier 2 correctly for amounts between 1000 and 100,000 yuan', () => {
+      fc.assert(
+        fc.property(
+          fc.float({ min: 1001, max: 100000, noNaN: true, noDefaultInfinity: true }),
+          (targetAmount) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true
+                }
+              }
+            })
+            
+            const result = wrapper.vm.calculatePreservationFeeForCase(targetAmount)
+            
+            // Calculate expected fee: 30 + (amount - 1000) * 1%
+            const tier2Amount = targetAmount - 1000
+            const tier2Fee = tier2Amount * 0.01
+            const expectedFee = Math.round((30 + tier2Fee) * 100) / 100
+            
+            expect(result.fee).toBe(expectedFee)
+            expect(result.fee).toBeGreaterThan(30)
+            expect(result.fee).toBeLessThanOrEqual(1020) // 30 + 99000 * 0.01
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should calculate tier 3 correctly for amounts exceeding 100,000 yuan', () => {
+      fc.assert(
+        fc.property(
+          fc.float({ min: 100001, max: 10000000, noNaN: true, noDefaultInfinity: true }),
+          (targetAmount) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true
+                }
+              }
+            })
+            
+            const result = wrapper.vm.calculatePreservationFeeForCase(targetAmount)
+            
+            // Calculate expected fee
+            const tier2Amount = 100000 - 1000 // 99,000
+            const tier2Fee = tier2Amount * 0.01 // 990
+            const tier3Amount = targetAmount - 100000
+            const tier3Fee = tier3Amount * 0.005 // 0.5%
+            const expectedFee = Math.round((30 + tier2Fee + tier3Fee) * 100) / 100
+            
+            // Apply max limit
+            const finalExpectedFee = Math.min(expectedFee, 5000)
+            
+            expect(result.fee).toBe(finalExpectedFee)
+            expect(result.fee).toBeGreaterThan(1020) // Should be more than tier 2 max
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+  })
+
+  // Feature: litigation-cost-calculator-enhancement, Property 18: Calculation process is displayed
+  // Validates: Requirements 11.4, 11.5
+  describe('Property 18: Calculation process is displayed', () => {
+    it('should include calculationProcess array in all calculation results', () => {
+      fc.assert(
+        fc.property(
+          fc.constantFrom(...caseTypes.map(ct => ct.value)),
+          fc.float({ min: 0, max: 100000000, noNaN: true, noDefaultInfinity: true }),
+          (caseType, targetAmount) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true
+                }
+              }
+            })
+            
+            // Set up the form
+            wrapper.vm.litigationForm.caseType = caseType
+            wrapper.vm.handleCaseTypeChange(caseType)
+            
+            const config = caseTypes.find(ct => ct.value === caseType)
+            if (config?.requiresAmount) {
+              wrapper.vm.litigationForm.targetAmount = targetAmount
+            }
+            
+            // Perform calculation
+            wrapper.vm.calculateLitigationFee()
+            
+            // Verify result has calculationProcess
+            const result = wrapper.vm.litigationResult
+            expect(result).toBeDefined()
+            expect(result.calculationProcess).toBeDefined()
+            expect(Array.isArray(result.calculationProcess)).toBe(true)
+            expect(result.calculationProcess.length).toBeGreaterThan(0)
+            
+            // Verify each step is a non-empty string
+            result.calculationProcess.forEach((step: string) => {
+              expect(typeof step).toBe('string')
+              expect(step.length).toBeGreaterThan(0)
+            })
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should include detailed tier information for tiered calculation cases', () => {
+      fc.assert(
+        fc.property(
+          fc.constantFrom('财产案件', '离婚案件', '人格权案件'),
+          fc.float({ min: 50000, max: 10000000, noNaN: true, noDefaultInfinity: true }),
+          (caseType, targetAmount) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true
+                }
+              }
+            })
+            
+            wrapper.vm.litigationForm.caseType = caseType
+            wrapper.vm.handleCaseTypeChange(caseType)
+            wrapper.vm.litigationForm.targetAmount = targetAmount
+            wrapper.vm.calculateLitigationFee()
+            
+            const result = wrapper.vm.litigationResult
+            expect(result).toBeDefined()
+            expect(result.calculationProcess).toBeDefined()
+            expect(Array.isArray(result.calculationProcess)).toBe(true)
+            
+            // For tiered calculations, should have multiple steps
+            // Property case with amount > 10000 should have at least 2 steps (tier calculation + total)
+            // Divorce case with amount > 200000 should have at least 2 steps (base + excess + total)
+            // Personality rights case with amount > 50000 should have at least 2 steps
+            if (caseType === '财产案件' && targetAmount > 10000) {
+              expect(result.calculationProcess.length).toBeGreaterThanOrEqual(2)
+            } else if (caseType === '离婚案件' && targetAmount > 200000) {
+              expect(result.calculationProcess.length).toBeGreaterThanOrEqual(3)
+            } else if (caseType === '人格权案件' && targetAmount > 50000) {
+              expect(result.calculationProcess.length).toBeGreaterThanOrEqual(3)
+            }
+            
+            // Verify the last step typically contains "合计" (total) for multi-tier calculations
+            const lastStep = result.calculationProcess[result.calculationProcess.length - 1]
+            if (result.calculationProcess.length > 1) {
+              // For multi-step calculations, often the last step is a total
+              expect(typeof lastStep).toBe('string')
+              expect(lastStep.length).toBeGreaterThan(0)
+            }
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should include simple explanation for fixed fee cases', () => {
+      fc.assert(
+        fc.property(
+          fc.constantFrom('其他非财产案件', '劳动争议案件', '商标、专利、海事行政案件', '其他行政案件', '管辖权异议不成立案件'),
+          (caseType) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true
+                }
+              }
+            })
+            
+            wrapper.vm.litigationForm.caseType = caseType
+            wrapper.vm.handleCaseTypeChange(caseType)
+            wrapper.vm.calculateLitigationFee()
+            
+            const result = wrapper.vm.litigationResult
+            expect(result).toBeDefined()
+            expect(result.calculationProcess).toBeDefined()
+            expect(Array.isArray(result.calculationProcess)).toBe(true)
+            
+            // Fixed fee cases should have at least 1 step explaining the fixed fee
+            expect(result.calculationProcess.length).toBeGreaterThanOrEqual(1)
+            
+            // The explanation should mention the case type or fixed fee
+            const explanation = result.calculationProcess.join(' ')
+            expect(explanation.length).toBeGreaterThan(0)
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should include calculation process for IP cases with target amount', () => {
+      fc.assert(
+        fc.property(
+          fc.float({ min: 1, max: 10000000, noNaN: true, noDefaultInfinity: true }),
+          (targetAmount) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true
+                }
+              }
+            })
+            
+            wrapper.vm.litigationForm.caseType = '知识产权民事案件'
+            wrapper.vm.handleCaseTypeChange('知识产权民事案件')
+            wrapper.vm.litigationForm.targetAmount = targetAmount
+            wrapper.vm.calculateLitigationFee()
+            
+            const result = wrapper.vm.litigationResult
+            expect(result).toBeDefined()
+            expect(result.calculationProcess).toBeDefined()
+            expect(Array.isArray(result.calculationProcess)).toBe(true)
+            expect(result.calculationProcess.length).toBeGreaterThan(0)
+            
+            // IP case with amount should include property case calculation process
+            // Should have at least 2 steps (IP explanation + property calculation steps)
+            if (targetAmount > 10000) {
+              expect(result.calculationProcess.length).toBeGreaterThanOrEqual(2)
+            }
+            
+            // First step should mention IP case
+            const firstStep = result.calculationProcess[0]
+            expect(firstStep).toContain('知识产权')
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+  })
+
+  // Feature: litigation-cost-calculator-enhancement, Property 19: Preservation fee visibility
+  // Validates: Requirements 11.6, 11.7
+  describe('Property 19: Preservation fee visibility', () => {
+    it('should not display preservation fee for case types that do not require target amount', () => {
+      fc.assert(
+        fc.property(
+          fc.constantFrom(...caseTypes.filter(ct => !ct.requiresAmount).map(ct => ct.value)),
+          (caseType) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true, ElTimeline: true, ElTimelineItem: true
+                }
+              }
+            })
+            
+            wrapper.vm.litigationForm.caseType = caseType
+            wrapper.vm.handleCaseTypeChange(caseType)
+            wrapper.vm.calculateLitigationFee()
+            
+            const result = wrapper.vm.litigationResult
+            expect(result).toBeDefined()
+            
+            // Verify preservation fee is not included in result
+            expect(result.preservationFee).toBeUndefined()
+            
+            // Verify shouldShowPreservationFee computed property is false
+            expect(wrapper.vm.shouldShowPreservationFee).toBe(false)
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should not display preservation fee when target amount is zero', () => {
+      fc.assert(
+        fc.property(
+          fc.constantFrom(...caseTypes.filter(ct => ct.requiresAmount).map(ct => ct.value)),
+          (caseType) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true, ElTimeline: true, ElTimelineItem: true
+                }
+              }
+            })
+            
+            wrapper.vm.litigationForm.caseType = caseType
+            wrapper.vm.handleCaseTypeChange(caseType)
+            wrapper.vm.litigationForm.targetAmount = 0
+            wrapper.vm.calculateLitigationFee()
+            
+            const result = wrapper.vm.litigationResult
+            expect(result).toBeDefined()
+            
+            // Verify preservation fee is not included in result when amount is zero
+            expect(result.preservationFee).toBeUndefined()
+            
+            // Verify shouldShowPreservationFee computed property is false
+            expect(wrapper.vm.shouldShowPreservationFee).toBe(false)
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should display preservation fee when case type requires target amount and target amount is greater than zero', () => {
+      fc.assert(
+        fc.property(
+          fc.constantFrom(...caseTypes.filter(ct => ct.requiresAmount).map(ct => ct.value)),
+          fc.float({ min: 1, max: 100000000, noNaN: true, noDefaultInfinity: true }),
+          (caseType, targetAmount) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true, ElTimeline: true, ElTimelineItem: true
+                }
+              }
+            })
+            
+            wrapper.vm.litigationForm.caseType = caseType
+            wrapper.vm.handleCaseTypeChange(caseType)
+            wrapper.vm.litigationForm.targetAmount = targetAmount
+            wrapper.vm.calculateLitigationFee()
+            
+            const result = wrapper.vm.litigationResult
+            expect(result).toBeDefined()
+            
+            // Verify preservation fee is included in result
+            expect(result.preservationFee).toBeDefined()
+            expect(typeof result.preservationFee).toBe('number')
+            expect(result.preservationFee).toBeGreaterThan(0)
+            expect(result.preservationFee).toBeLessThanOrEqual(5000)
+            
+            // Verify preservation calculation process is included
+            expect(result.preservationCalculationProcess).toBeDefined()
+            expect(Array.isArray(result.preservationCalculationProcess)).toBe(true)
+            expect(result.preservationCalculationProcess.length).toBeGreaterThan(0)
+            
+            // Verify shouldShowPreservationFee computed property is true
+            expect(wrapper.vm.shouldShowPreservationFee).toBe(true)
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should correctly toggle preservation fee visibility when switching between case types', () => {
+      fc.assert(
+        fc.property(
+          fc.constantFrom(...caseTypes.filter(ct => ct.requiresAmount).map(ct => ct.value)),
+          fc.constantFrom(...caseTypes.filter(ct => !ct.requiresAmount).map(ct => ct.value)),
+          fc.float({ min: 1000, max: 1000000, noNaN: true, noDefaultInfinity: true }),
+          (caseTypeWithAmount, caseTypeWithoutAmount, targetAmount) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true, ElTimeline: true, ElTimelineItem: true
+                }
+              }
+            })
+            
+            // First, calculate with case type that requires amount
+            wrapper.vm.litigationForm.caseType = caseTypeWithAmount
+            wrapper.vm.handleCaseTypeChange(caseTypeWithAmount)
+            wrapper.vm.litigationForm.targetAmount = targetAmount
+            wrapper.vm.calculateLitigationFee()
+            
+            let result = wrapper.vm.litigationResult
+            expect(result).toBeDefined()
+            expect(result.preservationFee).toBeDefined()
+            expect(wrapper.vm.shouldShowPreservationFee).toBe(true)
+            
+            // Then, switch to case type that does not require amount
+            wrapper.vm.litigationForm.caseType = caseTypeWithoutAmount
+            wrapper.vm.handleCaseTypeChange(caseTypeWithoutAmount)
+            wrapper.vm.calculateLitigationFee()
+            
+            result = wrapper.vm.litigationResult
+            expect(result).toBeDefined()
+            expect(result.preservationFee).toBeUndefined()
+            expect(wrapper.vm.shouldShowPreservationFee).toBe(false)
+          }
+        ),
+        { numRuns: 20 }
+      )
+    }, 10000)
+
+    it('should not display preservation fee when switching from positive amount to zero', () => {
+      fc.assert(
+        fc.property(
+          fc.constantFrom(...caseTypes.filter(ct => ct.requiresAmount).map(ct => ct.value)),
+          fc.float({ min: 1000, max: 1000000, noNaN: true, noDefaultInfinity: true }),
+          (caseType, initialAmount) => {
+            const wrapper = mount(CostCalculator, {
+              global: {
+                components: { ElSelect, ElFormItem, ElInputNumber },
+                stubs: {
+                  PageHeader: true, ElCard: true, ElRow: true, ElCol: true, ElMenu: true,
+                  ElMenuItem: true, ElIcon: true, ElForm: true, ElButton: true, ElDivider: true,
+                  ElDescriptions: true, ElDescriptionsItem: true, ElDatePicker: true,
+                  ElRadioGroup: true, ElRadio: true, ElTimeline: true, ElTimelineItem: true
+                }
+              }
+            })
+            
+            // First, calculate with positive amount
+            wrapper.vm.litigationForm.caseType = caseType
+            wrapper.vm.handleCaseTypeChange(caseType)
+            wrapper.vm.litigationForm.targetAmount = initialAmount
+            wrapper.vm.calculateLitigationFee()
+            
+            let result = wrapper.vm.litigationResult
+            expect(result).toBeDefined()
+            expect(result.preservationFee).toBeDefined()
+            expect(wrapper.vm.shouldShowPreservationFee).toBe(true)
+            
+            // Then, calculate with zero amount
+            wrapper.vm.litigationForm.targetAmount = 0
+            wrapper.vm.calculateLitigationFee()
+            
+            result = wrapper.vm.litigationResult
+            expect(result).toBeDefined()
+            expect(result.preservationFee).toBeUndefined()
+            expect(wrapper.vm.shouldShowPreservationFee).toBe(false)
+          }
+        ),
+        { numRuns: 20 }
+      )
+    }, 10000)
+  })
 })

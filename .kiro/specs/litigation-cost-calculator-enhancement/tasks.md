@@ -289,3 +289,103 @@
 
   - **Property 1: All case types are available**
   - **Validates: Requirements 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1, 8.1, 9.1**
+
+- [x] 17. 实现保全费计算函数
+
+
+
+
+  - 在CostCalculator.vue中创建calculatePreservationFeeForCase函数
+  - 实现三档分段累计计算逻辑：不超过1000元固定30元，1000元至10万元按1%，超过10万元按0.5%
+  - 应用5000元的最高限额
+  - 返回包含fee和calculationProcess的对象
+  - _Requirements: 11.1, 11.2, 11.3_
+
+- [x] 17.1 编写属性测试：保全费计算
+
+
+  - **Property 17: Preservation fee calculation for property cases**
+  - **Validates: Requirements 11.1, 11.2, 11.3**
+  - 测试任意标的额的保全费计算是否正确
+  - 测试保全费不超过5000元的限制
+
+- [x] 18. 更新计算函数以生成详细计算过程
+
+
+
+
+
+  - 修改calculatePropertyCase函数，返回calculationProcess数组，列出每个分段的计算详情
+  - 修改calculateDivorceCase函数，返回calculationProcess数组，显示基础费用和超额部分计算
+  - 修改calculatePersonalityRightsCase函数，返回calculationProcess数组，显示各档计算详情
+  - 修改calculateIPCase函数，当有标的额时包含计算过程
+  - 其他固定费用案件返回简单的计算说明
+  - _Requirements: 11.4, 11.5_
+
+- [x] 18.1 编写属性测试：计算过程显示
+
+
+  - **Property 18: Calculation process is displayed**
+  - **Validates: Requirements 11.4, 11.5**
+  - 测试所有案件类型的计算结果都包含calculationProcess
+  - 测试分段计算的案件包含详细的分段信息
+
+- [x] 19. 更新结果显示UI
+
+
+
+
+
+  - 在el-descriptions中添加保全费显示项（使用v-if条件显示）
+  - 添加计算过程显示区域，使用el-timeline或el-steps展示计算步骤
+  - 实现保全费的条件显示逻辑：仅当案件类型需要标的额且标的额大于零时显示
+  - 格式化计算过程的显示，确保清晰易读
+  - _Requirements: 11.1, 11.6, 11.7_
+
+- [x] 19.1 编写属性测试：保全费可见性
+
+
+  - **Property 19: Preservation fee visibility**
+  - **Validates: Requirements 11.6, 11.7**
+  - 测试不需要标的额的案件类型不显示保全费
+  - 测试标的额为零时不显示保全费
+  - 测试标的额大于零时显示保全费
+
+- [x] 20. 集成保全费到主计算流程
+
+
+
+
+
+  - 在calculateLitigationFee函数中，判断案件类型是否需要标的额
+  - 当需要标的额且标的额大于零时，调用calculatePreservationFeeForCase
+  - 将保全费和保全费计算过程添加到litigationResult对象中
+  - 确保保全费计算不影响诉讼费计算
+  - _Requirements: 11.1, 11.2, 11.3_
+-
+
+- [x] 21. Checkpoint - 确保所有测试通过
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  - 运行所有单元测试和属性测试
+  - 确保所有测试通过，如有问题请询问用户
+  - 验证UI正确显示保全费和计算过程

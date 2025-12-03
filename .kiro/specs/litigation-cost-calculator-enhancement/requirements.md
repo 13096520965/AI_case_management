@@ -128,3 +128,17 @@
 2. WHEN 用户选择不需要标的额的案件类型 THEN 系统 SHALL 隐藏标的额输入字段
 3. WHEN 案件类型切换 THEN 系统 SHALL 立即更新界面显示状态
 4. WHEN 标的额字段被隐藏 THEN 系统 SHALL 清除之前输入的标的额数值
+
+### Requirement 11
+
+**User Story:** 作为法律工作者，我希望在诉讼费计算结果中看到保全费和详细的计算过程，以便全面了解案件的费用构成和计算依据。
+
+#### Acceptance Criteria
+
+1. WHEN 案件类型需要标的额且标的额大于零 THEN 系统 SHALL 计算并显示保全费
+2. WHEN 保全费计算完成 THEN 系统 SHALL 根据标的额按照保全费计算规则显示费用
+3. WHEN 保全费计算结果超过5000元 THEN 系统 SHALL 将保全费限制为5000元
+4. WHEN 诉讼费计算完成 THEN 系统 SHALL 显示详细的计算过程，包括每个计算步骤和公式
+5. WHEN 计算过程涉及分段计算 THEN 系统 SHALL 列出每个分段的金额、费率和费用
+6. WHEN 案件类型不需要标的额 THEN 系统 SHALL 不显示保全费字段
+7. WHEN 标的额为零 THEN 系统 SHALL 不显示保全费字段

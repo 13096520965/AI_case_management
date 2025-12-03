@@ -84,6 +84,8 @@ const caseTypes: CaseTypeConfig[] = [
 interface CalculationResult {
   fee: number           // 计算出的诉讼费
   description: string   // 计算说明
+  preservationFee?: number  // 保全费（可选）
+  calculationProcess?: string[]  // 详细计算过程（可选）
   breakdown?: {         // 可选的费用明细
     baseFee?: number
     additionalFee?: number
@@ -91,6 +93,7 @@ interface CalculationResult {
       range: string
       amount: number
       rate: number
+      fee: number
     }>
   }
 }
@@ -106,6 +109,33 @@ interface LitigationForm {
 ```
 
 ## Data Models
+
+### Preservation Fee Calculation Tiers (保全费)
+
+保全费按照《诉讼费用交纳办法》第十四条规定计算：
+
+```typescript
+interface PreservationFeeTier {
+  min: number          // 最小金额（不含）
+  max: number | null   // 最大金额（含），null表示无上限
+  rate: number         // 费率（百分比）
+  baseFee: number      // 基础费用
+}
+
+const preservationTiers: PreservationFeeTier[] = [
+  { min: 0, max: 1000, rate: 0, baseFee: 30 },
+  { min: 1000, max: 100000, rate: 1.0, baseFee: 30 },
+  { min: 100000, max: null, rate: 0.5, baseFee: 1020 }
+]
+
+const MAX_PRESERVATION_FEE = 5000  // 保全费最高不超过5000元
+```
+
+计算规则：
+- 财产数额不超过1000元或者不涉及财产数额的，每件交纳30元
+- 超过1000元至10万元的部分，按照1%交纳
+- 超过10万元的部分，按照0.5%交纳
+- 保全费最高不超过5000元
 
 ### Fee Calculation Tiers (财产案件)
 
@@ -256,6 +286,18 @@ After consolidation, here are the unique properties:
 *For any* case type change that hides the target amount field, the target amount value SHALL be reset to zero
 **Validates: Requirements 10.4**
 
+### Property 17: Preservation fee calculation for property cases
+*For any* case with target amount greater than zero, the preservation fee SHALL be calculated according to the three-tier preservation fee formula and SHALL not exceed 5000 yuan
+**Validates: Requirements 11.1, 11.2, 11.3**
+
+### Property 18: Calculation process is displayed
+*For any* successful calculation, the system SHALL display a detailed calculation process including all steps and formulas used
+**Validates: Requirements 11.3, 11.4**
+
+### Property 19: Preservation fee visibility
+*For any* case type that does not require target amount or has target amount equal to zero, the preservation fee field SHALL not be displayed
+**Validates: Requirements 11.5, 11.6**
+
 ## Error Handling
 
 ### Input Validation
@@ -332,6 +374,9 @@ We will use fast-check as the property-based testing library for JavaScript/Type
 4. **Property 6**: Generate random amounts, verify IP = Property calculation
 5. **Property 11-13**: Generate random amounts in ranges, verify special calculations
 6. **Property 14-16**: UI behavior properties (component testing)
+7. **Property 17**: Generate random amounts, verify preservation fee tiered calculation
+8. **Property 18**: Verify calculation process is present and contains expected steps
+9. **Property 19**: Verify preservation fee visibility based on case type and amount
 
 ### Integration Testing
 
