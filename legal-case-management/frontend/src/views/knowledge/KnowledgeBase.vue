@@ -329,6 +329,8 @@
             style="width: 100%"
             :loading="caseListLoading"
             @focus="loadClosedCases"
+            @change="handleCaseSelect"
+            @clear="handleCaseClear"
           >
             <el-option
               v-for="caseItem in closedCaseList"
@@ -769,6 +771,35 @@ const loadClosedCases = async () => {
   } finally {
     caseListLoading.value = false;
   }
+};
+
+// 选择关联案件时自动填充表单
+const handleCaseSelect = (caseId: number | string | undefined) => {
+  if (!caseId) return;
+  
+  const selectedCase = closedCaseList.value.find((c) => c.id === caseId);
+  if (selectedCase) {
+    // 用案件信息填充表单
+    if (selectedCase.case_cause) formData.case_cause = selectedCase.case_cause;
+    if (selectedCase.case_result) formData.case_result = selectedCase.case_result;
+    // 可以根据需要填充更多字段
+  }
+};
+
+// 清除关联案件时清空表单
+const handleCaseClear = () => {
+  // 清空表单内容（保留case_id为undefined）
+  formData.case_cause = '';
+  formData.dispute_focus = '';
+  formData.legal_issues = '';
+  formData.case_result = '';
+  formData.key_evidence = '';
+  formData.legal_basis = '';
+  formData.case_analysis = '';
+  formData.practical_significance = '';
+  formData.keywords = '';
+  formData.tags = '';
+  formData.win_rate_reference = '';
 };
 
 /**
