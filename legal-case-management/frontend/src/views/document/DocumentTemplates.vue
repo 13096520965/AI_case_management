@@ -304,7 +304,9 @@
               法定代表人：{{ party.legalRepresentative }}
             </div>
             <div v-if="party.identifier" class="party-field">
-              标识信息：{{ party.identifier }}
+              {{
+                party.entityType === "企业" ? "统一社会信用代码:" : "身份证号:"
+              }}{{ party.identifier }}
             </div>
             <div
               v-if="party.contactPhone || party.contactEmail"
@@ -369,7 +371,7 @@ const documentTypes = [
 
 // 固定变量定义
 const fixedVariables = [
-  { key: "原告信息", label: "原告信息" },
+  { key: "原告主体信息", label: "原告主体信息" },
   { key: "被告主体信息", label: "被告主体信息" },
   { key: "受理法院名称", label: "受理法院名称" },
   { key: "日期", label: "日期" },
@@ -452,7 +454,7 @@ const templateRules: FormRules = {
   content: [{ required: true, message: "请输入模板内容", trigger: "blur" }],
 };
 
-// Computed
+// Computed & state for生成内容
 const extractedVariables = computed(() => {
   const regex = /\{\{([^}]+)\}\}/g;
   const matches = templateForm.content.matchAll(regex);
@@ -474,17 +476,24 @@ const currentTemplateVariables = computed(() => {
   return Array.from(variables);
 });
 
-const generatedContent = computed(() => {
-  if (!currentTemplate.value) return "";
-  let content = currentTemplate.value.content;
+// 文书预览内容，支持自动填充和用户手动编辑
+const generatedContent = ref("");
+
+const updateGeneratedContent = () => {
+  if (!currentTemplate.value) {
+    generatedContent.value = "";
+    return;
+  }
+
+  let content = currentTemplate.value.content as string;
   for (const [key, value] of Object.entries(generateForm.variables)) {
     content = content.replace(
       new RegExp(`\\{\\{${key}\\}\\}`, "g"),
       value || `{{${key}}}`
     );
   }
-  return content;
-});
+  generatedContent.value = content;
+};
 
 // Methods
 const loadTemplates = async () => {
@@ -595,6 +604,8 @@ const handleGenerate = async (template: any) => {
   generateForm.caseId = null;
   generateForm.variables = {};
   selectedCaseParties.value = [];
+  // 初始化文书预览为当前模板原始内容
+  generatedContent.value = template.content || "";
   showGenerateDialog.value = true;
   showPreviewDialog.value = false;
 
@@ -611,11 +622,16 @@ const formatPartyInfo = (party: any) => {
   // 名称
   if (party.name) parts.push(`名称：${party.name}`);
 
-  // 实体类型
-  if (party.entityType) parts.push(`实体类型：${party.entityType}`);
+  // // 实体类型
+  // if (party.entityType) parts.push(`实体类型：${party.entityType}`);
 
   // 标识信息
-  if (party.identifier) parts.push(`标识信息：${party.identifier}`);
+  if (party.identifier)
+    parts.push(
+      `${party.entityType === "企业" ? "统一社会信用代码：" : "身份证号："}${
+        party.identifier
+      }`
+    );
 
   // 法定代表人
   if (party.legalRepresentative)
@@ -722,15 +738,15 @@ const handleCaseChange = async (caseId: number) => {
       });
     }
 
-    // 填充原告信息
-    if (templateVars.includes("原告信息")) {
+    // 填充原告主体信息
+    if (templateVars.includes("原告主体信息")) {
       const plaintiff = parties.find(
         (p) => p.partyType === "原告" || p.partyType === "plaintiff"
       );
       if (plaintiff) {
-        variables["原告信息"] = formatPartyInfo(plaintiff);
+        variables["原告主体信息"] = formatPartyInfo(plaintiff);
       } else {
-        variables["原告信息"] = "未找到原告信息";
+        variables["原告主体信息"] = "未找到原告主体信息";
       }
     }
 
@@ -792,11 +808,14 @@ const handleCaseChange = async (caseId: number) => {
       }
     }
 
-    // 更新变量（保留用户手动修改的值）
+    // 更新变量（优先使用当前案件自动填充的数据，必要时可保留用户手动添加的其它键）
     generateForm.variables = {
-      ...variables,
       ...generateForm.variables,
+      ...variables,
     };
+
+    // 根据最新变量更新文书预览内容
+    updateGeneratedContent();
 
     ElMessage.success("已自动填充变量数据");
   } catch (error) {
