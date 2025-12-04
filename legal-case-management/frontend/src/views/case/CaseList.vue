@@ -1,7 +1,7 @@
 <template>
   <div class="case-list-container">
     <PageHeader title="案件管理" />
-    
+
     <!-- Search and Filter Section -->
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" class="search-form">
@@ -14,7 +14,7 @@
             @clear="handleSearch"
           />
         </el-form-item>
-        
+
         <el-form-item label="案件类型">
           <el-select
             v-model="searchForm.caseType"
@@ -29,7 +29,7 @@
             <el-option label="劳动仲裁" value="劳动仲裁" />
           </el-select>
         </el-form-item>
-        
+
         <el-form-item label="案件状态">
           <el-select
             v-model="searchForm.status"
@@ -44,7 +44,7 @@
             <el-option label="已归档" value="已归档" />
           </el-select>
         </el-form-item>
-        
+
         <el-form-item label="产业板块">
           <el-select
             v-model="searchForm.industrySegment"
@@ -71,7 +71,7 @@
             <el-option label="新博卓畅" value="新博卓畅" />
           </el-select>
         </el-form-item>
-        
+
         <el-form-item label="当事人">
           <el-input
             v-model="searchForm.partyName"
@@ -81,7 +81,7 @@
             @clear="handleSearch"
           />
         </el-form-item>
-        
+
         <el-form-item label="案件承接人">
           <el-input
             v-model="searchForm.handler"
@@ -91,7 +91,7 @@
             @clear="handleSearch"
           />
         </el-form-item>
-        
+
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>
@@ -111,10 +111,19 @@
         <el-icon><Plus /></el-icon>
         新建案件
       </el-button>
-      <el-button style="margin-left:8px" @click="handleImportClick">
+      <el-button style="margin-left: 8px" @click="handleImportClick">
         导入案件
       </el-button>
-      <input ref="importFile" type="file" accept=".xls,.xlsx" style="display:none" @change="handleFileChange" />
+      <el-button style="margin-left: 8px" @click="handleDownloadTemplate">
+        下载导入模板
+      </el-button>
+      <input
+        ref="importFile"
+        type="file"
+        accept=".xls,.xlsx"
+        style="display: none"
+        @change="handleFileChange"
+      />
     </div>
 
     <!-- Case List Table -->
@@ -125,23 +134,19 @@
         stripe
         @sort-change="handleSortChange"
       >
-        <el-table-column
+        <!-- <el-table-column
           prop="internal_number"
           label="内部编号"
           width="150"
           sortable="custom"
-        />
+        /> -->
         <el-table-column
           prop="case_number"
           label="案号"
           width="180"
           sortable="custom"
         />
-        <el-table-column
-          prop="case_type"
-          label="案件类型"
-          width="100"
-        >
+        <el-table-column prop="case_type" label="案件类型" width="100">
           <template #default="{ row }">
             <el-tag :type="getCaseTypeTag(row.case_type)">
               {{ row.case_type }}
@@ -154,12 +159,191 @@
           min-width="150"
           show-overflow-tooltip
         />
-         <el-table-column
+        <el-table-column
           prop="handler"
           label="案件承接人"
           width="120"
           show-overflow-tooltip
         />
+
+        <!-- 当事人三列：原告 / 被告 / 第三人 -->
+        <el-table-column label="原告" width="240">
+          <template #default="{ row }">
+            <div v-if="row.plaintiffs && row.plaintiffs.length > 0">
+              <el-popover placement="top" trigger="hover" :width="320">
+                <template #reference>
+                  <div
+                    class="party-display"
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                      cursor: pointer;
+                    "
+                  >
+                    <el-tag type="danger" size="small">{{
+                      truncateName(getPartyName(row.plaintiffs[0].name))
+                    }}</el-tag>
+                    <span v-if="row.plaintiffs.length > 1" class="party-more"
+                      >等{{ row.plaintiffs.length }}人</span
+                    >
+                  </div>
+                </template>
+
+                <div class="party-popover-list">
+                  <div
+                    v-for="(p, idx) in row.plaintiffs"
+                    :key="p.id || idx"
+                    class="party-popover-item"
+                  >
+                    <a class="party-link">{{ p.name || "-" }}</a>
+
+                    <div
+                      style="color: #909399; font-size: 12px; margin-top: 4px"
+                    >
+                      {{
+                        p.entity_type === "企业"
+                          ? "统一社会信用代码: "
+                          : "身份证号: "
+                      }}{{ p.unified_credit_code || p.id_number || "-" }}
+                    </div>
+
+                    <div
+                      style="color: #909399; font-size: 12px; margin-top: 4px"
+                    >
+                      联系电话: {{ p.contact_phone || p.contact || "-" }}
+                    </div>
+                    <div
+                      style="color: #909399; font-size: 12px; margin-top: 4px"
+                    >
+                      地址: {{ p.address || "-" }}
+                    </div>
+                  </div>
+                </div>
+              </el-popover>
+            </div>
+            <div v-else>-</div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="被告" width="240">
+          <template #default="{ row }">
+            <div v-if="row.defendants && row.defendants.length > 0">
+              <el-popover placement="top" trigger="hover" :width="320">
+                <template #reference>
+                  <div
+                    class="party-display"
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                      cursor: pointer;
+                    "
+                  >
+                    <el-tag type="warning" size="small">{{
+                      truncateName(getPartyName(row.defendants[0].name))
+                    }}</el-tag>
+                    <span v-if="row.defendants.length > 1" class="party-more"
+                      >等{{ row.defendants.length }}人</span
+                    >
+                  </div>
+                </template>
+
+                 <div class="party-popover-list">
+                  <div
+                    v-for="(p, idx) in row.defendants"
+                    :key="p.id || idx"
+                    class="party-popover-item"
+                  >
+                    <a class="party-link">{{ p.name || "-" }}</a>
+
+                    <div
+                      style="color: #909399; font-size: 12px; margin-top: 4px"
+                    >
+                      {{
+                        p.entity_type === "企业"
+                          ? "统一社会信用代码: "
+                          : "身份证号: "
+                      }}{{ p.unified_credit_code || p.id_number || "-" }}
+                    </div>
+
+                    <div
+                      style="color: #909399; font-size: 12px; margin-top: 4px"
+                    >
+                      联系电话: {{ p.contact_phone || p.contact || "-" }}
+                    </div>
+                    <div
+                      style="color: #909399; font-size: 12px; margin-top: 4px"
+                    >
+                      地址: {{ p.address || "-" }}
+                    </div>
+                  </div>
+                </div>
+              </el-popover>
+            </div>
+            <div v-else>-</div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="第三人" width="240">
+          <template #default="{ row }">
+            <div v-if="row.third_parties && row.third_parties.length > 0">
+              <el-popover placement="top" trigger="hover" :width="320">
+                <template #reference>
+                  <div
+                    class="party-display"
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                      cursor: pointer;
+                    "
+                  >
+                    <el-tag size="small">{{
+                      truncateName(getPartyName(row.third_parties[0].name))
+                    }}</el-tag>
+                    <span v-if="row.third_parties.length > 1" class="party-more"
+                      >等{{ row.third_parties.length }}人</span
+                    >
+                  </div>
+                </template>
+
+                 <div class="party-popover-list">
+                  <div
+                    v-for="(p, idx) in row.third_parties"
+                    :key="p.id || idx"
+                    class="party-popover-item"
+                  >
+                    <a class="party-link">{{ p.name || "-" }}</a>
+
+                    <div
+                      style="color: #909399; font-size: 12px; margin-top: 4px"
+                    >
+                      {{
+                        p.entity_type === "企业"
+                          ? "统一社会信用代码: "
+                          : "身份证号: "
+                      }}{{ p.unified_credit_code || p.id_number || "-" }}
+                    </div>
+
+                    <div
+                      style="color: #909399; font-size: 12px; margin-top: 4px"
+                    >
+                      联系电话: {{ p.contact_phone || p.contact || "-" }}
+                    </div>
+                    <div
+                      style="color: #909399; font-size: 12px; margin-top: 4px"
+                    >
+                      地址: {{ p.address || "-" }}
+                    </div>
+                  </div>
+                </div>
+              </el-popover>
+            </div>
+            <div v-else>-</div>
+          </template>
+        </el-table-column>
+
         <el-table-column
           prop="court"
           label="法院"
@@ -187,11 +371,7 @@
             {{ formatDate(row.filing_date) }}
           </template>
         </el-table-column>
-        <el-table-column
-          prop="status"
-          label="状态"
-          width="100"
-        >
+        <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusTag(row.status)">
               {{ row.status }}
@@ -204,7 +384,6 @@
           width="120"
           show-overflow-tooltip
         />
-       
         <el-table-column
           prop="is_external_agent"
           label="外部代理"
@@ -212,8 +391,11 @@
           align="center"
         >
           <template #default="{ row }">
-            <el-tag :type="row.is_external_agent ? 'success' : 'info'" size="small">
-              {{ row.is_external_agent ? '是' : '否' }}
+            <el-tag
+              :type="row.is_external_agent ? 'success' : 'info'"
+              size="small"
+            >
+              {{ row.is_external_agent ? "是" : "否" }}
             </el-tag>
           </template>
         </el-table-column>
@@ -224,7 +406,7 @@
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            {{ row.law_firm_name || '-' }}
+            {{ row.law_firm_name || "-" }}
           </template>
         </el-table-column>
         <el-table-column
@@ -234,7 +416,7 @@
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            {{ row.agent_lawyer || '-' }}
+            {{ row.agent_lawyer || "-" }}
           </template>
         </el-table-column>
         <el-table-column
@@ -244,34 +426,18 @@
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            {{ row.agent_contact || '-' }}
+            {{ row.agent_contact || "-" }}
           </template>
         </el-table-column>
-        <el-table-column
-          label="操作"
-          width="200"
-          fixed="right"
-        >
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button
-              type="primary"
-              link
-              @click="handleView(row.id)"
-            >
+            <el-button type="primary" link @click="handleView(row.id)">
               查看
             </el-button>
-            <el-button
-              type="primary"
-              link
-              @click="handleEdit(row.id)"
-            >
+            <el-button type="primary" link @click="handleEdit(row.id)">
               编辑
             </el-button>
-            <el-button
-              type="danger"
-              link
-              @click="handleDelete(row.id)"
-            >
+            <el-button type="danger" link @click="handleDelete(row.id)">
               删除
             </el-button>
           </template>
@@ -298,168 +464,184 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Plus } from '@element-plus/icons-vue'
-import { caseApi } from '@/api/case'
-import { useCaseStore } from '@/stores/case'
-import PageHeader from '@/components/common/PageHeader.vue'
-import TableEmpty from '@/components/common/TableEmpty.vue'
+import { ref, reactive, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { ElMessage, ElMessageBox } from "element-plus";
+import { Search, Refresh, Plus } from "@element-plus/icons-vue";
+import { caseApi } from "@/api/case";
+import { useCaseStore } from "@/stores/case";
+import PageHeader from "@/components/common/PageHeader.vue";
+import TableEmpty from "@/components/common/TableEmpty.vue";
 
-const router = useRouter()
-const caseStore = useCaseStore()
+const router = useRouter();
+const caseStore = useCaseStore();
 
 // State
-const loading = ref(false)
-const caseList = ref<any[]>([])
+const loading = ref(false);
+const caseList = ref<any[]>([]);
 const searchForm = reactive({
-  keyword: '',
-  caseType: '',
-  status: '',
-  industrySegment: '',
-  partyName: '',
-  handler: ''
-})
+  keyword: "",
+  caseType: "",
+  status: "",
+  industrySegment: "",
+  partyName: "",
+  handler: "",
+});
 const pagination = reactive({
   page: 1,
   pageSize: 10,
-  total: 0
-})
-const sortField = ref('')
-const sortOrder = ref('')
+  total: 0,
+});
+const sortField = ref("");
+const sortOrder = ref("");
 
 // Fetch case list
 const fetchCaseList = async () => {
-  loading.value = true
+  loading.value = true;
   try {
     const params: any = {
       page: pagination.page,
-      limit: pagination.pageSize  // 后端使用 limit 而不是 pageSize
-    }
-    
+      limit: pagination.pageSize, // 后端使用 limit 而不是 pageSize
+    };
+
     if (searchForm.keyword) {
-      params.search = searchForm.keyword  // 后端使用 search 参数
+      params.search = searchForm.keyword; // 后端使用 search 参数
     }
     if (searchForm.caseType) {
-      params.case_type = searchForm.caseType  // 后端使用 case_type
+      params.case_type = searchForm.caseType; // 后端使用 case_type
     }
     if (searchForm.status) {
-      params.status = searchForm.status
+      params.status = searchForm.status;
     }
     if (searchForm.industrySegment) {
-      params.industry_segment = searchForm.industrySegment
+      params.industry_segment = searchForm.industrySegment;
     }
     if (searchForm.partyName) {
-      params.party_name = searchForm.partyName
+      params.party_name = searchForm.partyName;
     }
     if (searchForm.handler) {
-      params.handler = searchForm.handler
+      params.handler = searchForm.handler;
     }
     if (sortField.value) {
-      params.sortField = sortField.value
-      params.sortOrder = sortOrder.value
+      params.sortField = sortField.value;
+      params.sortOrder = sortOrder.value;
     }
-    
-    const response = await caseApi.getCases(params)
-    
+
+    const response = await caseApi.getCases(params);
+
     if (response.data) {
       // 后端返回的数据结构: { data: { cases: [], pagination: {} } }
-      const data = response.data.cases || response.data.list || response.data
-      caseList.value = Array.isArray(data) ? data : []
-      
+      const data = response.data.cases || response.data.list || response.data;
+      caseList.value = Array.isArray(data) ? data : [];
+
       // 从 pagination 对象或 total 字段获取总数
       if (response.data.pagination) {
-        pagination.total = response.data.pagination.total || 0
+        pagination.total = response.data.pagination.total || 0;
       } else {
-        pagination.total = response.data.total || caseList.value.length
+        pagination.total = response.data.total || caseList.value.length;
       }
-      
+
       // Update store
-      caseStore.setCases(caseList.value)
-      caseStore.setPagination(pagination.page, pagination.pageSize, pagination.total)
+      caseStore.setCases(caseList.value);
+      caseStore.setPagination(
+        pagination.page,
+        pagination.pageSize,
+        pagination.total
+      );
     } else {
       // 如果没有数据，设置为空数组
-      caseList.value = []
-      pagination.total = 0
+      caseList.value = [];
+      pagination.total = 0;
     }
   } catch (error: any) {
-    ElMessage.error(error.message || '获取案件列表失败')
+    ElMessage.error(error.message || "获取案件列表失败");
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 // Search handler
 const handleSearch = () => {
-  pagination.page = 1
-  fetchCaseList()
-}
+  pagination.page = 1;
+  fetchCaseList();
+};
 
 // Reset handler
 const handleReset = () => {
-  searchForm.keyword = ''
-  searchForm.caseType = ''
-  searchForm.status = ''
-  searchForm.partyName = ''
-  searchForm.handler = ''
-  sortField.value = ''
-  sortOrder.value = ''
-  pagination.page = 1
-  fetchCaseList()
-}
+  searchForm.keyword = "";
+  searchForm.caseType = "";
+  searchForm.status = "";
+  searchForm.partyName = "";
+  searchForm.handler = "";
+  sortField.value = "";
+  sortOrder.value = "";
+  pagination.page = 1;
+  fetchCaseList();
+};
 
 // Sort handler
 const handleSortChange = ({ prop, order }: any) => {
-  sortField.value = prop || ''
-  sortOrder.value = order === 'ascending' ? 'asc' : order === 'descending' ? 'desc' : ''
-  fetchCaseList()
-}
+  sortField.value = prop || "";
+  sortOrder.value =
+    order === "ascending" ? "asc" : order === "descending" ? "desc" : "";
+  fetchCaseList();
+};
 
 // Pagination handlers
 const handlePageChange = (page: number) => {
-  pagination.page = page
-  fetchCaseList()
-}
+  pagination.page = page;
+  fetchCaseList();
+};
 
 const handleSizeChange = (size: number) => {
-  pagination.pageSize = size
-  pagination.page = 1
-  fetchCaseList()
-}
+  pagination.pageSize = size;
+  pagination.page = 1;
+  fetchCaseList();
+};
 
 // Action handlers
 const handleCreate = () => {
-  router.push('/cases/create')
-}
+  router.push("/cases/create");
+};
 
 // 导入相关
-const importFile = ref<HTMLInputElement | null>(null)
+const importFile = ref<HTMLInputElement | null>(null);
 const handleImportClick = () => {
-  importFile.value = (document.querySelector('input[ref]') as HTMLInputElement) || null
+  importFile.value =
+    (document.querySelector("input[ref]") as HTMLInputElement) || null;
   // Prefer using the local ref - Vue template ref would be better, but this is a simple fallback
-  const el = document.querySelector('input[type="file"]') as HTMLInputElement
-  if (el) el.click()
-}
+  const el = document.querySelector('input[type="file"]') as HTMLInputElement;
+  if (el) el.click();
+};
 
 const handleFileChange = async (e: Event) => {
-  const input = e.target as HTMLInputElement
-  if (!input || !input.files || input.files.length === 0) return
-  const file = input.files[0]
-  const form = new FormData()
-  form.append('file', file)
+  const input = e.target as HTMLInputElement;
+  if (!input || !input.files || input.files.length === 0) return;
+  const file = input.files[0];
+  const form = new FormData();
+  form.append("file", file);
 
   try {
-    loading.value = true
-    const response = await caseApi.importCases(form)
+    loading.value = true;
+    const response = await caseApi.importCases(form);
     if (response && response.results && response.results.failures) {
-      const r = response.results
-      ElMessage.success(`导入完成：共 ${r.total} 行，成功 ${r.success} 行，失败 ${r.failures.length} 行`)
+      const r = response.results;
+      ElMessage.success(
+        `导入完成：共 ${r.total} 行，成功 ${r.success} 行，失败 ${r.failures.length} 行`
+      );
       if (r.failures.length > 0) {
-        console.error('导入失败详情：', r.failures)
+        console.error("导入失败详情：", r.failures);
         // 显示失败详情弹窗（包含行号与原因），并在必要时可复制或查看
-        const listHtml = `<div style="max-height:300px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #ebeef5">行号</th><th style="text-align:left;padding:6px;border-bottom:1px solid #ebeef5">原因</th></tr></thead><tbody>${r.failures.map(f=>`<tr><td style="padding:6px;border-bottom:1px solid #f2f6fc">${f.row}</td><td style="padding:6px;border-bottom:1px solid #f2f6fc">${f.reason}</td></tr>`).join('')}</tbody></table></div>`
-        ElMessageBox.alert(listHtml, '导入失败详情', { dangerouslyUseHTMLString: true, confirmButtonText: '关闭' })
+        const listHtml = `<div style="max-height:300px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #ebeef5">行号</th><th style="text-align:left;padding:6px;border-bottom:1px solid #ebeef5">原因</th></tr></thead><tbody>${r.failures
+          .map(
+            (f) =>
+              `<tr><td style="padding:6px;border-bottom:1px solid #f2f6fc">${f.row}</td><td style="padding:6px;border-bottom:1px solid #f2f6fc">${f.reason}</td></tr>`
+          )
+          .join("")}</tbody></table></div>`;
+        ElMessageBox.alert(listHtml, "导入失败详情", {
+          dangerouslyUseHTMLString: true,
+          confirmButtonText: "关闭",
+        });
         // 生成 CSV 并触发下载，供用户离线查看和修正
         // try {
         //   const csvHeader = 'row,reason\n'
@@ -480,116 +662,161 @@ const handleFileChange = async (e: Event) => {
         // }
       }
       // 如果有成功则刷新列表
-      if (r.success > 0) fetchCaseList()
+      if (r.success > 0) fetchCaseList();
     } else {
-      ElMessage.success('导入已完成')
-      fetchCaseList()
+      ElMessage.success("导入已完成");
+      fetchCaseList();
     }
   } catch (err: any) {
-    console.error('导入失败：', err)
-    ElMessage.error(err?.message || '导入失败')
+    console.error("导入失败：", err);
+    ElMessage.error(err?.message || "导入失败");
   } finally {
-    loading.value = false
+    loading.value = false;
     // 清空 input
-    const el = document.querySelector('input[type="file"]') as HTMLInputElement
-    if (el) el.value = ''
+    const el = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (el) el.value = "";
   }
-}
+};
 
 const handleView = (id: number) => {
-  router.push(`/cases/${id}`)
-}
+  router.push(`/cases/${id}`);
+};
 
 const handleEdit = (id: number) => {
-  router.push(`/cases/${id}/edit`)
-}
+  router.push(`/cases/${id}/edit`);
+};
 
 const handleDelete = async (id: number) => {
   try {
     await ElMessageBox.confirm(
-      '确定要删除该案件吗？删除后将无法恢复。',
-      '删除确认',
+      "确定要删除该案件吗？删除后将无法恢复。",
+      "删除确认",
       {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
       }
-    )
-    
-    await caseApi.deleteCase(id)
-    ElMessage.success('删除成功')
-    
+    );
+
+    await caseApi.deleteCase(id);
+    ElMessage.success("删除成功");
+
     // Update store
-    caseStore.removeCase(id)
-    
+    caseStore.removeCase(id);
+
     // Refresh list
-    fetchCaseList()
+    fetchCaseList();
   } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.message || '删除失败')
+    if (error !== "cancel") {
+      ElMessage.error(error.message || "删除失败");
     }
   }
-}
+};
 
 // Utility functions
 const getCaseTypeTag = (type: string) => {
   const tagMap: Record<string, string> = {
-    '民事': '',
-    '刑事': 'danger',
-    '行政': 'warning',
-    '劳动仲裁': 'success'
-  }
-  return tagMap[type] || ''
-}
+    民事: "",
+    刑事: "danger",
+    行政: "warning",
+    劳动仲裁: "success",
+  };
+  return tagMap[type] || "";
+};
 
 const getStatusTag = (status: string) => {
   const tagMap: Record<string, string> = {
-    '立案': 'info',
-    '审理中': '',
-    '已结案': 'success',
-    '已归档': 'info'
+    立案: "info",
+    审理中: "",
+    已结案: "success",
+    已归档: "info",
+  };
+  return tagMap[status] || "";
+};
+
+// Party helpers (用于案件列表显示当事人)
+const truncateName = (name: string | undefined | null) => {
+  if (!name) return "-";
+  const s = String(name);
+  return s.length > 20 ? s.slice(0, 20) + "..." : s;
+};
+
+const getPartyName = (name: string | undefined | null) => {
+  return name || "-";
+};
+
+const handlePartyClick = (party: any) => {
+  if (!party) return;
+  // 如果有 id 则跳转到主体档案页，否则提示不可跳转
+  if (party.id) {
+    router.push(`/parties/${party.id}`);
+  } else {
+    ElMessage.info("该主体暂无详细档案");
   }
-  return tagMap[status] || ''
-}
+};
 
 const formatAmount = (amount: number) => {
-  if (!amount) return '-'
-  return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+  if (!amount) return "-";
+  return amount.toLocaleString("zh-CN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
 
 const formatDate = (date: any) => {
-  if (date === null || date === undefined || date === '') return '-'
+  if (date === null || date === undefined || date === "") return "-";
 
   // Excel 导入时可能得到序列号（数字），将其转换为日期
-  if (typeof date === 'number') {
+  if (typeof date === "number") {
     try {
       // Excel 序列号转换（基于 1899-12-30 起算）
-      const timestamp = Math.round((date - 25569) * 86400 * 1000)
-      const d = new Date(timestamp)
-      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+      const timestamp = Math.round((date - 25569) * 86400 * 1000);
+      const d = new Date(timestamp);
+      if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
     } catch (e) {
-      return '-'
+      return "-";
     }
   }
 
-  if (typeof date === 'string') {
+  if (typeof date === "string") {
     // ISO 字符串
-    if (date.includes('T')) return date.split('T')[0]
+    if (date.includes("T")) return date.split("T")[0];
     // 已是 YYYY-MM-DD 格式
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
     // 尝试解析其他字符串格式
-    const parsed = Date.parse(date)
-    if (!isNaN(parsed)) return new Date(parsed).toISOString().split('T')[0]
-    return date
+    const parsed = Date.parse(date);
+    if (!isNaN(parsed)) return new Date(parsed).toISOString().split("T")[0];
+    return date;
   }
 
-  return '-'
-}
+  return "-";
+};
 
 // Lifecycle
 onMounted(() => {
-  fetchCaseList()
-})
+  fetchCaseList();
+});
+// add download handler into script scope
+const handleDownloadTemplate = async () => {
+  try {
+    loading.value = true;
+    const { blob, filename } = await caseApi.downloadImportTemplate();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || "case_import_template.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err: any) {
+    console.error("下载模板失败", err);
+    ElMessage.error(err?.message || "下载模板失败");
+  } finally {
+    loading.value = false;
+  }
+};
+
 </script>
 
 <style scoped>
@@ -613,5 +840,27 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+.party-more {
+  color: #606266;
+  font-size: 12px;
+}
+.party-popover-list {
+  max-height: 320px;
+  overflow: auto;
+}
+.party-popover-item {
+  padding: 6px 0;
+  border-bottom: 1px dashed #ebeef5;
+}
+.party-link {
+  color: #409eff;
+  cursor: pointer;
+  display: inline-block;
+  margin-right: 8px;
+}
+.party-contact {
+  color: #909399;
+  font-size: 12px;
 }
 </style>

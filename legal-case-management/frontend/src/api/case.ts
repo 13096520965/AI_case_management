@@ -88,6 +88,26 @@ export const caseApi = {
     })
   },
 
+  // 下载案件导入模板（返回 Blob 并带文件名）
+  downloadImportTemplate: async () => {
+    // 使用 fetch 以便读取 headers 中的 Content-Disposition
+    const token = localStorage.getItem('token')
+    const res = await fetch((import.meta.env.VITE_API_BASE_URL || '/api') + '/cases/import/template', {
+      method: 'GET',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
+    if (!res.ok) throw new Error('下载模板失败')
+    const blob = await res.blob()
+    // 尝试从 headers 中解析文件名
+    const disposition = res.headers.get('content-disposition') || ''
+    let filename = 'case_import_template.xlsx'
+    const match = disposition.match(/filename\*=UTF-8''(.+)|filename="?([^";]+)"?/) 
+    if (match) {
+      filename = decodeURIComponent(match[1] || match[2])
+    }
+    return { blob, filename }
+  },
+
   // Get case operation logs
   getCaseLogs: (id: number, params?: { page?: number; limit?: number }) => {
     return request.get(`/cases/${id}/logs`, { params })

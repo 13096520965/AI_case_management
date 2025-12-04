@@ -27,6 +27,13 @@ router.post('/', authenticate, logCaseAction('CREATE_CASE', '创建案件'), cas
 router.post('/import', authenticate, logCaseAction('IMPORT_CASES', '导入案件'), caseImportController.upload.single('file'), caseImportController.importCases);
 
 /**
+ * @route   GET /api/cases/import/template
+ * @desc    下载案件导入模板（包含案件sheet及主体sheet）
+ * @access  Private
+ */
+router.get('/import/template', authenticate, caseImportController.downloadTemplate);
+
+/**
  * @route   GET /api/cases
  * @desc    获取案件列表（支持分页、筛选、搜索）
  * @access  Private
@@ -39,6 +46,17 @@ router.get('/', authenticate, caseController.getCases);
  * @access  Private
  */
 router.get('/:id', authenticate, logCaseAction('VIEW_CASE', '查看案件详情'), caseController.getCaseById);
+
+/**
+ * @route   GET /api/cases/export
+ * @desc    导出案件（支持包含主体信息、多sheet/single-sheet、xlsx/csv）
+ * @access  Private
+ * @query   includeParties - 是否包含主体信息（true/false，默认true）
+ * @query   exportMode - 导出模式（multi-sheet / single-sheet，默认multi-sheet）
+ * @query   format - 文件格式（xlsx / csv，默认xlsx）
+ * @query   caseIds - 可选，逗号分隔的caseId列表，用于选择性导出
+ */
+router.get('/export', authenticate, caseController.exportCases);
 
 /**
  * @route   PUT /api/cases/:id
