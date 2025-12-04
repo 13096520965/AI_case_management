@@ -18,7 +18,7 @@ class Case {
       court,
       target_amount,
       filing_date,
-      status = "active",
+      status = "立案",
       team_id,
       case_result,
       industry_segment,
@@ -91,6 +91,48 @@ class Case {
   }
 
   /**
+   * 根据 ID 获取案件（包含主体信息，按类型分组，包含历史案件数量）
+   * @param {number} id - 案件 ID
+   * @returns {Promise<Object|null>} 案件对象（包含 plaintiffs, defendants, third_parties）
+   */
+  static async findByIdWithParties(id) {
+    // 获取案件基本信息
+    const caseData = await get("SELECT * FROM cases WHERE id = ?", [id]);
+    
+    if (!caseData) {
+      return null;
+    }
+
+    // 获取该案件的所有主体信息，按类型分组
+    const partiesSql = `
+      SELECT 
+        lp.*,
+        (
+          SELECT COUNT(DISTINCT lp2.case_id) 
+          FROM litigation_parties lp2 
+          WHERE lp2.name = lp.name
+        ) as case_count
+      FROM litigation_parties lp
+      WHERE lp.case_id = ?
+      ORDER BY lp.party_type, lp.created_at ASC
+    `;
+    
+    const parties = await query(partiesSql, [id]);
+
+    // 按类型分组
+    const plaintiffs = parties.filter(p => p.party_type === '原告');
+    const defendants = parties.filter(p => p.party_type === '被告');
+    const third_parties = parties.filter(p => p.party_type === '第三人');
+
+    return {
+      ...caseData,
+      plaintiffs,
+      defendants,
+      third_parties
+    };
+  }
+
+  /**
    * 获取所有案件（支持分页和筛选）
    * @param {Object} options - 查询选项
    * @returns {Promise<Array>} 案件列表
@@ -103,15 +145,19 @@ class Case {
       case_type,
       search,
       party_name,
+      partyName,
       handler,
       industry_segment,
     } = options;
+
+    // 支持 party_name 和 partyName 两种参数名
+    const partyNameFilter = party_name || partyName;
 
     let sql = "SELECT DISTINCT c.* FROM cases c";
     const params = [];
 
     // 如果搜索当事人，需要 JOIN litigation_parties 表
-    if (party_name) {
+    if (partyNameFilter) {
       sql += " LEFT JOIN litigation_parties lp ON c.id = lp.case_id";
     }
 
@@ -145,9 +191,9 @@ class Case {
     }
 
     // 按当事人姓名/名称搜索
-    if (party_name) {
+    if (partyNameFilter) {
       sql += " AND lp.name LIKE ?";
-      params.push(`%${party_name}%`);
+      params.push(`%${partyNameFilter}%`);
     }
 
     // 按承接人姓名搜索
@@ -161,6 +207,204 @@ class Case {
     params.push(limit, (page - 1) * limit);
 
     return await query(sql, params);
+  }
+
+  /**
+   * 获取所有案件（包含主体信息，按类型分组）
+   * @param {Object} options - 查询选项
+   * @returns {Promise<Array>} 案件列表（包含 plaintiffs, defendants, third_parties）
+   */
+  static async findAllWithParties(options = {}) {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      case_type,
+      search,
+      party_name,
+      partyName,
+      handler,
+      industry_segment,
+    } = options;
+
+    // 支持 party_name 和 partyName 两种参数名
+    const partyNameFilter = party_name || partyName;
+
+    // 首先获取符合条件的案件ID列表
+    let caseSql = "SELECT DISTINCT c.id FROM cases c";
+    const caseParams = [];
+
+    // 如果搜索当事人，需要 JOIN litigation_parties 表
+    if (partyNameFilter) {
+      caseSql += " LEFT JOIN litigation_parties lp ON c.id = lp.case_id";
+    }
+
+    // 如果搜索承接人，需要 JOIN users 表
+    if (handler) {
+      caseSql += " LEFT JOIN users u ON c.team_id = u.id";
+    }
+
+    caseSql += " WHERE 1=1";
+
+    if (status) {
+      caseSql += " AND c.status = ?";
+      caseParams.push(status);
+    }
+
+    if (case_type) {
+      caseSql += " AND c.case_type = ?";
+      caseParams.push(case_type);
+    }
+
+    if (industry_segment) {
+      caseSql += " AND c.industry_segment = ?";
+      caseParams.push(industry_segment);
+    }
+
+    if (search) {
+      caseSql +=
+        " AND (c.internal_number LIKE ? OR c.case_number LIKE ? OR c.case_cause LIKE ? OR c.court LIKE ?)";
+      const searchPattern = `%${search}%`;
+      caseParams.push(searchPattern, searchPattern, searchPattern, searchPattern);
+    }
+
+    // 按当事人姓名/名称搜索
+    if (partyNameFilter) {
+      caseSql += " AND lp.name LIKE ?";
+      caseParams.push(`%${partyNameFilter}%`);
+    }
+
+    // 按承接人姓名搜索
+    if (handler) {
+      caseSql += " AND (u.username LIKE ? OR u.real_name LIKE ?)";
+      const handlerPattern = `%${handler}%`;
+      caseParams.push(handlerPattern, handlerPattern);
+    }
+
+    caseSql += " ORDER BY c.created_at DESC LIMIT ? OFFSET ?";
+    caseParams.push(limit, (page - 1) * limit);
+
+    const caseIds = await query(caseSql, caseParams);
+    
+    if (caseIds.length === 0) {
+      return [];
+    }
+
+    // 获取这些案件的完整信息和主体信息
+    const ids = caseIds.map(c => c.id);
+    const placeholders = ids.map(() => '?').join(',');
+    
+    const sql = `
+      SELECT 
+        c.*,
+        GROUP_CONCAT(
+          CASE WHEN lp.party_type = '原告' 
+          THEN json_object(
+            'id', lp.id, 
+            'name', lp.name, 
+            'entity_type', lp.entity_type,
+              'contact_phone', lp.contact_phone,
+              'unified_credit_code', lp.unified_credit_code,
+              'id_number', lp.id_number,
+              'address', lp.address,
+              'is_primary', COALESCE(lp.is_primary, 0)
+          )
+          END
+        ) as plaintiffs_json,
+        GROUP_CONCAT(
+          CASE WHEN lp.party_type = '被告' 
+          THEN json_object(
+            'id', lp.id, 
+            'name', lp.name, 
+            'entity_type', lp.entity_type,
+              'contact_phone', lp.contact_phone,
+              'unified_credit_code', lp.unified_credit_code,
+              'id_number', lp.id_number,
+              'address', lp.address,
+              'is_primary', COALESCE(lp.is_primary, 0)
+          )
+          END
+        ) as defendants_json,
+        GROUP_CONCAT(
+          CASE WHEN lp.party_type = '第三人' 
+          THEN json_object(
+            'id', lp.id, 
+            'name', lp.name, 
+            'entity_type', lp.entity_type,
+              'contact_phone', lp.contact_phone,
+              'unified_credit_code', lp.unified_credit_code,
+              'id_number', lp.id_number,
+              'address', lp.address,
+              'is_primary', COALESCE(lp.is_primary, 0)
+          )
+          END
+        ) as third_parties_json
+      FROM cases c
+      LEFT JOIN litigation_parties lp ON c.id = lp.case_id
+      WHERE c.id IN (${placeholders})
+      GROUP BY c.id
+      ORDER BY c.created_at DESC
+    `;
+
+    const cases = await query(sql, ids);
+
+    // 解析JSON字符串为对象数组
+    // GROUP_CONCAT 使用逗号分隔多个JSON对象，但JSON对象内部也有逗号
+    // 所以我们需要更智能的解析方式
+    return cases.map(c => {
+      const parseGroupConcatJson = (jsonStr) => {
+        if (!jsonStr || jsonStr.trim() === '') {
+          return [];
+        }
+        
+        // 尝试解析为单个JSON对象
+        try {
+          const single = JSON.parse(jsonStr);
+          return [single];
+        } catch (e) {
+          // 如果失败，说明是多个JSON对象用逗号连接
+          // 我们需要找到JSON对象的边界
+          const objects = [];
+          let depth = 0;
+          let start = 0;
+          
+          for (let i = 0; i < jsonStr.length; i++) {
+            if (jsonStr[i] === '{') {
+              if (depth === 0) start = i;
+              depth++;
+            } else if (jsonStr[i] === '}') {
+              depth--;
+              if (depth === 0) {
+                try {
+                  const obj = JSON.parse(jsonStr.substring(start, i + 1));
+                  objects.push(obj);
+                } catch (parseError) {
+                  // 忽略解析错误
+                }
+              }
+            }
+          }
+          
+          return objects;
+        }
+      };
+
+      const plaintiffs = parseGroupConcatJson(c.plaintiffs_json);
+      const defendants = parseGroupConcatJson(c.defendants_json);
+      const third_parties = parseGroupConcatJson(c.third_parties_json);
+
+      // 移除临时的JSON字段
+      delete c.plaintiffs_json;
+      delete c.defendants_json;
+      delete c.third_parties_json;
+
+      return {
+        ...c,
+        plaintiffs,
+        defendants,
+        third_parties
+      };
+    });
   }
 
   /**
@@ -207,11 +451,14 @@ class Case {
    * @returns {Promise<number>} 案件数量
    */
   static async count(filters = {}) {
+    // 支持 party_name 和 partyName 两种参数名
+    const partyNameFilter = filters.party_name || filters.partyName;
+
     let sql = "SELECT COUNT(DISTINCT c.id) as count FROM cases c";
     const params = [];
 
     // 如果搜索当事人，需要 JOIN litigation_parties 表
-    if (filters.party_name) {
+    if (partyNameFilter) {
       sql += " LEFT JOIN litigation_parties lp ON c.id = lp.case_id";
     }
 
@@ -245,9 +492,9 @@ class Case {
     }
 
     // 按当事人姓名/名称搜索
-    if (filters.party_name) {
+    if (partyNameFilter) {
       sql += " AND lp.name LIKE ?";
-      params.push(`%${filters.party_name}%`);
+      params.push(`%${partyNameFilter}%`);
     }
 
     // 按承接人姓名搜索
