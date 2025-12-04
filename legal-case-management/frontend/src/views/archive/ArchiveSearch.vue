@@ -79,6 +79,22 @@
         <el-table-column prop="case_number" label="案件编号" width="150" />
         <el-table-column prop="case_type" label="案件类型" width="120" />
         <el-table-column prop="case_cause" label="案由" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="handler" label="案件承接人" width="120" show-overflow-tooltip />
+        <el-table-column label="原告" min-width="120" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ getPartyNames(row.plaintiffs) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="被告" min-width="120" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ getPartyNames(row.defendants) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="第三人" min-width="120" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ getPartyNames(row.third_parties) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="court" label="法院" min-width="150" show-overflow-tooltip />
         <el-table-column prop="target_amount" label="标的额" width="120" align="right">
           <template #default="{ row }">
@@ -312,6 +328,24 @@ const getStatusType = (status: string) => {
     '已撤诉': 'warning'
   }
   return typeMap[status] || 'info'
+}
+
+// 获取当事人名称列表
+const getPartyNames = (parties: any[] | string | null | undefined) => {
+  if (!parties) return '-'
+  
+  // 如果是字符串（JSON格式），尝试解析
+  if (typeof parties === 'string') {
+    try {
+      parties = JSON.parse(parties)
+    } catch {
+      return parties || '-'
+    }
+  }
+  
+  if (!Array.isArray(parties) || parties.length === 0) return '-'
+  
+  return parties.map(p => p.name || p).filter(Boolean).join('、') || '-'
 }
 
 const handleDateChange = (value: [string, string] | null) => {

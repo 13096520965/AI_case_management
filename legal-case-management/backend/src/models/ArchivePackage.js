@@ -91,7 +91,16 @@ class ArchivePackage {
 
     let sql = `
       SELECT ap.*, c.case_number, c.internal_number, c.case_type, 
-             c.case_cause, c.court, c.target_amount
+             c.case_cause, c.court, c.target_amount, c.handler,
+             (SELECT json_group_array(json_object('name', lp.name)) 
+              FROM litigation_parties lp 
+              WHERE lp.case_id = c.id AND lp.party_type = '原告') as plaintiffs,
+             (SELECT json_group_array(json_object('name', lp.name)) 
+              FROM litigation_parties lp 
+              WHERE lp.case_id = c.id AND lp.party_type = '被告') as defendants,
+             (SELECT json_group_array(json_object('name', lp.name)) 
+              FROM litigation_parties lp 
+              WHERE lp.case_id = c.id AND lp.party_type = '第三人') as third_parties
       FROM archive_packages ap
       LEFT JOIN cases c ON ap.case_id = c.id
       WHERE 1=1
